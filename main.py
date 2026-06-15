@@ -6,7 +6,7 @@ import mediapipe as mp
 from androidtvremote2 import AndroidTVRemote, CannotConnect, ConnectionClosed, InvalidAuth
 
 
-TV_IP = "192.168.1.100"
+TV_IP = "192.168.0.5"
 DEBOUNCE_SECONDS = 1.0
 
 GESTURE_TO_COMMAND = {
@@ -30,13 +30,19 @@ async def connect_tv() -> AndroidTVRemote | None:
     if await tv_remote.async_generate_cert_if_missing():
         print("Generated cert.pem and key.pem")
 
-    # TODO: Pairing belongs here. Call async_start_pairing(), read the code shown
-    # on the TV, then call async_finish_pairing(pairing_code).
     try:
         await tv_remote.async_connect()
     except InvalidAuth:
         print("TV needs pairing before commands can be sent.")
-        return None
+        print("Starting pairing. Enter the code shown on your TV.")
+        try:
+            await tv_remote.async_start_pairing()
+            pairing_code = input("Pairing code: ").strip()
+            await tv_remote.async_finish_pairing(pairing_code)
+            await tv_remote.async_connect()
+        except (CannotConnect, ConnectionClosed, InvalidAuth) as error:
+            print(f"Pairing failed: {error}")
+            return None
     except (CannotConnect, ConnectionClosed) as error:
         print(f"Could not connect to TV at {TV_IP}: {error}")
         return None

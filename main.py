@@ -5,6 +5,14 @@ import urllib.request
 import cv2
 import mediapipe as mp
 from androidtvremote2 import AndroidTVRemote, CannotConnect, ConnectionClosed, InvalidAuth
+from mediapipe.tasks.python.core.base_options import BaseOptions
+from mediapipe.tasks.python.vision.hand_landmarker import (
+    HandLandmarker,
+    HandLandmarkerOptions,
+)
+from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
+    VisionTaskRunningMode,
+)
 
 
 TV_IP = "192.168.0.5"
@@ -169,34 +177,17 @@ async def main() -> None:
 
     last_command = ""
     last_command_time = 0.0
-    use_legacy_hands = hasattr(mp, "solutions") and hasattr(mp.solutions, "hands")
 
-    if use_legacy_hands:
-        hands = mp.solutions.hands.Hands(
-            max_num_hands=1,
-            min_detection_confidence=0.7,
-            min_tracking_confidence=0.7,
-        )
-    else:
-        download_model_if_missing()
-        from mediapipe.tasks.python.core.base_options import BaseOptions
-        from mediapipe.tasks.python.vision.hand_landmarker import (
-            HandLandmarker,
-            HandLandmarkerOptions,
-        )
-        from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
-            VisionTaskRunningMode,
-        )
-
-        options = HandLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=MODEL_FILE),
-            running_mode=VisionTaskRunningMode.VIDEO,
-            num_hands=1,
-            min_hand_detection_confidence=0.7,
-            min_hand_presence_confidence=0.7,
-            min_tracking_confidence=0.7,
-        )
-        hands = HandLandmarker.create_from_options(options)
+    download_model_if_missing()
+    options = HandLandmarkerOptions(
+        base_options=BaseOptions(model_asset_path=MODEL_FILE),
+        running_mode=VisionTaskRunningMode.VIDEO,
+        num_hands=1,
+        min_hand_detection_confidence=0.7,
+        min_hand_presence_confidence=0.7,
+        min_tracking_confidence=0.7,
+    )
+    hands = HandLandmarker.create_from_options(options)
 
     try:
         while True:
@@ -210,22 +201,13 @@ async def main() -> None:
             landmarks = None
             handedness = "Right"
 
-            if use_legacy_hands:
-                results = hands.process(rgb_frame)
-                if results.multi_hand_landmarks:
-                    hand_landmarks = results.multi_hand_landmarks[0]
-                    landmarks = hand_landmarks.landmark
+            mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+            results = hands.detect_for_video(mp_image, int(time.monotonic() * 1000))
+            if results.hand_landmarks:
+                landmarks = results.hand_landmarks[0]
 
-                    if results.multi_handedness:
-                        handedness = results.multi_handedness[0].classification[0].label
-            else:
-                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-                results = hands.detect_for_video(mp_image, int(time.monotonic() * 1000))
-                if results.hand_landmarks:
-                    landmarks = results.hand_landmarks[0]
-
-                    if results.handedness:
-                        handedness = results.handedness[0][0].category_name
+                if results.handedness:
+                    handedness = results.handedness[0][0].category_name
 
             if landmarks:
                 draw_simple_landmarks(frame, landmarks)

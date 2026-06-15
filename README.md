@@ -20,6 +20,10 @@ Install dependencies:
 pip install -r requirements.txt
 ```
 
+On first run with newer MediaPipe versions, the app downloads Google's
+`hand_landmarker.task` model file into the project directory. That file is
+ignored by git.
+
 ## Run
 
 ```bash

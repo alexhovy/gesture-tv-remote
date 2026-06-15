@@ -1,5 +1,6 @@
 import asyncio
 import time
+import urllib.request
 
 import cv2
 import mediapipe as mp
@@ -8,6 +9,32 @@ from androidtvremote2 import AndroidTVRemote, CannotConnect, ConnectionClosed, I
 
 TV_IP = "192.168.0.5"
 DEBOUNCE_SECONDS = 1.0
+MODEL_FILE = "hand_landmarker.task"
+MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"
+
+HAND_CONNECTIONS = [
+    (0, 1),
+    (1, 2),
+    (2, 3),
+    (3, 4),
+    (0, 5),
+    (5, 6),
+    (6, 7),
+    (7, 8),
+    (5, 9),
+    (9, 10),
+    (10, 11),
+    (11, 12),
+    (9, 13),
+    (13, 14),
+    (14, 15),
+    (15, 16),
+    (13, 17),
+    (17, 18),
+    (18, 19),
+    (19, 20),
+    (0, 17),
+]
 
 GESTURE_TO_COMMAND = {
     "OPEN_PALM": "HOME",
@@ -64,6 +91,27 @@ def send_tv_command(command: str) -> None:
         print(f"Invalid TV command {command}: {error}")
 
 
+def download_model_if_missing() -> None:
+    try:
+        open(MODEL_FILE, "rb").close()
+    except FileNotFoundError:
+        print(f"Downloading {MODEL_FILE}...")
+        urllib.request.urlretrieve(MODEL_URL, MODEL_FILE)
+
+
+def draw_simple_landmarks(frame, landmarks) -> None:
+    height, width = frame.shape[:2]
+
+    for start, end in HAND_CONNECTIONS:
+        start_point = (int(landmarks[start].x * width), int(landmarks[start].y * height))
+        end_point = (int(landmarks[end].x * width), int(landmarks[end].y * height))
+        cv2.line(frame, start_point, end_point, (0, 255, 0), 2)
+
+    for landmark in landmarks:
+        point = (int(landmark.x * width), int(landmark.y * height))
+        cv2.circle(frame, point, 4, (0, 0, 255), -1)
+
+
 def finger_is_extended(landmarks, tip_id: int, pip_id: int) -> bool:
     return landmarks[tip_id].y < landmarks[pip_id].y
 
@@ -114,9 +162,6 @@ async def main() -> None:
 
     remote = await connect_tv()
 
-    mp_hands = mp.solutions.hands
-    mp_drawing = mp.solutions.drawing_utils
-
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         print("Could not open webcam.")
@@ -124,12 +169,36 @@ async def main() -> None:
 
     last_command = ""
     last_command_time = 0.0
+    use_legacy_hands = hasattr(mp, "solutions") and hasattr(mp.solutions, "hands")
 
-    with mp_hands.Hands(
-        max_num_hands=1,
-        min_detection_confidence=0.7,
-        min_tracking_confidence=0.7,
-    ) as hands:
+    if use_legacy_hands:
+        hands = mp.solutions.hands.Hands(
+            max_num_hands=1,
+            min_detection_confidence=0.7,
+            min_tracking_confidence=0.7,
+        )
+    else:
+        download_model_if_missing()
+        from mediapipe.tasks.python.core.base_options import BaseOptions
+        from mediapipe.tasks.python.vision.hand_landmarker import (
+            HandLandmarker,
+            HandLandmarkerOptions,
+        )
+        from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
+            VisionTaskRunningMode,
+        )
+
+        options = HandLandmarkerOptions(
+            base_options=BaseOptions(model_asset_path=MODEL_FILE),
+            running_mode=VisionTaskRunningMode.VIDEO,
+            num_hands=1,
+            min_hand_detection_confidence=0.7,
+            min_hand_presence_confidence=0.7,
+            min_tracking_confidence=0.7,
+        )
+        hands = HandLandmarker.create_from_options(options)
+
+    try:
         while True:
             ok, frame = cap.read()
             if not ok:
@@ -138,22 +207,30 @@ async def main() -> None:
 
             frame = cv2.flip(frame, 1)
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            results = hands.process(rgb_frame)
+            landmarks = None
+            handedness = "Right"
 
-            if results.multi_hand_landmarks:
-                hand_landmarks = results.multi_hand_landmarks[0]
-                handedness = "Right"
+            if use_legacy_hands:
+                results = hands.process(rgb_frame)
+                if results.multi_hand_landmarks:
+                    hand_landmarks = results.multi_hand_landmarks[0]
+                    landmarks = hand_landmarks.landmark
 
-                if results.multi_handedness:
-                    handedness = results.multi_handedness[0].classification[0].label
+                    if results.multi_handedness:
+                        handedness = results.multi_handedness[0].classification[0].label
+            else:
+                mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
+                results = hands.detect_for_video(mp_image, int(time.monotonic() * 1000))
+                if results.hand_landmarks:
+                    landmarks = results.hand_landmarks[0]
 
-                mp_drawing.draw_landmarks(
-                    frame,
-                    hand_landmarks,
-                    mp_hands.HAND_CONNECTIONS,
-                )
+                    if results.handedness:
+                        handedness = results.handedness[0][0].category_name
 
-                gesture = detect_gesture(hand_landmarks.landmark, handedness)
+            if landmarks:
+                draw_simple_landmarks(frame, landmarks)
+
+                gesture = detect_gesture(landmarks, handedness)
                 if gesture:
                     command = GESTURE_TO_COMMAND[gesture]
                     now = time.monotonic()
@@ -171,6 +248,8 @@ async def main() -> None:
                 break
 
             await asyncio.sleep(0)
+    finally:
+        hands.close()
 
     cap.release()
     cv2.destroyAllWindows()

@@ -1,4 +1,6 @@
 import asyncio
+import contextlib
+import math
 import time
 import urllib.request
 
@@ -17,13 +19,12 @@ from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
 
 TV_IP = "192.168.0.5"
 DEBOUNCE_SECONDS = 1.0
-DOUBLE_SELECT_SECONDS = 1.2
-SWIPE_DISTANCE = 0.13
-SWIPE_DOMINANCE = 1.15
-BACK_PUSH_SECONDS = 0.8
-BACK_PUSH_DISTANCE = 0.12
-BACK_PUSH_MAX_DRIFT = 0.18
+HOME_CHORD_SECONDS = 0.35
+POINTER_DISTANCE = 0.08
+POINTER_DOMINANCE = 1.15
 VOLUME_DISTANCE = 0.16
+PINCH_DISTANCE_RATIO = 0.22
+VOICE_CAPTURE_SECONDS = 5.0
 DEBUG_LOG_SECONDS = 0.5
 MODEL_FILE = "hand_landmarker.task"
 MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"
@@ -56,12 +57,11 @@ GESTURE_TO_COMMAND = {
     "HOME": "HOME",
     "VOLUME_UP": "VOLUME_UP",
     "VOLUME_DOWN": "VOLUME_DOWN",
-    "PUSH_BACK": "BACK",
-    "TWO_FINGERS": "MEDIA_PLAY_PAUSE",
-    "SWIPE_LEFT": "DPAD_LEFT",
-    "SWIPE_RIGHT": "DPAD_RIGHT",
-    "SWIPE_UP": "DPAD_UP",
-    "SWIPE_DOWN": "DPAD_DOWN",
+    "BACK": "BACK",
+    "POINT_LEFT": "DPAD_LEFT",
+    "POINT_RIGHT": "DPAD_RIGHT",
+    "POINT_UP": "DPAD_UP",
+    "POINT_DOWN": "DPAD_DOWN",
     "OPEN_TO_FIST": "DPAD_CENTER",
 }
 
@@ -82,7 +82,7 @@ async def connect_tv() -> AndroidTVRemote | None:
         "cert.pem",
         "key.pem",
         TV_IP,
-        enable_voice=False,
+        enable_voice=True,
     )
 
     if await tv_remote.async_generate_cert_if_missing():
@@ -156,17 +156,6 @@ def thumb_is_extended(landmarks, handedness: str) -> bool:
     return thumb_tip.x < thumb_ip.x
 
 
-def index_is_pointing(landmarks) -> bool:
-    index_tip = landmarks[8]
-    index_pip = landmarks[6]
-    index_mcp = landmarks[5]
-
-    y_distance = index_mcp.y - index_tip.y
-    x_distance = abs(index_tip.x - index_mcp.x)
-
-    return index_tip.y < index_pip.y < index_mcp.y and y_distance > 1.6 * x_distance and y_distance > 0.12
-
-
 def hand_center(landmarks) -> tuple[float, float, float]:
     x = sum(landmark.x for landmark in landmarks) / len(landmarks)
     y = sum(landmark.y for landmark in landmarks) / len(landmarks)
@@ -177,39 +166,41 @@ def hand_center(landmarks) -> tuple[float, float, float]:
     return x, y, size
 
 
-def detect_swipe(start: tuple[float, float], end: tuple[float, float]) -> str | None:
+def landmark_distance(landmarks, first_id: int, second_id: int) -> float:
+    first = landmarks[first_id]
+    second = landmarks[second_id]
+    return math.hypot(first.x - second.x, first.y - second.y)
+
+
+def landmark_position(landmarks, landmark_id: int) -> tuple[float, float]:
+    landmark = landmarks[landmark_id]
+    return landmark.x, landmark.y
+
+
+def detect_direction(
+    start: tuple[float, float] | None,
+    end: tuple[float, float],
+    distance: float,
+    dominance: float,
+    prefix: str,
+) -> str | None:
+    if start is None:
+        return None
+
     start_x, start_y = start
     end_x, end_y = end
 
     dx = end_x - start_x
     dy = end_y - start_y
 
-    if abs(dx) < SWIPE_DISTANCE and abs(dy) < SWIPE_DISTANCE:
+    if abs(dx) < distance and abs(dy) < distance:
         return None
 
-    if abs(dx) >= SWIPE_DISTANCE and abs(dx) >= SWIPE_DOMINANCE * abs(dy):
-        return "SWIPE_RIGHT" if dx > 0 else "SWIPE_LEFT"
+    if abs(dx) >= distance and abs(dx) >= dominance * abs(dy):
+        return f"{prefix}_RIGHT" if dx > 0 else f"{prefix}_LEFT"
 
-    if abs(dy) >= SWIPE_DISTANCE and abs(dy) >= SWIPE_DOMINANCE * abs(dx):
-        return "SWIPE_DOWN" if dy > 0 else "SWIPE_UP"
-
-    return None
-
-
-def detect_push_back(motion_history: list[tuple[float, float, float, float]]) -> str | None:
-    if len(motion_history) < 2:
-        return None
-
-    start_time, start_x, start_y, start_size = motion_history[0]
-    end_time, end_x, end_y, end_size = motion_history[-1]
-    if end_time - start_time > BACK_PUSH_SECONDS:
-        return None
-
-    size_change = start_size - end_size
-    drift = ((end_x - start_x) ** 2 + (end_y - start_y) ** 2) ** 0.5
-
-    if size_change >= BACK_PUSH_DISTANCE and drift <= BACK_PUSH_MAX_DRIFT:
-        return "PUSH_BACK"
+    if abs(dy) >= distance and abs(dy) >= dominance * abs(dx):
+        return f"{prefix}_DOWN" if dy > 0 else f"{prefix}_UP"
 
     return None
 
@@ -230,19 +221,27 @@ def detect_volume(start_y: float | None, current_y: float) -> str | None:
 
 
 def detect_gesture(landmarks, handedness: str) -> str | None:
+    _, _, size = hand_center(landmarks)
     index_up = finger_is_extended(landmarks, 8, 6)
     middle_up = finger_is_extended(landmarks, 12, 10)
     ring_up = finger_is_extended(landmarks, 16, 14)
     pinky_up = finger_is_extended(landmarks, 20, 18)
     thumb_extended = thumb_is_extended(landmarks, handedness)
+    pinch_distance = landmark_distance(landmarks, 4, 8)
 
     fingers_up = [index_up, middle_up, ring_up, pinky_up]
 
     if all(fingers_up):
         return "OPEN_PALM"
 
+    if size > 0 and pinch_distance <= PINCH_DISTANCE_RATIO * size:
+        return "PINCH"
+
     if index_up and middle_up and not ring_up and not pinky_up and not thumb_extended:
         return "TWO_FINGERS"
+
+    if index_up and not middle_up and not ring_up and not pinky_up:
+        return "POINT"
 
     if not any(fingers_up) and not thumb_extended:
         return "FIST"
@@ -250,13 +249,79 @@ def detect_gesture(landmarks, handedness: str) -> str | None:
     return None
 
 
+def nearest_hand_index(
+    hands: list[dict],
+    target_position: tuple[float, float] | None,
+) -> int | None:
+    if not hands or target_position is None:
+        return None
+
+    target_x, target_y = target_position
+    return min(
+        range(len(hands)),
+        key=lambda index: math.hypot(
+            hands[index]["center"][0] - target_x,
+            hands[index]["center"][1] - target_y,
+        ),
+    )
+
+
+async def start_voice_capture() -> None:
+    if remote is None:
+        print("TV not connected. Skipping microphone capture.")
+        return
+
+    try:
+        import sounddevice as sd
+    except (ImportError, OSError) as error:
+        print(f"Microphone capture unavailable: {error}")
+        print("Install sounddevice and PortAudio support for microphone capture.")
+        return
+
+    voice_stream = None
+    try:
+        voice_stream = await remote.start_voice()
+        loop = asyncio.get_running_loop()
+        chunks: asyncio.Queue[bytes] = asyncio.Queue()
+
+        def audio_callback(indata, frames, time_info, status) -> None:
+            if status:
+                loop.call_soon_threadsafe(log_debug, f"microphone status={status}")
+            loop.call_soon_threadsafe(chunks.put_nowait, bytes(indata))
+
+        print("Microphone: listening...")
+        with sd.RawInputStream(
+            samplerate=8000,
+            channels=1,
+            dtype="int16",
+            blocksize=4096,
+            callback=audio_callback,
+        ):
+            deadline = time.monotonic() + VOICE_CAPTURE_SECONDS
+            while time.monotonic() < deadline:
+                timeout = max(0.0, deadline - time.monotonic())
+                try:
+                    chunk = await asyncio.wait_for(chunks.get(), timeout=timeout)
+                except asyncio.TimeoutError:
+                    break
+                voice_stream.send_chunk(chunk)
+        print("Microphone: finished.")
+    except asyncio.TimeoutError:
+        print("TV did not start a voice session.")
+    except ConnectionClosed:
+        print("TV connection closed. Microphone capture stopped.")
+    except Exception as error:
+        print(f"Microphone capture failed: {error}")
+    finally:
+        if voice_stream is not None:
+            voice_stream.end()
+
+
 def print_and_send_gesture(gesture: str) -> None:
     command = GESTURE_TO_COMMAND[gesture]
     display_command = command
     if command == "DPAD_CENTER":
         display_command = "SELECT"
-    elif command == "MEDIA_PLAY_PAUSE":
-        display_command = "PLAY_PAUSE"
     print(f"Gesture: {gesture} -> {display_command}")
     send_tv_command(command)
 
@@ -291,13 +356,16 @@ async def main() -> None:
     last_command = ""
     last_command_time = 0.0
     last_command_gesture = None
-    previous_gesture = None
-    last_select_time = 0.0
-    fist_start_position = None
-    fist_last_position = None
-    fist_started_from_open = False
+    primary_position = None
+    primary_previous_gesture = None
+    secondary_previous_gesture = None
+    primary_close_time = None
+    secondary_close_time = None
+    primary_select_pending = False
+    secondary_back_pending = False
     volume_start_y = None
-    push_back_history = []
+    pointer_start_position = None
+    voice_task = None
     last_debug_time = 0.0
     last_debug_message = ""
 
@@ -330,127 +398,175 @@ async def main() -> None:
             for landmarks, _ in detected_hands:
                 draw_simple_landmarks(frame, landmarks)
 
-            hand_gestures = [
-                (landmarks, detect_gesture(landmarks, handedness))
-                for landmarks, handedness in detected_hands
-            ]
-            activation_index = next(
+            hand_states = []
+            for landmarks, handedness in detected_hands:
+                center_x, center_y, hand_size = hand_center(landmarks)
+                hand_states.append(
+                    {
+                        "landmarks": landmarks,
+                        "gesture": detect_gesture(landmarks, handedness),
+                        "center": (center_x, center_y),
+                        "size": hand_size,
+                    }
+                )
+
+            if primary_position is None:
+                primary_index = next(
+                    (
+                        index
+                        for index, hand in enumerate(hand_states)
+                        if hand["gesture"] == "OPEN_PALM"
+                    ),
+                    None,
+                )
+            else:
+                primary_index = nearest_hand_index(hand_states, primary_position)
+
+            primary_hand = hand_states[primary_index] if primary_index is not None else None
+            secondary_hand = next(
                 (
-                    index
-                    for index, (_, gesture) in enumerate(hand_gestures)
-                    if gesture == "OPEN_PALM"
-                ),
-                None,
-            )
-            control_hand = next(
-                (
-                    item
-                    for index, item in enumerate(hand_gestures)
-                    if index != activation_index
+                    hand
+                    for index, hand in enumerate(hand_states)
+                    if index != primary_index
                 ),
                 None,
             )
 
             debug_gestures = [
-                gesture or "UNKNOWN" for _, gesture in hand_gestures
+                hand["gesture"] or "UNKNOWN" for hand in hand_states
             ]
 
-            if activation_index is not None and control_hand is not None:
-                control_landmarks, gesture = control_hand
-                center_x, center_y, hand_size = hand_center(control_landmarks)
-                released_fist_select = False
-                swipe_gesture = None
+            if primary_hand is not None:
+                primary_gesture = primary_hand["gesture"]
+                primary_position = primary_hand["center"]
+                secondary_gesture = secondary_hand["gesture"] if secondary_hand else None
+                secondary_center = secondary_hand["center"] if secondary_hand else None
+                secondary_landmarks = secondary_hand["landmarks"] if secondary_hand else None
+                secondary_size = secondary_hand["size"] if secondary_hand else 0.0
 
-                if gesture == "OPEN_PALM":
-                    if previous_gesture == "FIST" and fist_start_position and fist_last_position:
-                        released_fist_select = fist_started_from_open
-                    fist_start_position = None
-                    fist_last_position = None
-                    fist_started_from_open = False
-                    push_back_history.append((now, center_x, center_y, hand_size))
-                    push_back_history = [
-                        item for item in push_back_history if now - item[0] <= BACK_PUSH_SECONDS
-                    ]
-                elif gesture == "FIST":
-                    volume_start_y = None
-                    push_back_history = []
-                    if previous_gesture != "FIST" or fist_start_position is None:
-                        fist_start_position = (center_x, center_y)
-                        fist_started_from_open = previous_gesture == "OPEN_PALM"
-                    fist_last_position = (center_x, center_y)
-                    swipe_gesture = detect_swipe(fist_start_position, fist_last_position)
-                else:
-                    if previous_gesture == "FIST" and fist_start_position and fist_last_position:
-                        released_fist_select = fist_started_from_open
-                    volume_start_y = None
-                    fist_start_position = None
-                    fist_last_position = None
-                    fist_started_from_open = False
-                    push_back_history = []
+                primary_closed = (
+                    primary_previous_gesture == "OPEN_PALM" and primary_gesture == "FIST"
+                )
+                secondary_closed = (
+                    secondary_previous_gesture == "OPEN_PALM" and secondary_gesture == "FIST"
+                )
+
+                if primary_closed:
+                    primary_close_time = now
+                    primary_select_pending = True
+
+                if secondary_closed:
+                    secondary_close_time = now
+                    secondary_back_pending = True
 
                 command_gesture = None
-                push_back_gesture = detect_push_back(push_back_history)
-                volume_gesture = detect_volume(volume_start_y, center_y) if gesture == "OPEN_PALM" else None
+                volume_gesture = None
+                pointer_gesture = None
+                mic_gesture = None
 
-                if push_back_gesture:
-                    command_gesture = push_back_gesture
-                    push_back_history = []
-                elif volume_gesture:
-                    command_gesture = volume_gesture
-                elif swipe_gesture:
-                    command_gesture = swipe_gesture
-                    fist_started_from_open = False
-                    last_select_time = 0.0
-                elif released_fist_select:
-                    if now - last_select_time <= DOUBLE_SELECT_SECONDS:
-                        command_gesture = "HOME"
-                        last_select_time = 0.0
-                    else:
+                both_closed = (
+                    primary_close_time is not None
+                    and secondary_close_time is not None
+                    and abs(primary_close_time - secondary_close_time) <= HOME_CHORD_SECONDS
+                )
+                if both_closed:
+                    command_gesture = "HOME"
+                    primary_close_time = None
+                    secondary_close_time = None
+                    primary_select_pending = False
+                    secondary_back_pending = False
+                    volume_start_y = None
+                    pointer_start_position = None
+                elif primary_select_pending and primary_close_time is not None:
+                    if now - primary_close_time > HOME_CHORD_SECONDS:
                         command_gesture = "OPEN_TO_FIST"
-                        last_select_time = now
-                elif gesture == "OPEN_PALM":
-                    if volume_start_y is None:
-                        volume_start_y = center_y
-                elif gesture == "TWO_FINGERS":
-                    command_gesture = gesture
-                    last_select_time = 0.0
+                        primary_select_pending = False
+                        primary_close_time = None
+                elif secondary_back_pending and secondary_close_time is not None:
+                    if now - secondary_close_time > HOME_CHORD_SECONDS:
+                        command_gesture = "BACK"
+                        secondary_back_pending = False
+                        secondary_close_time = None
+
+                if command_gesture is None and secondary_hand is not None:
+                    if secondary_gesture == "PINCH":
+                        pointer_start_position = None
+                        if volume_start_y is None:
+                            volume_start_y = secondary_center[1]
+                        volume_gesture = detect_volume(volume_start_y, secondary_center[1])
+                        command_gesture = volume_gesture
+                    else:
+                        volume_start_y = None
+
+                    if command_gesture is None and secondary_gesture == "POINT":
+                        pointer_position = landmark_position(secondary_landmarks, 8)
+                        if pointer_start_position is None:
+                            pointer_start_position = pointer_position
+                        pointer_gesture = detect_direction(
+                            pointer_start_position,
+                            pointer_position,
+                            POINTER_DISTANCE,
+                            POINTER_DOMINANCE,
+                            "POINT",
+                        )
+                        command_gesture = pointer_gesture
+                    elif secondary_gesture != "POINT":
+                        pointer_start_position = None
+
+                    if command_gesture is None and secondary_gesture == "TWO_FINGERS":
+                        mic_gesture = "MIC"
+                        command_gesture = mic_gesture
+                    elif secondary_gesture != "TWO_FINGERS":
+                        mic_gesture = None
 
                 if command_gesture:
-                    command = GESTURE_TO_COMMAND[command_gesture]
-
-                    can_repeat = command in REPEATABLE_COMMANDS
+                    command = GESTURE_TO_COMMAND.get(command_gesture)
+                    can_repeat = command in REPEATABLE_COMMANDS if command else False
                     gesture_changed = command_gesture != last_command_gesture
                     debounce_elapsed = now - last_command_time >= DEBOUNCE_SECONDS
 
                     if gesture_changed or (can_repeat and debounce_elapsed):
-                        log_debug(f"sending command_gesture={command_gesture} command={command}")
-                        print_and_send_gesture(command_gesture)
-                        last_command = command
+                        if command_gesture == "MIC":
+                            if voice_task is None or voice_task.done():
+                                log_debug("starting microphone capture")
+                                voice_task = asyncio.create_task(start_voice_capture())
+                            else:
+                                log_debug("microphone capture already running")
+                        elif command:
+                            log_debug(f"sending command_gesture={command_gesture} command={command}")
+                            print_and_send_gesture(command_gesture)
+                            last_command = command
                         last_command_time = now
                         last_command_gesture = command_gesture
                 else:
                     last_command_gesture = None
 
-                previous_gesture = gesture
+                primary_previous_gesture = primary_gesture
+                secondary_previous_gesture = secondary_gesture
                 debug_message = (
                     f"hands={len(detected_hands)} activated=True "
-                    f"gestures={debug_gestures} control={gesture or 'UNKNOWN'} "
-                    f"swipe={swipe_gesture or 'none'} push_back={push_back_gesture or 'none'} "
+                    f"gestures={debug_gestures} "
+                    f"primary={primary_gesture or 'UNKNOWN'} "
+                    f"secondary={secondary_gesture or 'none'} "
                     f"volume={volume_gesture or 'none'} "
-                    f"size={hand_size:.2f} command={command_gesture or 'none'}"
+                    f"pointer={pointer_gesture or 'none'} "
+                    f"mic={mic_gesture or 'none'} "
+                    f"size={secondary_size:.2f} command={command_gesture or 'none'}"
                 )
             else:
-                previous_gesture = None
+                primary_position = None
+                primary_previous_gesture = None
+                secondary_previous_gesture = None
                 last_command_gesture = None
-                last_select_time = 0.0
-                fist_start_position = None
-                fist_last_position = None
-                fist_started_from_open = False
+                primary_close_time = None
+                secondary_close_time = None
+                primary_select_pending = False
+                secondary_back_pending = False
                 volume_start_y = None
-                push_back_history = []
+                pointer_start_position = None
                 debug_message = (
                     f"hands={len(detected_hands)} activated=False "
-                    f"gestures={debug_gestures} need_one_open_hand_and_one_control_hand"
+                    f"gestures={debug_gestures} need_primary_open_palm"
                 )
 
             if debug_message != last_debug_message or now - last_debug_time >= DEBUG_LOG_SECONDS:
@@ -465,6 +581,10 @@ async def main() -> None:
 
             await asyncio.sleep(0)
     finally:
+        if voice_task is not None and not voice_task.done():
+            voice_task.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await voice_task
         hands.close()
 
     cap.release()

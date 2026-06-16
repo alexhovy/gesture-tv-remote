@@ -33,24 +33,25 @@ Press `q` to quit the webcam window.
 
 ## Gestures
 
-Keep one hand open to activate gesture controls. The other hand performs the
-command gesture.
+Show one open palm first to activate gesture controls. That hand becomes the
+primary hand. The other hand becomes the secondary hand.
 
-With the activation hand open, close the other hand from open palm into a fist,
-then release without moving far to send `SELECT` / `DPAD_CENTER`.
+Close the primary hand from open palm into a fist to send `SELECT` /
+`DPAD_CENTER`.
 
-Repeat the select gesture twice in a row to send `HOME`.
+Close the secondary hand from open palm into a fist to send `BACK`.
 
-With the activation hand open, make a fist with the other hand and drag it
-left, right, up, or down to send the matching DPAD arrow.
+Close both hands from open palm into fists at about the same time to send
+`HOME`.
 
-With the activation hand open, show an open palm with the other hand and push it
-away from the camera to send `BACK`.
+Pinch with the secondary hand, then move it up to send `VOLUME_UP` or down to
+send `VOLUME_DOWN`.
 
-With the activation hand open, show an open palm with the other hand, then move
-it up to send `VOLUME_UP` or down to send `VOLUME_DOWN`.
+Point with the secondary hand's index finger and move it left, right, up, or
+down to send the matching DPAD arrow.
 
-With the activation hand open, hold up two fingers to send `PLAY_PAUSE`.
+Hold up two fingers with the secondary hand to start a short microphone capture
+for TV voice input.
 
 The TV IP address is currently hardcoded in `main.py`:
 
@@ -62,8 +63,9 @@ TV_IP = "192.168.0.5"
 
 OpenCV captures frames from the default webcam and displays the live feed.
 
-MediaPipe detects one hand and provides hand landmarks.
+MediaPipe detects up to two hands and provides hand landmarks.
 
-Simple landmark rules classify static gestures, transitions, and swipes.
+Simple landmark rules classify static gestures, transitions, pointing, and
+pinches.
 
 `androidtvremote2` sends the matching remote command to the Google TV.

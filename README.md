@@ -36,11 +36,10 @@ Press `q` to quit the webcam window.
 Keep one hand open to activate gesture controls. The other hand performs the
 command gesture.
 
-With the activation hand open, hold the other hand open for 2 seconds to send
-`HOME`.
-
 With the activation hand open, close the other hand from open palm into a fist,
 then release without moving far to send `SELECT` / `DPAD_CENTER`.
+
+Repeat the select gesture twice in a row to send `HOME`.
 
 With the activation hand open, make a fist with the other hand and drag it
 left, right, up, or down to send the matching DPAD arrow.

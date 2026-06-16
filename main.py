@@ -17,7 +17,7 @@ from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
 
 TV_IP = "192.168.0.5"
 DEBOUNCE_SECONDS = 1.0
-HOME_HOLD_SECONDS = 2.0
+DOUBLE_SELECT_SECONDS = 1.2
 SWIPE_DISTANCE = 0.13
 SWIPE_DOMINANCE = 1.15
 BACK_PUSH_SECONDS = 0.8
@@ -53,7 +53,7 @@ HAND_CONNECTIONS = [
 ]
 
 GESTURE_TO_COMMAND = {
-    "OPEN_PALM": "HOME",
+    "HOME": "HOME",
     "VOLUME_UP": "VOLUME_UP",
     "VOLUME_DOWN": "VOLUME_DOWN",
     "PUSH_BACK": "BACK",
@@ -292,7 +292,7 @@ async def main() -> None:
     last_command_time = 0.0
     last_command_gesture = None
     previous_gesture = None
-    open_palm_start_time = None
+    last_select_time = 0.0
     fist_start_position = None
     fist_last_position = None
     fist_started_from_open = False
@@ -362,8 +362,6 @@ async def main() -> None:
                 swipe_gesture = None
 
                 if gesture == "OPEN_PALM":
-                    if open_palm_start_time is None:
-                        open_palm_start_time = now
                     if previous_gesture == "FIST" and fist_start_position and fist_last_position:
                         released_fist_select = fist_started_from_open
                     fist_start_position = None
@@ -374,7 +372,6 @@ async def main() -> None:
                         item for item in push_back_history if now - item[0] <= BACK_PUSH_SECONDS
                     ]
                 elif gesture == "FIST":
-                    open_palm_start_time = None
                     volume_start_y = None
                     push_back_history = []
                     if previous_gesture != "FIST" or fist_start_position is None:
@@ -385,7 +382,6 @@ async def main() -> None:
                 else:
                     if previous_gesture == "FIST" and fist_start_position and fist_last_position:
                         released_fist_select = fist_started_from_open
-                    open_palm_start_time = None
                     volume_start_y = None
                     fist_start_position = None
                     fist_last_position = None
@@ -404,15 +400,20 @@ async def main() -> None:
                 elif swipe_gesture:
                     command_gesture = swipe_gesture
                     fist_started_from_open = False
+                    last_select_time = 0.0
                 elif released_fist_select:
-                    command_gesture = "OPEN_TO_FIST"
+                    if now - last_select_time <= DOUBLE_SELECT_SECONDS:
+                        command_gesture = "HOME"
+                        last_select_time = 0.0
+                    else:
+                        command_gesture = "OPEN_TO_FIST"
+                        last_select_time = now
                 elif gesture == "OPEN_PALM":
                     if volume_start_y is None:
                         volume_start_y = center_y
-                    if open_palm_start_time is not None and now - open_palm_start_time >= HOME_HOLD_SECONDS:
-                        command_gesture = "OPEN_PALM"
                 elif gesture == "TWO_FINGERS":
                     command_gesture = gesture
+                    last_select_time = 0.0
 
                 if command_gesture:
                     command = GESTURE_TO_COMMAND[command_gesture]
@@ -441,7 +442,7 @@ async def main() -> None:
             else:
                 previous_gesture = None
                 last_command_gesture = None
-                open_palm_start_time = None
+                last_select_time = 0.0
                 fist_start_position = None
                 fist_last_position = None
                 fist_started_from_open = False

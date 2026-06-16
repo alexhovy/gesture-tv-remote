@@ -23,6 +23,7 @@ SWIPE_DOMINANCE = 1.15
 BACK_PUSH_SECONDS = 0.8
 BACK_PUSH_DISTANCE = 0.12
 BACK_PUSH_MAX_DRIFT = 0.18
+VOLUME_DISTANCE = 0.16
 DEBUG_LOG_SECONDS = 0.5
 MODEL_FILE = "hand_landmarker.task"
 MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"
@@ -53,6 +54,8 @@ HAND_CONNECTIONS = [
 
 GESTURE_TO_COMMAND = {
     "OPEN_PALM": "HOME",
+    "VOLUME_UP": "VOLUME_UP",
+    "VOLUME_DOWN": "VOLUME_DOWN",
     "PUSH_BACK": "BACK",
     "TWO_FINGERS": "MEDIA_PLAY_PAUSE",
     "SWIPE_LEFT": "DPAD_LEFT",
@@ -68,6 +71,8 @@ REPEATABLE_COMMANDS = {
     "DPAD_RIGHT",
     "DPAD_UP",
     "DPAD_DOWN",
+    "VOLUME_UP",
+    "VOLUME_DOWN",
 }
 
 
@@ -209,6 +214,21 @@ def detect_push_back(motion_history: list[tuple[float, float, float, float]]) ->
     return None
 
 
+def detect_volume(start_y: float | None, current_y: float) -> str | None:
+    if start_y is None:
+        return None
+
+    dy = current_y - start_y
+
+    if dy <= -VOLUME_DISTANCE:
+        return "VOLUME_UP"
+
+    if dy >= VOLUME_DISTANCE:
+        return "VOLUME_DOWN"
+
+    return None
+
+
 def detect_gesture(landmarks, handedness: str) -> str | None:
     index_up = finger_is_extended(landmarks, 8, 6)
     middle_up = finger_is_extended(landmarks, 12, 10)
@@ -276,6 +296,7 @@ async def main() -> None:
     fist_start_position = None
     fist_last_position = None
     fist_started_from_open = False
+    volume_start_y = None
     push_back_history = []
     last_debug_time = 0.0
     last_debug_message = ""
@@ -354,6 +375,7 @@ async def main() -> None:
                     ]
                 elif gesture == "FIST":
                     open_palm_start_time = None
+                    volume_start_y = None
                     push_back_history = []
                     if previous_gesture != "FIST" or fist_start_position is None:
                         fist_start_position = (center_x, center_y)
@@ -364,6 +386,7 @@ async def main() -> None:
                     if previous_gesture == "FIST" and fist_start_position and fist_last_position:
                         released_fist_select = fist_started_from_open
                     open_palm_start_time = None
+                    volume_start_y = None
                     fist_start_position = None
                     fist_last_position = None
                     fist_started_from_open = False
@@ -371,16 +394,21 @@ async def main() -> None:
 
                 command_gesture = None
                 push_back_gesture = detect_push_back(push_back_history)
+                volume_gesture = detect_volume(volume_start_y, center_y) if gesture == "OPEN_PALM" else None
 
                 if push_back_gesture:
                     command_gesture = push_back_gesture
                     push_back_history = []
+                elif volume_gesture:
+                    command_gesture = volume_gesture
                 elif swipe_gesture:
                     command_gesture = swipe_gesture
                     fist_started_from_open = False
                 elif released_fist_select:
                     command_gesture = "OPEN_TO_FIST"
                 elif gesture == "OPEN_PALM":
+                    if volume_start_y is None:
+                        volume_start_y = center_y
                     if open_palm_start_time is not None and now - open_palm_start_time >= HOME_HOLD_SECONDS:
                         command_gesture = "OPEN_PALM"
                 elif gesture == "TWO_FINGERS":
@@ -407,6 +435,7 @@ async def main() -> None:
                     f"hands={len(detected_hands)} activated=True "
                     f"gestures={debug_gestures} control={gesture or 'UNKNOWN'} "
                     f"swipe={swipe_gesture or 'none'} push_back={push_back_gesture or 'none'} "
+                    f"volume={volume_gesture or 'none'} "
                     f"size={hand_size:.2f} command={command_gesture or 'none'}"
                 )
             else:
@@ -416,6 +445,7 @@ async def main() -> None:
                 fist_start_position = None
                 fist_last_position = None
                 fist_started_from_open = False
+                volume_start_y = None
                 push_back_history = []
                 debug_message = (
                     f"hands={len(detected_hands)} activated=False "

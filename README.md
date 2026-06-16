@@ -48,6 +48,9 @@ left, right, up, or down to send the matching DPAD arrow.
 With the activation hand open, show an open palm with the other hand and push it
 away from the camera to send `BACK`.
 
+With the activation hand open, show an open palm with the other hand, then move
+it up to send `VOLUME_UP` or down to send `VOLUME_DOWN`.
+
 With the activation hand open, hold up two fingers to send `PLAY_PAUSE`.
 
 The TV IP address is currently hardcoded in `main.py`:

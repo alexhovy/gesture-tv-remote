@@ -33,16 +33,24 @@ Press `q` to quit the webcam window.
 
 ## Gestures
 
-Open palm sends `HOME`.
+Hold an open palm for 1 second to send `HOME`.
 
-Closed fist sends `SELECT` / `DPAD_CENTER`.
+Close an open palm into a fist to send `SELECT` / `DPAD_CENTER`.
+
+Swipe left, right, up, or down to send the matching DPAD arrow.
 
 Thumbs up sends `VOLUME_UP`.
+
+Thumbs down sends `VOLUME_DOWN`.
+
+Point with one finger to send `BACK`.
+
+Hold up two fingers to send `PLAY_PAUSE`.
 
 The TV IP address is currently hardcoded in `main.py`:
 
 ```python
-TV_IP = "192.168.1.100"
+TV_IP = "192.168.0.5"
 ```
 
 ## Architecture
@@ -51,6 +59,6 @@ OpenCV captures frames from the default webcam and displays the live feed.
 
 MediaPipe detects one hand and provides hand landmarks.
 
-Simple landmark rules classify the hand as open palm, fist, or thumbs up.
+Simple landmark rules classify static gestures, transitions, and swipes.
 
 `androidtvremote2` sends the matching remote command to the Google TV.

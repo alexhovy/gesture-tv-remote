@@ -17,9 +17,13 @@ from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
 
 TV_IP = "192.168.0.5"
 DEBOUNCE_SECONDS = 1.0
-HOME_HOLD_SECONDS = 1.0
-SWIPE_SECONDS = 0.45
-SWIPE_DISTANCE = 0.22
+HOME_HOLD_SECONDS = 2.0
+SWIPE_DISTANCE = 0.13
+SWIPE_DOMINANCE = 1.15
+BACK_PUSH_SECONDS = 0.8
+BACK_PUSH_DISTANCE = 0.12
+BACK_PUSH_MAX_DRIFT = 0.18
+DEBUG_LOG_SECONDS = 0.5
 MODEL_FILE = "hand_landmarker.task"
 MODEL_URL = "https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/latest/hand_landmarker.task"
 
@@ -49,9 +53,7 @@ HAND_CONNECTIONS = [
 
 GESTURE_TO_COMMAND = {
     "OPEN_PALM": "HOME",
-    "THUMBS_UP": "VOLUME_UP",
-    "THUMBS_DOWN": "VOLUME_DOWN",
-    "POINT": "BACK",
+    "PUSH_BACK": "BACK",
     "TWO_FINGERS": "MEDIA_PLAY_PAUSE",
     "SWIPE_LEFT": "DPAD_LEFT",
     "SWIPE_RIGHT": "DPAD_RIGHT",
@@ -61,6 +63,12 @@ GESTURE_TO_COMMAND = {
 }
 
 remote: AndroidTVRemote | None = None
+REPEATABLE_COMMANDS = {
+    "DPAD_LEFT",
+    "DPAD_RIGHT",
+    "DPAD_UP",
+    "DPAD_DOWN",
+}
 
 
 async def connect_tv() -> AndroidTVRemote | None:
@@ -143,28 +151,6 @@ def thumb_is_extended(landmarks, handedness: str) -> bool:
     return thumb_tip.x < thumb_ip.x
 
 
-def thumb_is_up(landmarks) -> bool:
-    thumb_tip = landmarks[4]
-    thumb_ip = landmarks[3]
-    thumb_mcp = landmarks[2]
-
-    y_distance = thumb_mcp.y - thumb_tip.y
-    x_distance = abs(thumb_tip.x - thumb_mcp.x)
-
-    return thumb_tip.y < thumb_ip.y < thumb_mcp.y and y_distance > 1.8 * x_distance and y_distance > 0.12
-
-
-def thumb_is_down(landmarks) -> bool:
-    thumb_tip = landmarks[4]
-    thumb_ip = landmarks[3]
-    thumb_mcp = landmarks[2]
-
-    y_distance = thumb_tip.y - thumb_mcp.y
-    x_distance = abs(thumb_tip.x - thumb_mcp.x)
-
-    return thumb_tip.y > thumb_ip.y > thumb_mcp.y and y_distance > 1.8 * x_distance and y_distance > 0.12
-
-
 def index_is_pointing(landmarks) -> bool:
     index_tip = landmarks[8]
     index_pip = landmarks[6]
@@ -176,29 +162,49 @@ def index_is_pointing(landmarks) -> bool:
     return index_tip.y < index_pip.y < index_mcp.y and y_distance > 1.6 * x_distance and y_distance > 0.12
 
 
-def hand_center(landmarks) -> tuple[float, float]:
+def hand_center(landmarks) -> tuple[float, float, float]:
     x = sum(landmark.x for landmark in landmarks) / len(landmarks)
     y = sum(landmark.y for landmark in landmarks) / len(landmarks)
-    return x, y
+    size = max(
+        max(landmark.x for landmark in landmarks) - min(landmark.x for landmark in landmarks),
+        max(landmark.y for landmark in landmarks) - min(landmark.y for landmark in landmarks),
+    )
+    return x, y, size
 
 
-def detect_swipe(position_history: list[tuple[float, float, float]]) -> str | None:
-    if len(position_history) < 2:
-        return None
-
-    start_time, start_x, start_y = position_history[0]
-    end_time, end_x, end_y = position_history[-1]
-    if end_time - start_time > SWIPE_SECONDS:
-        return None
+def detect_swipe(start: tuple[float, float], end: tuple[float, float]) -> str | None:
+    start_x, start_y = start
+    end_x, end_y = end
 
     dx = end_x - start_x
     dy = end_y - start_y
 
-    if abs(dx) > abs(dy) and abs(dx) >= SWIPE_DISTANCE:
+    if abs(dx) < SWIPE_DISTANCE and abs(dy) < SWIPE_DISTANCE:
+        return None
+
+    if abs(dx) >= SWIPE_DISTANCE and abs(dx) >= SWIPE_DOMINANCE * abs(dy):
         return "SWIPE_RIGHT" if dx > 0 else "SWIPE_LEFT"
 
-    if abs(dy) > abs(dx) and abs(dy) >= SWIPE_DISTANCE:
+    if abs(dy) >= SWIPE_DISTANCE and abs(dy) >= SWIPE_DOMINANCE * abs(dx):
         return "SWIPE_DOWN" if dy > 0 else "SWIPE_UP"
+
+    return None
+
+
+def detect_push_back(motion_history: list[tuple[float, float, float, float]]) -> str | None:
+    if len(motion_history) < 2:
+        return None
+
+    start_time, start_x, start_y, start_size = motion_history[0]
+    end_time, end_x, end_y, end_size = motion_history[-1]
+    if end_time - start_time > BACK_PUSH_SECONDS:
+        return None
+
+    size_change = start_size - end_size
+    drift = ((end_x - start_x) ** 2 + (end_y - start_y) ** 2) ** 0.5
+
+    if size_change >= BACK_PUSH_DISTANCE and drift <= BACK_PUSH_MAX_DRIFT:
+        return "PUSH_BACK"
 
     return None
 
@@ -212,20 +218,11 @@ def detect_gesture(landmarks, handedness: str) -> str | None:
 
     fingers_up = [index_up, middle_up, ring_up, pinky_up]
 
-    if all(fingers_up) and thumb_extended:
+    if all(fingers_up):
         return "OPEN_PALM"
-
-    if not any(fingers_up) and thumb_is_up(landmarks):
-        return "THUMBS_UP"
-
-    if not any(fingers_up) and thumb_is_down(landmarks):
-        return "THUMBS_DOWN"
 
     if index_up and middle_up and not ring_up and not pinky_up and not thumb_extended:
         return "TWO_FINGERS"
-
-    if index_is_pointing(landmarks) and not middle_up and not ring_up and not pinky_up and not thumb_extended:
-        return "POINT"
 
     if not any(fingers_up) and not thumb_extended:
         return "FIST"
@@ -242,6 +239,10 @@ def print_and_send_gesture(gesture: str) -> None:
         display_command = "PLAY_PAUSE"
     print(f"Gesture: {gesture} -> {display_command}")
     send_tv_command(command)
+
+
+def log_debug(message: str) -> None:
+    print(f"[DEBUG] {message}")
 
 
 def get_detected_hands(results) -> list[tuple[list, str]]:
@@ -269,9 +270,15 @@ async def main() -> None:
 
     last_command = ""
     last_command_time = 0.0
+    last_command_gesture = None
     previous_gesture = None
     open_palm_start_time = None
-    position_history = []
+    fist_start_position = None
+    fist_last_position = None
+    fist_started_from_open = False
+    push_back_history = []
+    last_debug_time = 0.0
+    last_debug_message = ""
 
     download_model_if_missing()
     options = HandLandmarkerOptions(
@@ -323,47 +330,102 @@ async def main() -> None:
                 None,
             )
 
+            debug_gestures = [
+                gesture or "UNKNOWN" for _, gesture in hand_gestures
+            ]
+
             if activation_index is not None and control_hand is not None:
                 control_landmarks, gesture = control_hand
-                center_x, center_y = hand_center(control_landmarks)
-                position_history.append((now, center_x, center_y))
-                position_history = [
-                    item for item in position_history if now - item[0] <= SWIPE_SECONDS
-                ]
+                center_x, center_y, hand_size = hand_center(control_landmarks)
+                released_fist_select = False
+                swipe_gesture = None
 
                 if gesture == "OPEN_PALM":
                     if open_palm_start_time is None:
                         open_palm_start_time = now
-                else:
+                    if previous_gesture == "FIST" and fist_start_position and fist_last_position:
+                        released_fist_select = fist_started_from_open
+                    fist_start_position = None
+                    fist_last_position = None
+                    fist_started_from_open = False
+                    push_back_history.append((now, center_x, center_y, hand_size))
+                    push_back_history = [
+                        item for item in push_back_history if now - item[0] <= BACK_PUSH_SECONDS
+                    ]
+                elif gesture == "FIST":
                     open_palm_start_time = None
+                    push_back_history = []
+                    if previous_gesture != "FIST" or fist_start_position is None:
+                        fist_start_position = (center_x, center_y)
+                        fist_started_from_open = previous_gesture == "OPEN_PALM"
+                    fist_last_position = (center_x, center_y)
+                    swipe_gesture = detect_swipe(fist_start_position, fist_last_position)
+                else:
+                    if previous_gesture == "FIST" and fist_start_position and fist_last_position:
+                        released_fist_select = fist_started_from_open
+                    open_palm_start_time = None
+                    fist_start_position = None
+                    fist_last_position = None
+                    fist_started_from_open = False
+                    push_back_history = []
 
                 command_gesture = None
-                swipe_gesture = detect_swipe(position_history)
+                push_back_gesture = detect_push_back(push_back_history)
 
-                if swipe_gesture:
+                if push_back_gesture:
+                    command_gesture = push_back_gesture
+                    push_back_history = []
+                elif swipe_gesture:
                     command_gesture = swipe_gesture
-                    position_history = []
-                elif previous_gesture == "OPEN_PALM" and gesture == "FIST":
+                    fist_started_from_open = False
+                elif released_fist_select:
                     command_gesture = "OPEN_TO_FIST"
                 elif gesture == "OPEN_PALM":
                     if open_palm_start_time is not None and now - open_palm_start_time >= HOME_HOLD_SECONDS:
                         command_gesture = "OPEN_PALM"
-                elif gesture in ("THUMBS_UP", "THUMBS_DOWN", "POINT", "TWO_FINGERS"):
+                elif gesture == "TWO_FINGERS":
                     command_gesture = gesture
 
                 if command_gesture:
                     command = GESTURE_TO_COMMAND[command_gesture]
 
-                    if command != last_command or now - last_command_time >= DEBOUNCE_SECONDS:
+                    can_repeat = command in REPEATABLE_COMMANDS
+                    gesture_changed = command_gesture != last_command_gesture
+                    debounce_elapsed = now - last_command_time >= DEBOUNCE_SECONDS
+
+                    if gesture_changed or (can_repeat and debounce_elapsed):
+                        log_debug(f"sending command_gesture={command_gesture} command={command}")
                         print_and_send_gesture(command_gesture)
                         last_command = command
                         last_command_time = now
+                        last_command_gesture = command_gesture
+                else:
+                    last_command_gesture = None
 
                 previous_gesture = gesture
+                debug_message = (
+                    f"hands={len(detected_hands)} activated=True "
+                    f"gestures={debug_gestures} control={gesture or 'UNKNOWN'} "
+                    f"swipe={swipe_gesture or 'none'} push_back={push_back_gesture or 'none'} "
+                    f"size={hand_size:.2f} command={command_gesture or 'none'}"
+                )
             else:
                 previous_gesture = None
+                last_command_gesture = None
                 open_palm_start_time = None
-                position_history = []
+                fist_start_position = None
+                fist_last_position = None
+                fist_started_from_open = False
+                push_back_history = []
+                debug_message = (
+                    f"hands={len(detected_hands)} activated=False "
+                    f"gestures={debug_gestures} need_one_open_hand_and_one_control_hand"
+                )
+
+            if debug_message != last_debug_message or now - last_debug_time >= DEBUG_LOG_SECONDS:
+                log_debug(debug_message)
+                last_debug_message = debug_message
+                last_debug_time = now
 
             cv2.imshow("Gesture TV Remote", frame)
 
@@ -382,4 +444,7 @@ async def main() -> None:
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    try:
+        asyncio.run(main())
+    except KeyboardInterrupt:
+        print("Exiting.")

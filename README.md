@@ -36,20 +36,17 @@ Press `q` to quit the webcam window.
 Keep one hand open to activate gesture controls. The other hand performs the
 command gesture.
 
-With the activation hand open, hold the other hand open for 1 second to send
+With the activation hand open, hold the other hand open for 2 seconds to send
 `HOME`.
 
-With the activation hand open, close the other hand from open palm into a fist
-to send `SELECT` / `DPAD_CENTER`.
+With the activation hand open, close the other hand from open palm into a fist,
+then release without moving far to send `SELECT` / `DPAD_CENTER`.
 
-With the activation hand open, swipe the other hand left, right, up, or down to
-send the matching DPAD arrow.
+With the activation hand open, make a fist with the other hand and drag it
+left, right, up, or down to send the matching DPAD arrow.
 
-With the activation hand open, thumbs up sends `VOLUME_UP`.
-
-With the activation hand open, thumbs down sends `VOLUME_DOWN`.
-
-With the activation hand open, point with one finger to send `BACK`.
+With the activation hand open, show an open palm with the other hand and push it
+away from the camera to send `BACK`.
 
 With the activation hand open, hold up two fingers to send `PLAY_PAUSE`.
 

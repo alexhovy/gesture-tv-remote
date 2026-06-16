@@ -33,19 +33,25 @@ Press `q` to quit the webcam window.
 
 ## Gestures
 
-Hold an open palm for 1 second to send `HOME`.
+Keep one hand open to activate gesture controls. The other hand performs the
+command gesture.
 
-Close an open palm into a fist to send `SELECT` / `DPAD_CENTER`.
+With the activation hand open, hold the other hand open for 1 second to send
+`HOME`.
 
-Swipe left, right, up, or down to send the matching DPAD arrow.
+With the activation hand open, close the other hand from open palm into a fist
+to send `SELECT` / `DPAD_CENTER`.
 
-Thumbs up sends `VOLUME_UP`.
+With the activation hand open, swipe the other hand left, right, up, or down to
+send the matching DPAD arrow.
 
-Thumbs down sends `VOLUME_DOWN`.
+With the activation hand open, thumbs up sends `VOLUME_UP`.
 
-Point with one finger to send `BACK`.
+With the activation hand open, thumbs down sends `VOLUME_DOWN`.
 
-Hold up two fingers to send `PLAY_PAUSE`.
+With the activation hand open, point with one finger to send `BACK`.
+
+With the activation hand open, hold up two fingers to send `PLAY_PAUSE`.
 
 The TV IP address is currently hardcoded in `main.py`:
 

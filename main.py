@@ -151,7 +151,7 @@ def thumb_is_up(landmarks) -> bool:
     y_distance = thumb_mcp.y - thumb_tip.y
     x_distance = abs(thumb_tip.x - thumb_mcp.x)
 
-    return thumb_tip.y < thumb_ip.y < thumb_mcp.y and y_distance > x_distance
+    return thumb_tip.y < thumb_ip.y < thumb_mcp.y and y_distance > 1.8 * x_distance and y_distance > 0.12
 
 
 def thumb_is_down(landmarks) -> bool:
@@ -162,7 +162,18 @@ def thumb_is_down(landmarks) -> bool:
     y_distance = thumb_tip.y - thumb_mcp.y
     x_distance = abs(thumb_tip.x - thumb_mcp.x)
 
-    return thumb_tip.y > thumb_ip.y > thumb_mcp.y and y_distance > x_distance
+    return thumb_tip.y > thumb_ip.y > thumb_mcp.y and y_distance > 1.8 * x_distance and y_distance > 0.12
+
+
+def index_is_pointing(landmarks) -> bool:
+    index_tip = landmarks[8]
+    index_pip = landmarks[6]
+    index_mcp = landmarks[5]
+
+    y_distance = index_mcp.y - index_tip.y
+    x_distance = abs(index_tip.x - index_mcp.x)
+
+    return index_tip.y < index_pip.y < index_mcp.y and y_distance > 1.6 * x_distance and y_distance > 0.12
 
 
 def hand_center(landmarks) -> tuple[float, float]:
@@ -210,10 +221,10 @@ def detect_gesture(landmarks, handedness: str) -> str | None:
     if not any(fingers_up) and thumb_is_down(landmarks):
         return "THUMBS_DOWN"
 
-    if index_up and middle_up and not ring_up and not pinky_up:
+    if index_up and middle_up and not ring_up and not pinky_up and not thumb_extended:
         return "TWO_FINGERS"
 
-    if index_up and not middle_up and not ring_up and not pinky_up:
+    if index_is_pointing(landmarks) and not middle_up and not ring_up and not pinky_up and not thumb_extended:
         return "POINT"
 
     if not any(fingers_up) and not thumb_extended:
@@ -231,6 +242,19 @@ def print_and_send_gesture(gesture: str) -> None:
         display_command = "PLAY_PAUSE"
     print(f"Gesture: {gesture} -> {display_command}")
     send_tv_command(command)
+
+
+def get_detected_hands(results) -> list[tuple[list, str]]:
+    detected_hands = []
+    handedness_results = results.handedness or []
+
+    for index, landmarks in enumerate(results.hand_landmarks or []):
+        handedness = "Right"
+        if index < len(handedness_results) and handedness_results[index]:
+            handedness = handedness_results[index][0].category_name
+        detected_hands.append((landmarks, handedness))
+
+    return detected_hands
 
 
 async def main() -> None:
@@ -253,7 +277,7 @@ async def main() -> None:
     options = HandLandmarkerOptions(
         base_options=BaseOptions(model_asset_path=MODEL_FILE),
         running_mode=VisionTaskRunningMode.VIDEO,
-        num_hands=1,
+        num_hands=2,
         min_hand_detection_confidence=0.7,
         min_hand_presence_confidence=0.7,
         min_tracking_confidence=0.7,
@@ -267,30 +291,45 @@ async def main() -> None:
                 print("Could not read frame from webcam.")
                 break
 
+            now = time.monotonic()
             frame = cv2.flip(frame, 1)
             rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            landmarks = None
-            handedness = "Right"
 
             mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
             results = hands.detect_for_video(mp_image, int(time.monotonic() * 1000))
-            if results.hand_landmarks:
-                landmarks = results.hand_landmarks[0]
+            detected_hands = get_detected_hands(results)
 
-                if results.handedness:
-                    handedness = results.handedness[0][0].category_name
-
-            if landmarks:
+            for landmarks, _ in detected_hands:
                 draw_simple_landmarks(frame, landmarks)
 
-                now = time.monotonic()
-                center_x, center_y = hand_center(landmarks)
+            hand_gestures = [
+                (landmarks, detect_gesture(landmarks, handedness))
+                for landmarks, handedness in detected_hands
+            ]
+            activation_index = next(
+                (
+                    index
+                    for index, (_, gesture) in enumerate(hand_gestures)
+                    if gesture == "OPEN_PALM"
+                ),
+                None,
+            )
+            control_hand = next(
+                (
+                    item
+                    for index, item in enumerate(hand_gestures)
+                    if index != activation_index
+                ),
+                None,
+            )
+
+            if activation_index is not None and control_hand is not None:
+                control_landmarks, gesture = control_hand
+                center_x, center_y = hand_center(control_landmarks)
                 position_history.append((now, center_x, center_y))
                 position_history = [
                     item for item in position_history if now - item[0] <= SWIPE_SECONDS
                 ]
-
-                gesture = detect_gesture(landmarks, handedness)
 
                 if gesture == "OPEN_PALM":
                     if open_palm_start_time is None:

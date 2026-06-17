@@ -8,6 +8,7 @@ from src.domain.constants import (
     GESTURE_POINT_RIGHT,
     GESTURE_VOLUME_DOWN,
 )
+from src.domain.landmarks import LANDMARK_COUNT, LANDMARK_INDEX_TIP
 from src.domain.session import GestureSession, HandState
 from src.shared.config import AppConfig
 
@@ -108,8 +109,11 @@ def _hand_state(
     size: float,
     index_position: tuple[float, float] = (0.0, 0.0),
 ) -> HandState:
-    landmarks = [SimpleNamespace(x=0.0, y=0.0) for _ in range(21)]
-    landmarks[8] = SimpleNamespace(x=index_position[0], y=index_position[1])
+    landmarks = [SimpleNamespace(x=0.0, y=0.0) for _ in range(LANDMARK_COUNT)]
+    landmarks[LANDMARK_INDEX_TIP] = SimpleNamespace(
+        x=index_position[0],
+        y=index_position[1],
+    )
 
     return HandState(
         landmarks=landmarks,

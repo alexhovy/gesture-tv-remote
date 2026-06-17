@@ -16,7 +16,7 @@ from src.domain.constants import (
     GESTURE_TWO_FINGERS,
 )
 from src.domain.gestures import detect_direction, detect_volume
-from src.domain.landmarks import landmark_position
+from src.domain.landmarks import LANDMARK_INDEX_TIP, landmark_position
 from src.shared.config import AppConfig
 
 
@@ -160,7 +160,10 @@ class GestureSession:
                 and secondary_gesture == GESTURE_POINT
                 and secondary_landmarks is not None
             ):
-                pointer_position = landmark_position(secondary_landmarks, 8)
+                pointer_position = landmark_position(
+                    secondary_landmarks,
+                    LANDMARK_INDEX_TIP,
+                )
                 if self.pointer_start_position is None:
                     self.pointer_start_position = pointer_position
                 pointer_distance = self._scaled_distance(

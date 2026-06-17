@@ -14,6 +14,15 @@ from src.domain.constants import (
     GESTURE_VOLUME_UP,
 )
 from src.domain.landmarks import (
+    LANDMARK_INDEX_PIP,
+    LANDMARK_INDEX_TIP,
+    LANDMARK_MIDDLE_PIP,
+    LANDMARK_MIDDLE_TIP,
+    LANDMARK_PINKY_PIP,
+    LANDMARK_PINKY_TIP,
+    LANDMARK_RING_PIP,
+    LANDMARK_RING_TIP,
+    LANDMARK_THUMB_TIP,
     finger_is_extended,
     hand_center,
     landmark_distance,
@@ -73,12 +82,12 @@ def detect_gesture(
     pinch_distance_ratio: float,
 ) -> str | None:
     _, _, size = hand_center(landmarks)
-    index_up = finger_is_extended(landmarks, 8, 6)
-    middle_up = finger_is_extended(landmarks, 12, 10)
-    ring_up = finger_is_extended(landmarks, 16, 14)
-    pinky_up = finger_is_extended(landmarks, 20, 18)
+    index_up = finger_is_extended(landmarks, LANDMARK_INDEX_TIP, LANDMARK_INDEX_PIP)
+    middle_up = finger_is_extended(landmarks, LANDMARK_MIDDLE_TIP, LANDMARK_MIDDLE_PIP)
+    ring_up = finger_is_extended(landmarks, LANDMARK_RING_TIP, LANDMARK_RING_PIP)
+    pinky_up = finger_is_extended(landmarks, LANDMARK_PINKY_TIP, LANDMARK_PINKY_PIP)
     thumb_extended = thumb_is_extended(landmarks, handedness)
-    pinch_distance = landmark_distance(landmarks, 4, 8)
+    pinch_distance = landmark_distance(landmarks, LANDMARK_THUMB_TIP, LANDMARK_INDEX_TIP,)
 
     fingers_up = [index_up, middle_up, ring_up, pinky_up]
 

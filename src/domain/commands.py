@@ -1,0 +1,21 @@
+GESTURE_TO_COMMAND = {
+    "HOME": "HOME",
+    "VOLUME_UP": "VOLUME_UP",
+    "VOLUME_DOWN": "VOLUME_DOWN",
+    "BACK": "BACK",
+    "POINT_LEFT": "DPAD_LEFT",
+    "POINT_RIGHT": "DPAD_RIGHT",
+    "POINT_UP": "DPAD_UP",
+    "POINT_DOWN": "DPAD_DOWN",
+    "OPEN_TO_FIST": "DPAD_CENTER",
+}
+
+REPEATABLE_COMMANDS = {
+    "DPAD_LEFT",
+    "DPAD_RIGHT",
+    "DPAD_UP",
+    "DPAD_DOWN",
+    "VOLUME_UP",
+    "VOLUME_DOWN",
+}
+

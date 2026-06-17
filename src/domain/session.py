@@ -2,6 +2,19 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
+from src.domain.constants import (
+    DEBUG_NONE,
+    DEBUG_UNKNOWN,
+    GESTURE_BACK,
+    GESTURE_FIST,
+    GESTURE_HOME,
+    GESTURE_MIC,
+    GESTURE_OPEN_PALM,
+    GESTURE_OPEN_TO_FIST,
+    GESTURE_PINCH,
+    GESTURE_POINT,
+    GESTURE_TWO_FINGERS,
+)
 from src.domain.gestures import detect_direction, detect_volume
 from src.domain.landmarks import landmark_position
 from src.shared.config import AppConfig
@@ -42,7 +55,7 @@ class GestureSession:
                 (
                     index
                     for index, hand in enumerate(hand_states)
-                    if hand.gesture == "OPEN_PALM"
+                    if hand.gesture == GESTURE_OPEN_PALM
                 ),
                 None,
             )
@@ -54,7 +67,7 @@ class GestureSession:
             (hand for index, hand in enumerate(hand_states) if index != primary_index),
             None,
         )
-        debug_gestures = [hand.gesture or "UNKNOWN" for hand in hand_states]
+        debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hand_states]
 
         if primary_hand is None:
             self._reset_activation()
@@ -74,10 +87,12 @@ class GestureSession:
         secondary_size = secondary_hand.size if secondary_hand else 0.0
 
         primary_closed = (
-            self.primary_previous_gesture == "OPEN_PALM" and primary_gesture == "FIST"
+            self.primary_previous_gesture == GESTURE_OPEN_PALM
+            and primary_gesture == GESTURE_FIST
         )
         secondary_closed = (
-            self.secondary_previous_gesture == "OPEN_PALM" and secondary_gesture == "FIST"
+            self.secondary_previous_gesture == GESTURE_OPEN_PALM
+            and secondary_gesture == GESTURE_FIST
         )
 
         if primary_closed:
@@ -102,7 +117,7 @@ class GestureSession:
             <= self._config.home_chord_seconds
         )
         if both_closed:
-            command_gesture = "HOME"
+            command_gesture = GESTURE_HOME
             self.primary_close_time = None
             self.secondary_close_time = None
             self.primary_select_pending = False
@@ -111,17 +126,17 @@ class GestureSession:
             self.pointer_start_position = None
         elif self.primary_select_pending and self.primary_close_time is not None:
             if now - self.primary_close_time > self._config.home_chord_seconds:
-                command_gesture = "OPEN_TO_FIST"
+                command_gesture = GESTURE_OPEN_TO_FIST
                 self.primary_select_pending = False
                 self.primary_close_time = None
         elif self.secondary_back_pending and self.secondary_close_time is not None:
             if now - self.secondary_close_time > self._config.home_chord_seconds:
-                command_gesture = "BACK"
+                command_gesture = GESTURE_BACK
                 self.secondary_back_pending = False
                 self.secondary_close_time = None
 
         if command_gesture is None and secondary_hand is not None:
-            if secondary_gesture == "PINCH" and secondary_center is not None:
+            if secondary_gesture == GESTURE_PINCH and secondary_center is not None:
                 self.pointer_start_position = None
                 if self.volume_start_y is None:
                     self.volume_start_y = secondary_center[1]
@@ -142,7 +157,7 @@ class GestureSession:
 
             if (
                 command_gesture is None
-                and secondary_gesture == "POINT"
+                and secondary_gesture == GESTURE_POINT
                 and secondary_landmarks is not None
             ):
                 pointer_position = landmark_position(secondary_landmarks, 8)
@@ -159,16 +174,16 @@ class GestureSession:
                     pointer_position,
                     pointer_distance,
                     self._config.pointer_dominance,
-                    "POINT",
+                    GESTURE_POINT,
                 )
                 command_gesture = pointer_gesture
-            elif secondary_gesture != "POINT":
+            elif secondary_gesture != GESTURE_POINT:
                 self.pointer_start_position = None
 
-            if command_gesture is None and secondary_gesture == "TWO_FINGERS":
-                mic_gesture = "MIC"
+            if command_gesture is None and secondary_gesture == GESTURE_TWO_FINGERS:
+                mic_gesture = GESTURE_MIC
                 command_gesture = mic_gesture
-            elif secondary_gesture != "TWO_FINGERS":
+            elif secondary_gesture != GESTURE_TWO_FINGERS:
                 mic_gesture = None
 
         self.primary_previous_gesture = primary_gesture
@@ -179,15 +194,15 @@ class GestureSession:
             debug_message=(
                 f"hands={len(hand_states)} activated=True "
                 f"gestures={debug_gestures} "
-                f"primary={primary_gesture or 'UNKNOWN'} "
-                f"secondary={secondary_gesture or 'none'} "
-                f"volume={volume_gesture or 'none'} "
-                f"pointer={pointer_gesture or 'none'} "
-                f"mic={mic_gesture or 'none'} "
+                f"primary={primary_gesture or DEBUG_UNKNOWN} "
+                f"secondary={secondary_gesture or DEBUG_NONE} "
+                f"volume={volume_gesture or DEBUG_NONE} "
+                f"pointer={pointer_gesture or DEBUG_NONE} "
+                f"mic={mic_gesture or DEBUG_NONE} "
                 f"size={secondary_size:.2f} "
                 f"pointer_distance={pointer_distance:.2f} "
                 f"volume_distance={volume_distance:.2f} "
-                f"command={command_gesture or 'none'}"
+                f"command={command_gesture or DEBUG_NONE}"
             ),
         )
 

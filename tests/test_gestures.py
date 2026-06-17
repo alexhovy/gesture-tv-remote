@@ -1,5 +1,11 @@
 import unittest
 
+from src.domain.constants import (
+    GESTURE_POINT,
+    GESTURE_POINT_RIGHT,
+    GESTURE_VOLUME_DOWN,
+    GESTURE_VOLUME_UP,
+)
 from src.domain.gestures import detect_direction, detect_volume
 
 
@@ -11,7 +17,7 @@ class GestureRuleTests(unittest.TestCase):
                 end=(0.52, 0.51),
                 distance=0.08,
                 dominance=1.15,
-                prefix="POINT",
+                prefix=GESTURE_POINT,
             )
         )
 
@@ -22,16 +28,16 @@ class GestureRuleTests(unittest.TestCase):
                 end=(0.7, 0.53),
                 distance=0.08,
                 dominance=1.15,
-                prefix="POINT",
+                prefix=GESTURE_POINT,
             ),
-            "POINT_RIGHT",
+            GESTURE_POINT_RIGHT,
         )
 
     def test_detect_volume_maps_upward_motion_to_volume_up(self) -> None:
-        self.assertEqual(detect_volume(0.6, 0.4, distance=0.16), "VOLUME_UP")
+        self.assertEqual(detect_volume(0.6, 0.4, distance=0.16), GESTURE_VOLUME_UP)
 
     def test_detect_volume_maps_downward_motion_to_volume_down(self) -> None:
-        self.assertEqual(detect_volume(0.4, 0.6, distance=0.16), "VOLUME_DOWN")
+        self.assertEqual(detect_volume(0.4, 0.6, distance=0.16), GESTURE_VOLUME_DOWN)
 
 
 if __name__ == "__main__":

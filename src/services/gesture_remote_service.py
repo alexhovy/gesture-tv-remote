@@ -5,6 +5,11 @@ import time
 import cv2
 
 from src.domain.commands import GESTURE_TO_COMMAND
+from src.domain.constants import (
+    DISPLAY_COMMAND_SELECT,
+    GESTURE_MIC,
+    TV_COMMAND_DPAD_CENTER,
+)
 from src.domain.session import GestureSession
 from src.infrastructure.android_tv_remote import AndroidTvRemoteClient
 from src.infrastructure.hand_model import download_model_if_missing
@@ -61,7 +66,7 @@ class GestureRemoteService:
                 if command_gesture:
                     command = GESTURE_TO_COMMAND.get(command_gesture)
                     if self._gesture_session.should_emit(command_gesture, command, now):
-                        if command_gesture == "MIC":
+                        if command_gesture == GESTURE_MIC:
                             if voice_task is None or voice_task.done():
                                 self._log_debug("starting microphone capture")
                                 voice_task = asyncio.create_task(self._voice_capture.capture())
@@ -102,7 +107,9 @@ class GestureRemoteService:
             self._remote.disconnect()
 
     def _print_and_send_gesture(self, gesture: str, command: str) -> None:
-        display_command = "SELECT" if command == "DPAD_CENTER" else command
+        display_command = (
+            DISPLAY_COMMAND_SELECT if command == TV_COMMAND_DPAD_CENTER else command
+        )
         print(f"Gesture: {gesture} -> {display_command}")
         self._remote.send_key_command(command)
 

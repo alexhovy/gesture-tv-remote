@@ -10,6 +10,7 @@ from mediapipe.tasks.python.vision.hand_landmarker import (
     HandLandmarkerOptions,
 )
 
+from src.domain.constants import HANDEDNESS_RIGHT
 from src.domain.gestures import detect_gesture
 from src.domain.landmarks import hand_center
 from src.domain.session import HandState
@@ -61,10 +62,9 @@ class MediaPipeHandTracker:
         handedness_results = results.handedness or []
 
         for index, landmarks in enumerate(results.hand_landmarks or []):
-            handedness = "Right"
+            handedness = HANDEDNESS_RIGHT
             if index < len(handedness_results) and handedness_results[index]:
                 handedness = handedness_results[index][0].category_name
             detected_hands.append((landmarks, handedness))
 
         return detected_hands
-

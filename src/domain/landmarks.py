@@ -1,6 +1,8 @@
 import math
 from typing import Any
 
+from src.domain.constants import HANDEDNESS_LEFT
+
 
 HAND_CONNECTIONS = [
     (0, 1),
@@ -35,7 +37,7 @@ def thumb_is_extended(landmarks: list[Any], handedness: str) -> bool:
     thumb_tip = landmarks[4]
     thumb_ip = landmarks[3]
 
-    if handedness == "Left":
+    if handedness == HANDEDNESS_LEFT:
         return thumb_tip.x > thumb_ip.x
     return thumb_tip.x < thumb_ip.x
 
@@ -59,4 +61,3 @@ def landmark_distance(landmarks: list[Any], first_id: int, second_id: int) -> fl
 def landmark_position(landmarks: list[Any], landmark_id: int) -> tuple[float, float]:
     landmark = landmarks[landmark_id]
     return landmark.x, landmark.y
-

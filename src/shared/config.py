@@ -3,6 +3,32 @@ import os
 from pathlib import Path
 
 
+class EnvVar:
+    APP_NAME = "GESTURE_TV_APP_NAME"
+    TV_IP = "GESTURE_TV_IP"
+    CERT_FILE = "GESTURE_TV_CERT_FILE"
+    KEY_FILE = "GESTURE_TV_KEY_FILE"
+    MODEL_FILE = "GESTURE_TV_MODEL_FILE"
+    MODEL_URL = "GESTURE_TV_MODEL_URL"
+    DEBOUNCE_SECONDS = "GESTURE_TV_DEBOUNCE_SECONDS"
+    HOME_CHORD_SECONDS = "GESTURE_TV_HOME_CHORD_SECONDS"
+    POINTER_DISTANCE_RATIO = "GESTURE_TV_POINTER_DISTANCE_RATIO"
+    POINTER_MIN_DISTANCE = "GESTURE_TV_POINTER_MIN_DISTANCE"
+    POINTER_MAX_DISTANCE = "GESTURE_TV_POINTER_MAX_DISTANCE"
+    POINTER_DOMINANCE = "GESTURE_TV_POINTER_DOMINANCE"
+    VOLUME_DISTANCE_RATIO = "GESTURE_TV_VOLUME_DISTANCE_RATIO"
+    VOLUME_MIN_DISTANCE = "GESTURE_TV_VOLUME_MIN_DISTANCE"
+    VOLUME_MAX_DISTANCE = "GESTURE_TV_VOLUME_MAX_DISTANCE"
+    PINCH_DISTANCE_RATIO = "GESTURE_TV_PINCH_DISTANCE_RATIO"
+    VOICE_CAPTURE_SECONDS = "GESTURE_TV_VOICE_CAPTURE_SECONDS"
+    DEBUG_LOG_SECONDS = "GESTURE_TV_DEBUG_LOG_SECONDS"
+    WEBCAM_INDEX = "GESTURE_TV_WEBCAM_INDEX"
+    MAX_HANDS = "GESTURE_TV_MAX_HANDS"
+    MIN_HAND_DETECTION_CONFIDENCE = "GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE"
+    MIN_HAND_PRESENCE_CONFIDENCE = "GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE"
+    MIN_TRACKING_CONFIDENCE = "GESTURE_TV_MIN_TRACKING_CONFIDENCE"
+
+
 @dataclass(frozen=True)
 class AppConfig:
     app_name: str = "Gesture TV Remote"
@@ -41,83 +67,87 @@ def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
     defaults = AppConfig()
 
     return AppConfig(
-        app_name=values.get("GESTURE_TV_APP_NAME", defaults.app_name),
-        tv_ip=values.get("GESTURE_TV_IP", defaults.tv_ip),
-        cert_file=_path(values, "GESTURE_TV_CERT_FILE", defaults.cert_file),
-        key_file=_path(values, "GESTURE_TV_KEY_FILE", defaults.key_file),
-        model_file=_path(values, "GESTURE_TV_MODEL_FILE", defaults.model_file),
-        model_url=values.get("GESTURE_TV_MODEL_URL", defaults.model_url),
-        debounce_seconds=_float(values, "GESTURE_TV_DEBOUNCE_SECONDS", defaults.debounce_seconds),
+        app_name=values.get(EnvVar.APP_NAME, defaults.app_name),
+        tv_ip=values.get(EnvVar.TV_IP, defaults.tv_ip),
+        cert_file=_path(values, EnvVar.CERT_FILE, defaults.cert_file),
+        key_file=_path(values, EnvVar.KEY_FILE, defaults.key_file),
+        model_file=_path(values, EnvVar.MODEL_FILE, defaults.model_file),
+        model_url=values.get(EnvVar.MODEL_URL, defaults.model_url),
+        debounce_seconds=_float(
+            values,
+            EnvVar.DEBOUNCE_SECONDS,
+            defaults.debounce_seconds,
+        ),
         home_chord_seconds=_float(
             values,
-            "GESTURE_TV_HOME_CHORD_SECONDS",
+            EnvVar.HOME_CHORD_SECONDS,
             defaults.home_chord_seconds,
         ),
         pointer_distance_ratio=_float(
             values,
-            "GESTURE_TV_POINTER_DISTANCE_RATIO",
+            EnvVar.POINTER_DISTANCE_RATIO,
             defaults.pointer_distance_ratio,
         ),
         pointer_min_distance=_float(
             values,
-            "GESTURE_TV_POINTER_MIN_DISTANCE",
+            EnvVar.POINTER_MIN_DISTANCE,
             defaults.pointer_min_distance,
         ),
         pointer_max_distance=_float(
             values,
-            "GESTURE_TV_POINTER_MAX_DISTANCE",
+            EnvVar.POINTER_MAX_DISTANCE,
             defaults.pointer_max_distance,
         ),
         pointer_dominance=_float(
             values,
-            "GESTURE_TV_POINTER_DOMINANCE",
+            EnvVar.POINTER_DOMINANCE,
             defaults.pointer_dominance,
         ),
         volume_distance_ratio=_float(
             values,
-            "GESTURE_TV_VOLUME_DISTANCE_RATIO",
+            EnvVar.VOLUME_DISTANCE_RATIO,
             defaults.volume_distance_ratio,
         ),
         volume_min_distance=_float(
             values,
-            "GESTURE_TV_VOLUME_MIN_DISTANCE",
+            EnvVar.VOLUME_MIN_DISTANCE,
             defaults.volume_min_distance,
         ),
         volume_max_distance=_float(
             values,
-            "GESTURE_TV_VOLUME_MAX_DISTANCE",
+            EnvVar.VOLUME_MAX_DISTANCE,
             defaults.volume_max_distance,
         ),
         pinch_distance_ratio=_float(
             values,
-            "GESTURE_TV_PINCH_DISTANCE_RATIO",
+            EnvVar.PINCH_DISTANCE_RATIO,
             defaults.pinch_distance_ratio,
         ),
         voice_capture_seconds=_float(
             values,
-            "GESTURE_TV_VOICE_CAPTURE_SECONDS",
+            EnvVar.VOICE_CAPTURE_SECONDS,
             defaults.voice_capture_seconds,
         ),
         debug_log_seconds=_float(
             values,
-            "GESTURE_TV_DEBUG_LOG_SECONDS",
+            EnvVar.DEBUG_LOG_SECONDS,
             defaults.debug_log_seconds,
         ),
-        webcam_index=_int(values, "GESTURE_TV_WEBCAM_INDEX", defaults.webcam_index),
-        max_hands=_int(values, "GESTURE_TV_MAX_HANDS", defaults.max_hands),
+        webcam_index=_int(values, EnvVar.WEBCAM_INDEX, defaults.webcam_index),
+        max_hands=_int(values, EnvVar.MAX_HANDS, defaults.max_hands),
         min_hand_detection_confidence=_float(
             values,
-            "GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE",
+            EnvVar.MIN_HAND_DETECTION_CONFIDENCE,
             defaults.min_hand_detection_confidence,
         ),
         min_hand_presence_confidence=_float(
             values,
-            "GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE",
+            EnvVar.MIN_HAND_PRESENCE_CONFIDENCE,
             defaults.min_hand_presence_confidence,
         ),
         min_tracking_confidence=_float(
             values,
-            "GESTURE_TV_MIN_TRACKING_CONFIDENCE",
+            EnvVar.MIN_TRACKING_CONFIDENCE,
             defaults.min_tracking_confidence,
         ),
     )

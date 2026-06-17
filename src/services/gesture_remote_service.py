@@ -14,6 +14,7 @@ from src.domain.session import GestureSession
 from src.infrastructure.android_tv_remote import AndroidTvRemoteClient
 from src.infrastructure.hand_model import download_model_if_missing
 from src.infrastructure.hand_tracking import MediaPipeHandTracker
+from src.infrastructure.video_preprocessing import CameraZoomController, apply_crop
 from src.infrastructure.video_overlay import draw_simple_landmarks
 from src.services.voice_capture import VoiceCaptureService
 from src.shared.config import AppConfig
@@ -38,6 +39,7 @@ class GestureRemoteService:
         voice_task = None
         last_debug_time = 0.0
         last_debug_message = ""
+        zoom_controller = CameraZoomController(self._config)
 
         try:
             download_model_if_missing(self._config)
@@ -51,10 +53,16 @@ class GestureRemoteService:
 
                 now = time.monotonic()
                 frame = cv2.flip(frame, 1)
+                cropped_frame = apply_crop(frame, zoom_controller.current_crop())
+                frame = cropped_frame.frame
                 rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
                 hand_states, detected_hands = hand_tracker.detect(
                     rgb_frame,
                     int(time.monotonic() * 1000),
+                )
+                zoom_controller.update(
+                    [landmarks for landmarks, _ in detected_hands],
+                    cropped_frame.crop,
                 )
 
                 for landmarks, _ in detected_hands:

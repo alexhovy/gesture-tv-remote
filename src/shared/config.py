@@ -23,6 +23,12 @@ class EnvVar:
     VOICE_CAPTURE_SECONDS = "GESTURE_TV_VOICE_CAPTURE_SECONDS"
     DEBUG_LOG_SECONDS = "GESTURE_TV_DEBUG_LOG_SECONDS"
     WEBCAM_INDEX = "GESTURE_TV_WEBCAM_INDEX"
+    CAMERA_ZOOM = "GESTURE_TV_CAMERA_ZOOM"
+    AUTO_ZOOM_ENABLED = "GESTURE_TV_AUTO_ZOOM_ENABLED"
+    AUTO_ZOOM_MIN = "GESTURE_TV_AUTO_ZOOM_MIN"
+    AUTO_ZOOM_MAX = "GESTURE_TV_AUTO_ZOOM_MAX"
+    AUTO_ZOOM_PADDING = "GESTURE_TV_AUTO_ZOOM_PADDING"
+    AUTO_ZOOM_SMOOTHING = "GESTURE_TV_AUTO_ZOOM_SMOOTHING"
     MAX_HANDS = "GESTURE_TV_MAX_HANDS"
     MIN_HAND_DETECTION_CONFIDENCE = "GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE"
     MIN_HAND_PRESENCE_CONFIDENCE = "GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE"
@@ -53,6 +59,12 @@ class AppConfig:
     voice_capture_seconds: float = 5.0
     debug_log_seconds: float = 0.5
     webcam_index: int = 0
+    camera_zoom: float = 1.0
+    auto_zoom_enabled: bool = True
+    auto_zoom_min: float = 1.0
+    auto_zoom_max: float = 5.0
+    auto_zoom_padding: float = 0.45
+    auto_zoom_smoothing: float = 0.15
     max_hands: int = 2
     min_hand_detection_confidence: float = 0.7
     min_hand_presence_confidence: float = 0.7
@@ -134,6 +146,24 @@ def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
             defaults.debug_log_seconds,
         ),
         webcam_index=_int(values, EnvVar.WEBCAM_INDEX, defaults.webcam_index),
+        camera_zoom=_float(values, EnvVar.CAMERA_ZOOM, defaults.camera_zoom),
+        auto_zoom_enabled=_bool(
+            values,
+            EnvVar.AUTO_ZOOM_ENABLED,
+            defaults.auto_zoom_enabled,
+        ),
+        auto_zoom_min=_float(values, EnvVar.AUTO_ZOOM_MIN, defaults.auto_zoom_min),
+        auto_zoom_max=_float(values, EnvVar.AUTO_ZOOM_MAX, defaults.auto_zoom_max),
+        auto_zoom_padding=_float(
+            values,
+            EnvVar.AUTO_ZOOM_PADDING,
+            defaults.auto_zoom_padding,
+        ),
+        auto_zoom_smoothing=_float(
+            values,
+            EnvVar.AUTO_ZOOM_SMOOTHING,
+            defaults.auto_zoom_smoothing,
+        ),
         max_hands=_int(values, EnvVar.MAX_HANDS, defaults.max_hands),
         min_hand_detection_confidence=_float(
             values,
@@ -166,3 +196,11 @@ def _float(values: dict[str, str], name: str, default: float) -> float:
 def _int(values: dict[str, str], name: str, default: int) -> int:
     raw_value = values.get(name)
     return int(raw_value) if raw_value else default
+
+
+def _bool(values: dict[str, str], name: str, default: bool) -> bool:
+    raw_value = values.get(name)
+    if raw_value is None:
+        return default
+
+    return raw_value.lower() in {"1", "true", "yes", "on"}

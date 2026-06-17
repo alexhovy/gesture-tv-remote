@@ -39,6 +39,12 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 | `GESTURE_TV_MODEL_FILE` | `models/hand_landmarker.task` |
 | `GESTURE_TV_MODEL_URL` | MediaPipe hand landmarker URL |
 | `GESTURE_TV_WEBCAM_INDEX` | `0` |
+| `GESTURE_TV_CAMERA_ZOOM` | `1.0` |
+| `GESTURE_TV_AUTO_ZOOM_ENABLED` | `False` |
+| `GESTURE_TV_AUTO_ZOOM_MIN` | `1.0` |
+| `GESTURE_TV_AUTO_ZOOM_MAX` | `2.0` |
+| `GESTURE_TV_AUTO_ZOOM_PADDING` | `0.45` |
+| `GESTURE_TV_AUTO_ZOOM_SMOOTHING` | `0.15` |
 | `GESTURE_TV_MAX_HANDS` | `2` |
 | `GESTURE_TV_DEBOUNCE_SECONDS` | `1.0` |
 | `GESTURE_TV_HOME_CHORD_SECONDS` | `0.35` |
@@ -65,3 +71,14 @@ GESTURE_TV_IP=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 python main.py
 Pointer and volume movement thresholds are scaled from the detected secondary
 hand size, then clamped by their min/max distance settings. This keeps gestures
 more consistent when the user moves closer to or farther from the camera.
+
+`GESTURE_TV_CAMERA_ZOOM` applies digital center-crop zoom before MediaPipe hand
+tracking. Values above `1.0` make hands larger in the tracking input, which can
+help finger landmark reliability when the camera is far away. Start with `1.5`;
+larger values reduce the field of view and can crop out two-hand gestures.
+
+Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the crop follow the last detected
+hand area. Auto zoom updates the next frame's crop from the current frame's
+landmarks, zooms out for wide two-hand bounds, and returns to center when hands
+are lost. Keep `GESTURE_TV_AUTO_ZOOM_MAX` conservative at first; `2.0` is a good
+starting point for preserving two-hand gestures.

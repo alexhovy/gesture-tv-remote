@@ -18,6 +18,12 @@ class ConfigTests(unittest.TestCase):
             {
                 EnvVar.TV_IP: "10.0.0.25",
                 EnvVar.WEBCAM_INDEX: "2",
+                EnvVar.CAMERA_ZOOM: "1.5",
+                EnvVar.AUTO_ZOOM_ENABLED: "true",
+                EnvVar.AUTO_ZOOM_MIN: "1.1",
+                EnvVar.AUTO_ZOOM_MAX: "2.4",
+                EnvVar.AUTO_ZOOM_PADDING: "0.5",
+                EnvVar.AUTO_ZOOM_SMOOTHING: "0.25",
                 EnvVar.CERT_FILE: "local/cert.pem",
                 EnvVar.DEBOUNCE_SECONDS: "0.25",
                 EnvVar.POINTER_DISTANCE_RATIO: "0.5",
@@ -27,6 +33,12 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(config.tv_ip, "10.0.0.25")
         self.assertEqual(config.webcam_index, 2)
+        self.assertEqual(config.camera_zoom, 1.5)
+        self.assertTrue(config.auto_zoom_enabled)
+        self.assertEqual(config.auto_zoom_min, 1.1)
+        self.assertEqual(config.auto_zoom_max, 2.4)
+        self.assertEqual(config.auto_zoom_padding, 0.5)
+        self.assertEqual(config.auto_zoom_smoothing, 0.25)
         self.assertEqual(config.cert_file, Path("local/cert.pem"))
         self.assertEqual(config.debounce_seconds, 0.25)
         self.assertEqual(config.pointer_distance_ratio, 0.5)

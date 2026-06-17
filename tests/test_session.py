@@ -16,20 +16,20 @@ from src.shared.config import AppConfig
 class GestureSessionTests(unittest.TestCase):
     def test_pointer_distance_scales_with_hand_size(self) -> None:
         self.assertEqual(
-            _evaluate_pointer_move(hand_size=0.10, start_x=0.50, end_x=0.58),
+            _evaluate_pointer_move(hand_size=0.10, start_x=0.50, end_x=0.55),
             GESTURE_POINT_RIGHT,
         )
         self.assertIsNone(
-            _evaluate_pointer_move(hand_size=0.25, start_x=0.50, end_x=0.58)
+            _evaluate_pointer_move(hand_size=0.25, start_x=0.50, end_x=0.55)
         )
 
     def test_volume_distance_scales_with_hand_size(self) -> None:
         self.assertEqual(
-            _evaluate_volume_move(hand_size=0.10, start_y=0.50, end_y=0.60),
+            _evaluate_volume_move(hand_size=0.10, start_y=0.50, end_y=0.54),
             GESTURE_VOLUME_DOWN,
         )
         self.assertIsNone(
-            _evaluate_volume_move(hand_size=0.25, start_y=0.50, end_y=0.60)
+            _evaluate_volume_move(hand_size=0.25, start_y=0.50, end_y=0.54)
         )
 
     def test_scaled_distance_clamps_to_minimum_and_maximum(self) -> None:

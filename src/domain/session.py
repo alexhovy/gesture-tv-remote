@@ -224,6 +224,10 @@ class GestureSession:
     def record_idle(self) -> None:
         self.last_command_gesture = None
 
+    def reset_motion_tracking(self) -> None:
+        self.volume_start_y = None
+        self.pointer_start_position = None
+
     def _reset_activation(self) -> None:
         self.primary_position = None
         self.primary_previous_gesture = None

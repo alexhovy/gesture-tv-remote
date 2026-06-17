@@ -14,7 +14,11 @@ from src.domain.session import GestureSession
 from src.infrastructure.android_tv_remote import AndroidTvRemoteClient
 from src.infrastructure.hand_model import download_model_if_missing
 from src.infrastructure.hand_tracking import MediaPipeHandTracker
-from src.infrastructure.video_preprocessing import CameraZoomController, apply_crop
+from src.infrastructure.video_preprocessing import (
+    CameraZoomController,
+    apply_crop,
+    hand_states_to_original_space,
+)
 from src.infrastructure.video_overlay import draw_simple_landmarks
 from src.services.voice_capture import VoiceCaptureService
 from src.shared.config import AppConfig
@@ -60,7 +64,11 @@ class GestureRemoteService:
                     rgb_frame,
                     int(time.monotonic() * 1000),
                 )
-                zoom_controller.update(
+                session_hand_states = hand_states_to_original_space(
+                    hand_states,
+                    cropped_frame.crop,
+                )
+                crop_changed = zoom_controller.update(
                     [landmarks for landmarks, _ in detected_hands],
                     cropped_frame.crop,
                 )
@@ -68,7 +76,7 @@ class GestureRemoteService:
                 for landmarks, _ in detected_hands:
                     draw_simple_landmarks(frame, landmarks)
 
-                decision = self._gesture_session.evaluate(hand_states, now)
+                decision = self._gesture_session.evaluate(session_hand_states, now)
                 command_gesture = decision.command_gesture
 
                 if command_gesture:
@@ -88,6 +96,9 @@ class GestureRemoteService:
                         self._gesture_session.record_emit(command_gesture, now)
                 else:
                     self._gesture_session.record_idle()
+
+                if crop_changed:
+                    self._gesture_session.reset_motion_tracking()
 
                 if (
                     decision.debug_message != last_debug_message

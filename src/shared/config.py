@@ -29,6 +29,9 @@ class EnvVar:
     AUTO_ZOOM_MAX = "GESTURE_TV_AUTO_ZOOM_MAX"
     AUTO_ZOOM_PADDING = "GESTURE_TV_AUTO_ZOOM_PADDING"
     AUTO_ZOOM_SMOOTHING = "GESTURE_TV_AUTO_ZOOM_SMOOTHING"
+    AUTO_ZOOM_POSITION_DEADBAND = "GESTURE_TV_AUTO_ZOOM_POSITION_DEADBAND"
+    AUTO_ZOOM_SCALE_DEADBAND = "GESTURE_TV_AUTO_ZOOM_SCALE_DEADBAND"
+    AUTO_ZOOM_CROP_RESET_THRESHOLD = "GESTURE_TV_AUTO_ZOOM_CROP_RESET_THRESHOLD"
     MAX_HANDS = "GESTURE_TV_MAX_HANDS"
     MIN_HAND_DETECTION_CONFIDENCE = "GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE"
     MIN_HAND_PRESENCE_CONFIDENCE = "GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE"
@@ -46,15 +49,15 @@ class AppConfig:
         "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
         "hand_landmarker/float16/latest/hand_landmarker.task"
     )
-    debounce_seconds: float = 1.0
+    debounce_seconds: float = 0.3
     home_chord_seconds: float = 0.35
-    pointer_distance_ratio: float = 0.45
-    pointer_min_distance: float = 0.04
-    pointer_max_distance: float = 0.14
-    pointer_dominance: float = 1.15
-    volume_distance_ratio: float = 0.9
-    volume_min_distance: float = 0.08
-    volume_max_distance: float = 0.28
+    pointer_distance_ratio: float = 0.25
+    pointer_min_distance: float = 0.02
+    pointer_max_distance: float = 0.08
+    pointer_dominance: float = 1.0
+    volume_distance_ratio: float = 0.25
+    volume_min_distance: float = 0.02
+    volume_max_distance: float = 0.08
     pinch_distance_ratio: float = 0.22
     voice_capture_seconds: float = 5.0
     debug_log_seconds: float = 0.5
@@ -62,13 +65,16 @@ class AppConfig:
     camera_zoom: float = 1.0
     auto_zoom_enabled: bool = True
     auto_zoom_min: float = 1.0
-    auto_zoom_max: float = 5.0
-    auto_zoom_padding: float = 0.45
-    auto_zoom_smoothing: float = 0.15
+    auto_zoom_max: float = 10.0
+    auto_zoom_padding: float = 0.5
+    auto_zoom_smoothing: float = 0.1
+    auto_zoom_position_deadband: float = 0.08
+    auto_zoom_scale_deadband: float = 0.12
+    auto_zoom_crop_reset_threshold: float = 0.08
     max_hands: int = 2
-    min_hand_detection_confidence: float = 0.7
-    min_hand_presence_confidence: float = 0.7
-    min_tracking_confidence: float = 0.7
+    min_hand_detection_confidence: float = 0.6
+    min_hand_presence_confidence: float = 0.6
+    min_tracking_confidence: float = 0.6
 
 
 DEFAULT_CONFIG = AppConfig()
@@ -163,6 +169,21 @@ def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
             values,
             EnvVar.AUTO_ZOOM_SMOOTHING,
             defaults.auto_zoom_smoothing,
+        ),
+        auto_zoom_position_deadband=_float(
+            values,
+            EnvVar.AUTO_ZOOM_POSITION_DEADBAND,
+            defaults.auto_zoom_position_deadband,
+        ),
+        auto_zoom_scale_deadband=_float(
+            values,
+            EnvVar.AUTO_ZOOM_SCALE_DEADBAND,
+            defaults.auto_zoom_scale_deadband,
+        ),
+        auto_zoom_crop_reset_threshold=_float(
+            values,
+            EnvVar.AUTO_ZOOM_CROP_RESET_THRESHOLD,
+            defaults.auto_zoom_crop_reset_threshold,
         ),
         max_hands=_int(values, EnvVar.MAX_HANDS, defaults.max_hands),
         min_hand_detection_confidence=_float(

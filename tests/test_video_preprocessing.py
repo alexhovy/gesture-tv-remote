@@ -6,8 +6,11 @@ from src.infrastructure.video_preprocessing import (
     CropRect,
     apply_center_crop_zoom,
     apply_crop,
+    hand_state_to_original_space,
     landmarks_to_original_bounds,
 )
+from src.domain.constants import GESTURE_POINT
+from src.domain.session import HandState
 from src.shared.config import AppConfig
 
 
@@ -69,6 +72,28 @@ class VideoPreprocessingTests(unittest.TestCase):
         self.assertAlmostEqual(bounds.width, 0.25)
         self.assertAlmostEqual(bounds.height, 0.20)
 
+    def test_hand_state_to_original_space_maps_coordinates_and_size(self) -> None:
+        hand_state = HandState(
+            landmarks=[_landmark(0.25, 0.50), _landmark(0.75, 1.00)],
+            gesture=GESTURE_POINT,
+            center=(0.50, 0.75),
+            size=0.50,
+        )
+
+        mapped = hand_state_to_original_space(
+            hand_state,
+            CropRect(0.20, 0.10, 0.50, 0.40),
+        )
+
+        self.assertEqual(mapped.gesture, GESTURE_POINT)
+        self.assertAlmostEqual(mapped.landmarks[0].x, 0.325)
+        self.assertAlmostEqual(mapped.landmarks[0].y, 0.30)
+        self.assertAlmostEqual(mapped.landmarks[1].x, 0.575)
+        self.assertAlmostEqual(mapped.landmarks[1].y, 0.50)
+        self.assertAlmostEqual(mapped.center[0], 0.45)
+        self.assertAlmostEqual(mapped.center[1], 0.40)
+        self.assertAlmostEqual(mapped.size, 0.25)
+
     def test_auto_zoom_follows_detected_hand(self) -> None:
         controller = CameraZoomController(
             AppConfig(
@@ -127,6 +152,48 @@ class VideoPreprocessingTests(unittest.TestCase):
         controller.update([], CropRect(0.5, 0.0, 0.5, 0.5))
 
         self.assertEqual(controller.current_crop(), CropRect(0.0, 0.0, 1.0, 1.0))
+
+    def test_auto_zoom_ignores_small_target_changes_inside_deadband(self) -> None:
+        controller = CameraZoomController(
+            AppConfig(
+                auto_zoom_enabled=True,
+                auto_zoom_min=1.0,
+                auto_zoom_max=5.0,
+                auto_zoom_padding=0.0,
+                auto_zoom_smoothing=1.0,
+                auto_zoom_position_deadband=0.05,
+                auto_zoom_scale_deadband=0.20,
+            )
+        )
+
+        changed = controller.update(
+            [[_landmark(0.08, 0.08), _landmark(0.92, 0.92)]],
+            CropRect(0.0, 0.0, 1.0, 1.0),
+        )
+
+        self.assertFalse(changed)
+        self.assertEqual(controller.current_crop(), CropRect(0.0, 0.0, 1.0, 1.0))
+
+    def test_auto_zoom_still_follows_hand_near_crop_edge(self) -> None:
+        controller = CameraZoomController(
+            AppConfig(
+                auto_zoom_enabled=True,
+                auto_zoom_min=1.0,
+                auto_zoom_max=2.0,
+                auto_zoom_padding=0.0,
+                auto_zoom_smoothing=1.0,
+                auto_zoom_position_deadband=0.10,
+                auto_zoom_scale_deadband=0.20,
+            )
+        )
+
+        changed = controller.update(
+            [[_landmark(0.02, 0.40), _landmark(0.12, 0.60)]],
+            CropRect(0.0, 0.0, 1.0, 1.0),
+        )
+
+        self.assertTrue(changed)
+        self.assertNotEqual(controller.current_crop(), CropRect(0.0, 0.0, 1.0, 1.0))
 
 
 class ResizedFrame:

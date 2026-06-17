@@ -6,6 +6,7 @@ from src.domain.constants import (
     GESTURE_PINCH,
     GESTURE_POINT,
     GESTURE_POINT_RIGHT,
+    GESTURE_TWO_FINGERS,
     GESTURE_VOLUME_DOWN,
 )
 from src.domain.landmarks import LANDMARK_COUNT, LANDMARK_INDEX_TIP
@@ -14,6 +15,42 @@ from src.shared.config import AppConfig
 
 
 class GestureSessionTests(unittest.TestCase):
+    def test_decision_is_not_activated_before_primary_open_palm(self) -> None:
+        session = GestureSession(AppConfig())
+
+        decision = session.evaluate(
+            [_hand_state(GESTURE_POINT, center=(0.20, 0.50), size=0.20)],
+            now=0.0,
+        )
+
+        self.assertFalse(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+
+    def test_decision_activates_from_primary_open_palm(self) -> None:
+        session = GestureSession(AppConfig())
+
+        decision = session.evaluate(
+            [_hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
+            now=0.0,
+        )
+
+        self.assertTrue(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+
+    def test_decision_reports_activation_alongside_command_gesture(self) -> None:
+        session = GestureSession(AppConfig())
+
+        decision = session.evaluate(
+            [
+                _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20),
+                _hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.20),
+            ],
+            now=0.0,
+        )
+
+        self.assertTrue(decision.activated)
+        self.assertIsNotNone(decision.command_gesture)
+
     def test_pointer_distance_scales_with_hand_size(self) -> None:
         self.assertEqual(
             _evaluate_pointer_move(hand_size=0.10, start_x=0.50, end_x=0.55),

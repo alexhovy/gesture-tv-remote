@@ -153,6 +153,24 @@ class VideoPreprocessingTests(unittest.TestCase):
 
         self.assertEqual(controller.current_crop(), CropRect(0.0, 0.0, 1.0, 1.0))
 
+    def test_auto_zoom_reset_returns_to_default_crop(self) -> None:
+        controller = CameraZoomController(
+            AppConfig(
+                auto_zoom_enabled=True,
+                auto_zoom_min=1.0,
+                auto_zoom_max=2.0,
+                auto_zoom_smoothing=1.0,
+            )
+        )
+        controller.update(
+            [[_landmark(0.70, 0.40), _landmark(0.80, 0.60)]],
+            CropRect(0.0, 0.0, 1.0, 1.0),
+        )
+
+        controller.reset()
+
+        self.assertEqual(controller.current_crop(), CropRect(0.0, 0.0, 1.0, 1.0))
+
     def test_auto_zoom_ignores_small_target_changes_inside_deadband(self) -> None:
         controller = CameraZoomController(
             AppConfig(

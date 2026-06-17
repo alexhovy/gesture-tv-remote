@@ -68,18 +68,22 @@ class GestureRemoteService:
                     hand_states,
                     cropped_frame.crop,
                 )
-                crop_changed = zoom_controller.update(
-                    [landmarks for landmarks, _ in detected_hands],
-                    cropped_frame.crop,
-                )
-
                 for landmarks, _ in detected_hands:
                     draw_simple_landmarks(frame, landmarks)
 
                 decision = self._gesture_session.evaluate(session_hand_states, now)
                 command_gesture = decision.command_gesture
+                crop_changed = False
 
-                if command_gesture:
+                if decision.activated:
+                    crop_changed = zoom_controller.update(
+                        [landmarks for landmarks, _ in detected_hands],
+                        cropped_frame.crop,
+                    )
+                else:
+                    zoom_controller.reset()
+
+                if decision.activated and command_gesture:
                     command = GESTURE_TO_COMMAND.get(command_gesture)
                     if self._gesture_session.should_emit(command_gesture, command, now):
                         if command_gesture == GESTURE_MIC:

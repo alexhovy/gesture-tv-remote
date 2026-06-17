@@ -27,9 +27,7 @@ class CameraZoomController:
         self._config = config
         self._min_zoom = max(1.0, min(config.auto_zoom_min, config.auto_zoom_max))
         self._max_zoom = max(self._min_zoom, config.auto_zoom_max)
-        self._center_x = 0.5
-        self._center_y = 0.5
-        self._zoom = _clamp(max(self._min_zoom, config.camera_zoom), self._min_zoom, self._max_zoom)
+        self.reset()
 
     def current_crop(self) -> CropRect:
         if not self._config.auto_zoom_enabled:
@@ -39,6 +37,15 @@ class CameraZoomController:
             self._center_x,
             self._center_y,
             self._zoom,
+        )
+
+    def reset(self) -> None:
+        self._center_x = 0.5
+        self._center_y = 0.5
+        self._zoom = _clamp(
+            max(self._min_zoom, self._config.camera_zoom),
+            self._min_zoom,
+            self._max_zoom,
         )
 
     def update(self, landmarks_by_hand: list[list[Any]], crop: CropRect) -> bool:

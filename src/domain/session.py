@@ -31,6 +31,7 @@ class HandState:
 @dataclass(frozen=True)
 class GestureDecision:
     command_gesture: str | None
+    activated: bool
     debug_message: str
 
 
@@ -73,6 +74,7 @@ class GestureSession:
             self._reset_activation()
             return GestureDecision(
                 command_gesture=None,
+                activated=False,
                 debug_message=(
                     f"hands={len(hand_states)} activated=False "
                     f"gestures={debug_gestures} need_primary_open_palm"
@@ -194,6 +196,7 @@ class GestureSession:
 
         return GestureDecision(
             command_gesture=command_gesture,
+            activated=True,
             debug_message=(
                 f"hands={len(hand_states)} activated=True "
                 f"gestures={debug_gestures} "

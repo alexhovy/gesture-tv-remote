@@ -92,6 +92,8 @@ class GestureSession:
         volume_gesture = None
         pointer_gesture = None
         mic_gesture = None
+        volume_distance = 0.0
+        pointer_distance = 0.0
 
         both_closed = (
             self.primary_close_time is not None
@@ -123,10 +125,16 @@ class GestureSession:
                 self.pointer_start_position = None
                 if self.volume_start_y is None:
                     self.volume_start_y = secondary_center[1]
+                volume_distance = self._scaled_distance(
+                    secondary_size,
+                    self._config.volume_distance_ratio,
+                    self._config.volume_min_distance,
+                    self._config.volume_max_distance,
+                )
                 volume_gesture = detect_volume(
                     self.volume_start_y,
                     secondary_center[1],
-                    self._config.volume_distance,
+                    volume_distance,
                 )
                 command_gesture = volume_gesture
             else:
@@ -140,10 +148,16 @@ class GestureSession:
                 pointer_position = landmark_position(secondary_landmarks, 8)
                 if self.pointer_start_position is None:
                     self.pointer_start_position = pointer_position
+                pointer_distance = self._scaled_distance(
+                    secondary_size,
+                    self._config.pointer_distance_ratio,
+                    self._config.pointer_min_distance,
+                    self._config.pointer_max_distance,
+                )
                 pointer_gesture = detect_direction(
                     self.pointer_start_position,
                     pointer_position,
-                    self._config.pointer_distance,
+                    pointer_distance,
                     self._config.pointer_dominance,
                     "POINT",
                 )
@@ -170,7 +184,10 @@ class GestureSession:
                 f"volume={volume_gesture or 'none'} "
                 f"pointer={pointer_gesture or 'none'} "
                 f"mic={mic_gesture or 'none'} "
-                f"size={secondary_size:.2f} command={command_gesture or 'none'}"
+                f"size={secondary_size:.2f} "
+                f"pointer_distance={pointer_distance:.2f} "
+                f"volume_distance={volume_distance:.2f} "
+                f"command={command_gesture or 'none'}"
             ),
         )
 
@@ -217,3 +234,15 @@ class GestureSession:
                 hands[index].center[1] - target_y,
             ),
         )
+
+    @staticmethod
+    def _scaled_distance(
+        hand_size: float,
+        ratio: float,
+        min_distance: float,
+        max_distance: float,
+    ) -> float:
+        if hand_size <= 0:
+            return min_distance
+
+        return min(max(hand_size * ratio, min_distance), max_distance)

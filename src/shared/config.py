@@ -16,9 +16,13 @@ class AppConfig:
     )
     debounce_seconds: float = 1.0
     home_chord_seconds: float = 0.35
-    pointer_distance: float = 0.08
+    pointer_distance_ratio: float = 0.45
+    pointer_min_distance: float = 0.04
+    pointer_max_distance: float = 0.14
     pointer_dominance: float = 1.15
-    volume_distance: float = 0.16
+    volume_distance_ratio: float = 0.9
+    volume_min_distance: float = 0.08
+    volume_max_distance: float = 0.28
     pinch_distance_ratio: float = 0.22
     voice_capture_seconds: float = 5.0
     debug_log_seconds: float = 0.5
@@ -49,20 +53,40 @@ def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
             "GESTURE_TV_HOME_CHORD_SECONDS",
             defaults.home_chord_seconds,
         ),
-        pointer_distance=_float(
+        pointer_distance_ratio=_float(
             values,
-            "GESTURE_TV_POINTER_DISTANCE",
-            defaults.pointer_distance,
+            "GESTURE_TV_POINTER_DISTANCE_RATIO",
+            defaults.pointer_distance_ratio,
+        ),
+        pointer_min_distance=_float(
+            values,
+            "GESTURE_TV_POINTER_MIN_DISTANCE",
+            defaults.pointer_min_distance,
+        ),
+        pointer_max_distance=_float(
+            values,
+            "GESTURE_TV_POINTER_MAX_DISTANCE",
+            defaults.pointer_max_distance,
         ),
         pointer_dominance=_float(
             values,
             "GESTURE_TV_POINTER_DOMINANCE",
             defaults.pointer_dominance,
         ),
-        volume_distance=_float(
+        volume_distance_ratio=_float(
             values,
-            "GESTURE_TV_VOLUME_DISTANCE",
-            defaults.volume_distance,
+            "GESTURE_TV_VOLUME_DISTANCE_RATIO",
+            defaults.volume_distance_ratio,
+        ),
+        volume_min_distance=_float(
+            values,
+            "GESTURE_TV_VOLUME_MIN_DISTANCE",
+            defaults.volume_min_distance,
+        ),
+        volume_max_distance=_float(
+            values,
+            "GESTURE_TV_VOLUME_MAX_DISTANCE",
+            defaults.volume_max_distance,
         ),
         pinch_distance_ratio=_float(
             values,

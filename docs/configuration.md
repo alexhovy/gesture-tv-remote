@@ -42,9 +42,13 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 | `GESTURE_TV_MAX_HANDS` | `2` |
 | `GESTURE_TV_DEBOUNCE_SECONDS` | `1.0` |
 | `GESTURE_TV_HOME_CHORD_SECONDS` | `0.35` |
-| `GESTURE_TV_POINTER_DISTANCE` | `0.08` |
+| `GESTURE_TV_POINTER_DISTANCE_RATIO` | `0.45` |
+| `GESTURE_TV_POINTER_MIN_DISTANCE` | `0.04` |
+| `GESTURE_TV_POINTER_MAX_DISTANCE` | `0.14` |
 | `GESTURE_TV_POINTER_DOMINANCE` | `1.15` |
-| `GESTURE_TV_VOLUME_DISTANCE` | `0.16` |
+| `GESTURE_TV_VOLUME_DISTANCE_RATIO` | `0.9` |
+| `GESTURE_TV_VOLUME_MIN_DISTANCE` | `0.08` |
+| `GESTURE_TV_VOLUME_MAX_DISTANCE` | `0.28` |
 | `GESTURE_TV_PINCH_DISTANCE_RATIO` | `0.22` |
 | `GESTURE_TV_VOICE_CAPTURE_SECONDS` | `5.0` |
 | `GESTURE_TV_DEBUG_LOG_SECONDS` | `0.5` |
@@ -57,3 +61,7 @@ Example:
 ```bash
 GESTURE_TV_IP=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 python main.py
 ```
+
+Pointer and volume movement thresholds are scaled from the detected secondary
+hand size, then clamped by their min/max distance settings. This keeps gestures
+more consistent when the user moves closer to or farther from the camera.

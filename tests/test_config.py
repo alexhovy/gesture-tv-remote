@@ -20,6 +20,8 @@ class ConfigTests(unittest.TestCase):
                 "GESTURE_TV_WEBCAM_INDEX": "2",
                 "GESTURE_TV_CERT_FILE": "local/cert.pem",
                 "GESTURE_TV_DEBOUNCE_SECONDS": "0.25",
+                "GESTURE_TV_POINTER_DISTANCE_RATIO": "0.5",
+                "GESTURE_TV_VOLUME_MAX_DISTANCE": "0.3",
             }
         )
 
@@ -27,6 +29,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.webcam_index, 2)
         self.assertEqual(config.cert_file, Path("local/cert.pem"))
         self.assertEqual(config.debounce_seconds, 0.25)
+        self.assertEqual(config.pointer_distance_ratio, 0.5)
+        self.assertEqual(config.volume_max_distance, 0.3)
 
 
 if __name__ == "__main__":

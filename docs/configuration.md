@@ -40,28 +40,33 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 | `GESTURE_TV_MODEL_URL` | MediaPipe hand landmarker URL |
 | `GESTURE_TV_WEBCAM_INDEX` | `0` |
 | `GESTURE_TV_CAMERA_ZOOM` | `1.0` |
-| `GESTURE_TV_AUTO_ZOOM_ENABLED` | `False` |
+| `GESTURE_TV_AUTO_ZOOM_ENABLED` | `True` |
 | `GESTURE_TV_AUTO_ZOOM_MIN` | `1.0` |
-| `GESTURE_TV_AUTO_ZOOM_MAX` | `2.0` |
-| `GESTURE_TV_AUTO_ZOOM_PADDING` | `0.45` |
-| `GESTURE_TV_AUTO_ZOOM_SMOOTHING` | `0.15` |
+| `GESTURE_TV_AUTO_ZOOM_MAX` | `10.0` |
+| `GESTURE_TV_AUTO_ZOOM_PADDING` | `0.5` |
+| `GESTURE_TV_AUTO_ZOOM_SMOOTHING` | `0.1` |
+| `GESTURE_TV_AUTO_ZOOM_POSITION_DEADBAND` | `0.08` |
+| `GESTURE_TV_AUTO_ZOOM_SCALE_DEADBAND` | `0.12` |
+| `GESTURE_TV_AUTO_ZOOM_CROP_RESET_THRESHOLD` | `0.08` |
 | `GESTURE_TV_MAX_HANDS` | `2` |
-| `GESTURE_TV_DEBOUNCE_SECONDS` | `1.0` |
+| `GESTURE_TV_DEBOUNCE_SECONDS` | `0.3` |
 | `GESTURE_TV_HOME_CHORD_SECONDS` | `0.35` |
-| `GESTURE_TV_POINTER_DISTANCE_RATIO` | `0.45` |
-| `GESTURE_TV_POINTER_MIN_DISTANCE` | `0.04` |
-| `GESTURE_TV_POINTER_MAX_DISTANCE` | `0.14` |
-| `GESTURE_TV_POINTER_DOMINANCE` | `1.15` |
-| `GESTURE_TV_VOLUME_DISTANCE_RATIO` | `0.9` |
-| `GESTURE_TV_VOLUME_MIN_DISTANCE` | `0.08` |
-| `GESTURE_TV_VOLUME_MAX_DISTANCE` | `0.28` |
+| `GESTURE_TV_POINTER_DISTANCE_RATIO` | `0.25` |
+| `GESTURE_TV_POINTER_MIN_DISTANCE` | `0.02` |
+| `GESTURE_TV_POINTER_MAX_DISTANCE` | `0.08` |
+| `GESTURE_TV_POINTER_DOMINANCE` | `1.0` |
+| `GESTURE_TV_VOLUME_DISTANCE_RATIO` | `0.25` |
+| `GESTURE_TV_VOLUME_MIN_DISTANCE` | `0.02` |
+| `GESTURE_TV_VOLUME_MAX_DISTANCE` | `0.08` |
 | `GESTURE_TV_PINCH_DISTANCE_RATIO` | `0.22` |
+| `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` | `True` |
+| `GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` | `0.75` |
 | `GESTURE_TV_VOICE_CAPTURE_SECONDS` | `5.0` |
 | `GESTURE_TV_DEBUG_LOG_SECONDS` | `0.5` |
 | `GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` | `0.35` |
-| `GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE` | `0.7` |
-| `GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE` | `0.7` |
-| `GESTURE_TV_MIN_TRACKING_CONFIDENCE` | `0.7` |
+| `GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE` | `0.6` |
+| `GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE` | `0.6` |
+| `GESTURE_TV_MIN_TRACKING_CONFIDENCE` | `0.6` |
 
 Example:
 
@@ -82,6 +87,11 @@ Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the displayed crop follow the
 last detected hand area. Auto zoom does not change the MediaPipe tracking input;
 tracking uses the stable `GESTURE_TV_CAMERA_ZOOM` crop. This prevents display
 zoom from cropping hands out of the detector input while it follows movement.
+
+Numeric settings are validated at startup. Zoom values must be at least `1.0`,
+confidence values must be between `0.0` and `1.0`, max values must not be lower
+than their matching min values, and durations or distances cannot be negative.
+Boolean settings accept `1`, `true`, `yes`, `on`, `0`, `false`, `no`, and `off`.
 
 `GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` keeps an active gesture session alive
 through brief primary-hand detection dropouts. This helps when a hand is close

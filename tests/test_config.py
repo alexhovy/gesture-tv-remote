@@ -50,6 +50,27 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.hand_upright_max_tilt_ratio, 0.5)
         self.assertEqual(config.primary_lost_grace_seconds, 0.45)
 
+    def test_load_config_rejects_invalid_boolean(self) -> None:
+        with self.assertRaisesRegex(ValueError, EnvVar.AUTO_ZOOM_ENABLED):
+            load_config_from_env({EnvVar.AUTO_ZOOM_ENABLED: "maybe"})
+
+    def test_load_config_rejects_camera_zoom_below_one(self) -> None:
+        with self.assertRaisesRegex(ValueError, "camera_zoom"):
+            load_config_from_env({EnvVar.CAMERA_ZOOM: "0.9"})
+
+    def test_load_config_rejects_auto_zoom_max_below_min(self) -> None:
+        with self.assertRaisesRegex(ValueError, "auto_zoom_max"):
+            load_config_from_env(
+                {
+                    EnvVar.AUTO_ZOOM_MIN: "2.0",
+                    EnvVar.AUTO_ZOOM_MAX: "1.5",
+                }
+            )
+
+    def test_load_config_rejects_confidence_outside_unit_interval(self) -> None:
+        with self.assertRaisesRegex(ValueError, "min_tracking_confidence"):
+            load_config_from_env({EnvVar.MIN_TRACKING_CONFIDENCE: "1.2"})
+
 
 if __name__ == "__main__":
     unittest.main()

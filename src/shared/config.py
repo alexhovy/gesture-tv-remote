@@ -98,7 +98,9 @@ def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
         field_name: parser(values, env_var, getattr(defaults, field_name))
         for field_name, env_var, parser in _CONFIG_FIELDS
     }
-    return AppConfig(**config_values)
+    config = AppConfig(**config_values)
+    _validate_config(config)
+    return config
 
 
 def _str(values: dict[str, str], name: str, default: object) -> str:
@@ -126,7 +128,97 @@ def _bool(values: dict[str, str], name: str, default: object) -> bool:
     if raw_value is None:
         return bool(default)
 
-    return raw_value.lower() in {"1", "true", "yes", "on"}
+    normalized = raw_value.strip().lower()
+    if normalized in {"1", "true", "yes", "on"}:
+        return True
+    if normalized in {"0", "false", "no", "off"}:
+        return False
+
+    raise ValueError(f"{name} must be a boolean value")
+
+
+def _validate_config(config: AppConfig) -> None:
+    _require_at_least(config.debounce_seconds, "debounce_seconds", 0.0)
+    _require_at_least(config.home_chord_seconds, "home_chord_seconds", 0.0)
+    _require_at_least(config.voice_capture_seconds, "voice_capture_seconds", 0.0)
+    _require_at_least(config.debug_log_seconds, "debug_log_seconds", 0.0)
+    _require_at_least(
+        config.primary_lost_grace_seconds,
+        "primary_lost_grace_seconds",
+        0.0,
+    )
+    _require_at_least(config.webcam_index, "webcam_index", 0)
+    _require_at_least(config.camera_zoom, "camera_zoom", 1.0)
+    _require_at_least(config.auto_zoom_min, "auto_zoom_min", 1.0)
+    _require_at_least(config.auto_zoom_max, "auto_zoom_max", config.auto_zoom_min)
+    _require_at_least(config.auto_zoom_padding, "auto_zoom_padding", 0.0)
+    _require_between(config.auto_zoom_smoothing, "auto_zoom_smoothing", 0.0, 1.0)
+    _require_at_least(
+        config.auto_zoom_position_deadband,
+        "auto_zoom_position_deadband",
+        0.0,
+    )
+    _require_at_least(config.auto_zoom_scale_deadband, "auto_zoom_scale_deadband", 0.0)
+    _require_at_least(
+        config.auto_zoom_crop_reset_threshold,
+        "auto_zoom_crop_reset_threshold",
+        0.0,
+    )
+    _require_at_least(config.max_hands, "max_hands", 1)
+    _require_between(
+        config.min_hand_detection_confidence,
+        "min_hand_detection_confidence",
+        0.0,
+        1.0,
+    )
+    _require_between(
+        config.min_hand_presence_confidence,
+        "min_hand_presence_confidence",
+        0.0,
+        1.0,
+    )
+    _require_between(
+        config.min_tracking_confidence,
+        "min_tracking_confidence",
+        0.0,
+        1.0,
+    )
+    _require_at_least(config.pointer_distance_ratio, "pointer_distance_ratio", 0.0)
+    _require_at_least(config.pointer_min_distance, "pointer_min_distance", 0.0)
+    _require_at_least(
+        config.pointer_max_distance,
+        "pointer_max_distance",
+        config.pointer_min_distance,
+    )
+    _require_at_least(config.pointer_dominance, "pointer_dominance", 0.0)
+    _require_at_least(config.volume_distance_ratio, "volume_distance_ratio", 0.0)
+    _require_at_least(config.volume_min_distance, "volume_min_distance", 0.0)
+    _require_at_least(
+        config.volume_max_distance,
+        "volume_max_distance",
+        config.volume_min_distance,
+    )
+    _require_at_least(config.pinch_distance_ratio, "pinch_distance_ratio", 0.0)
+    _require_at_least(
+        config.hand_upright_max_tilt_ratio,
+        "hand_upright_max_tilt_ratio",
+        0.0,
+    )
+
+
+def _require_at_least(value: float | int, field_name: str, minimum: float | int) -> None:
+    if value < minimum:
+        raise ValueError(f"{field_name} must be at least {minimum}")
+
+
+def _require_between(
+    value: float,
+    field_name: str,
+    minimum: float,
+    maximum: float,
+) -> None:
+    if value < minimum or value > maximum:
+        raise ValueError(f"{field_name} must be between {minimum} and {maximum}")
 
 
 _CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from src.infrastructure.camera_zoom import CameraZoomController
 from src.infrastructure.landmark_projection import (
     hand_state_to_original_space,
+    landmarks_to_crop_space,
     landmarks_to_original_bounds,
 )
 from src.infrastructure.video_preprocessing import (
@@ -73,6 +74,26 @@ class VideoPreprocessingTests(unittest.TestCase):
         self.assertAlmostEqual(bounds.y, 0.30)
         self.assertAlmostEqual(bounds.width, 0.25)
         self.assertAlmostEqual(bounds.height, 0.20)
+
+    def test_landmarks_to_crop_space_maps_original_coordinates(self) -> None:
+        mapped = landmarks_to_crop_space(
+            [_landmark(0.50, 0.75)],
+            CropRect(0.25, 0.25, 0.50, 0.50),
+        )
+
+        self.assertAlmostEqual(mapped[0].x, 0.50)
+        self.assertAlmostEqual(mapped[0].y, 1.00)
+
+    def test_landmarks_to_crop_space_preserves_extra_attributes(self) -> None:
+        landmark = SimpleNamespace(x=0.50, y=0.75, z=0.20, visibility=0.80)
+
+        mapped = landmarks_to_crop_space(
+            [landmark],
+            CropRect(0.25, 0.25, 0.50, 0.50),
+        )
+
+        self.assertEqual(mapped[0].z, 0.20)
+        self.assertEqual(mapped[0].visibility, 0.80)
 
     def test_hand_state_to_original_space_maps_coordinates_and_size(self) -> None:
         hand_state = HandState(

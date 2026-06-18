@@ -36,10 +36,7 @@ def _install_service_import_stubs() -> None:
 
 _install_service_import_stubs()
 
-from src.services.gesture_remote_service import (  # noqa: E402
-    GestureRemoteService,
-    _landmarks_to_crop_space,
-)
+from src.services.gesture_remote_service import GestureRemoteService  # noqa: E402
 
 
 class FakeFrame:
@@ -121,16 +118,6 @@ class GestureRemoteServiceTests(unittest.TestCase):
 
         self.assertFalse(changed)
         self.assertIsNone(zoom_controller.updated_with)
-
-    def test_landmarks_to_crop_space_maps_original_points_to_display_crop(self) -> None:
-        mapped = _landmarks_to_crop_space(
-            [_landmark(0.50, 0.75)],
-            CropRect(0.25, 0.25, 0.50, 0.50),
-        )
-
-        self.assertAlmostEqual(mapped[0].x, 0.50)
-        self.assertAlmostEqual(mapped[0].y, 1.00)
-
 
 def _landmark(x: float, y: float):
     return SimpleNamespace(x=x, y=y)

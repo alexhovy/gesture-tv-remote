@@ -41,10 +41,28 @@ def landmarks_to_original_space(landmarks: list[Any], crop: CropRect) -> list[An
     return [_landmark_to_original_space(landmark, crop) for landmark in landmarks]
 
 
+def landmarks_to_crop_space(landmarks: list[Any], crop: CropRect) -> list[Any]:
+    if crop.width <= 0 or crop.height <= 0:
+        return landmarks
+
+    return [_landmark_to_crop_space(landmark, crop) for landmark in landmarks]
+
+
 def _landmark_to_original_space(landmark: Any, crop: CropRect) -> Any:
     mapped = SimpleNamespace(
         x=crop.x + landmark.x * crop.width,
         y=crop.y + landmark.y * crop.height,
+    )
+    for attribute in ("z", "visibility", "presence"):
+        if hasattr(landmark, attribute):
+            setattr(mapped, attribute, getattr(landmark, attribute))
+    return mapped
+
+
+def _landmark_to_crop_space(landmark: Any, crop: CropRect) -> Any:
+    mapped = SimpleNamespace(
+        x=(landmark.x - crop.x) / crop.width,
+        y=(landmark.y - crop.y) / crop.height,
     )
     for attribute in ("z", "visibility", "presence"):
         if hasattr(landmark, attribute):

@@ -18,6 +18,7 @@ from src.infrastructure.hand_model import download_model_if_missing
 from src.infrastructure.hand_tracking import DetectedHand, MediaPipeHandTracker
 from src.infrastructure.landmark_projection import (
     hand_states_to_original_space,
+    landmarks_to_crop_space,
     landmarks_to_original_space,
 )
 from src.infrastructure.video_preprocessing import (
@@ -156,7 +157,7 @@ class GestureRemoteService:
             )
             draw_simple_landmarks(
                 frame,
-                _landmarks_to_crop_space(original_landmarks, display_crop),
+                landmarks_to_crop_space(original_landmarks, display_crop),
             )
 
     def _update_zoom(
@@ -234,26 +235,3 @@ class GestureRemoteService:
         )
         self._logger.info(f"Gesture: {gesture} -> {display_command}")
         self._remote.send_key_command(command)
-
-
-def _landmarks_to_crop_space(landmarks: list[Any], crop: CropRect) -> list[Any]:
-    if crop.width <= 0 or crop.height <= 0:
-        return landmarks
-
-    return [
-        _landmark_to_crop_space(landmark, crop)
-        for landmark in landmarks
-    ]
-
-
-def _landmark_to_crop_space(landmark: Any, crop: CropRect) -> Any:
-    from types import SimpleNamespace
-
-    mapped = SimpleNamespace(
-        x=(landmark.x - crop.x) / crop.width,
-        y=(landmark.y - crop.y) / crop.height,
-    )
-    for attribute in ("z", "visibility", "presence"):
-        if hasattr(landmark, attribute):
-            setattr(mapped, attribute, getattr(landmark, attribute))
-    return mapped

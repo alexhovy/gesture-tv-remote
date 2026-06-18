@@ -20,6 +20,8 @@ class EnvVar:
     VOLUME_MIN_DISTANCE = "GESTURE_TV_VOLUME_MIN_DISTANCE"
     VOLUME_MAX_DISTANCE = "GESTURE_TV_VOLUME_MAX_DISTANCE"
     PINCH_DISTANCE_RATIO = "GESTURE_TV_PINCH_DISTANCE_RATIO"
+    REQUIRE_UPRIGHT_HANDS = "GESTURE_TV_REQUIRE_UPRIGHT_HANDS"
+    HAND_UPRIGHT_MAX_TILT_RATIO = "GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO"
     VOICE_CAPTURE_SECONDS = "GESTURE_TV_VOICE_CAPTURE_SECONDS"
     DEBUG_LOG_SECONDS = "GESTURE_TV_DEBUG_LOG_SECONDS"
     WEBCAM_INDEX = "GESTURE_TV_WEBCAM_INDEX"
@@ -59,6 +61,8 @@ class AppConfig:
     volume_min_distance: float = 0.02
     volume_max_distance: float = 0.08
     pinch_distance_ratio: float = 0.22
+    require_upright_hands: bool = True
+    hand_upright_max_tilt_ratio: float = 0.75
     voice_capture_seconds: float = 5.0
     debug_log_seconds: float = 0.5
     webcam_index: int = 0
@@ -140,6 +144,16 @@ def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
             values,
             EnvVar.PINCH_DISTANCE_RATIO,
             defaults.pinch_distance_ratio,
+        ),
+        require_upright_hands=_bool(
+            values,
+            EnvVar.REQUIRE_UPRIGHT_HANDS,
+            defaults.require_upright_hands,
+        ),
+        hand_upright_max_tilt_ratio=_float(
+            values,
+            EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO,
+            defaults.hand_upright_max_tilt_ratio,
         ),
         voice_capture_seconds=_float(
             values,

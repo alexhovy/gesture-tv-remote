@@ -28,6 +28,8 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.DEBOUNCE_SECONDS: "0.25",
                 EnvVar.POINTER_DISTANCE_RATIO: "0.5",
                 EnvVar.VOLUME_MAX_DISTANCE: "0.3",
+                EnvVar.REQUIRE_UPRIGHT_HANDS: "false",
+                EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO: "0.5",
             }
         )
 
@@ -43,6 +45,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.debounce_seconds, 0.25)
         self.assertEqual(config.pointer_distance_ratio, 0.5)
         self.assertEqual(config.volume_max_distance, 0.3)
+        self.assertFalse(config.require_upright_hands)
+        self.assertEqual(config.hand_upright_max_tilt_ratio, 0.5)
 
 
 if __name__ == "__main__":

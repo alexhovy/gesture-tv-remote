@@ -45,6 +45,8 @@ class MediaPipeHandTracker:
                         landmarks,
                         handedness,
                         self._config.pinch_distance_ratio,
+                        self._config.require_upright_hands,
+                        self._config.hand_upright_max_tilt_ratio,
                     ),
                     center=(center_x, center_y),
                     size=hand_size,

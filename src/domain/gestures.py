@@ -25,6 +25,7 @@ from src.domain.landmarks import (
     LANDMARK_THUMB_TIP,
     finger_is_extended,
     hand_center,
+    hand_is_upright,
     landmark_distance,
     thumb_is_extended,
 )
@@ -80,7 +81,12 @@ def detect_gesture(
     landmarks: list[Any],
     handedness: str,
     pinch_distance_ratio: float,
+    require_upright_hand: bool = True,
+    upright_max_tilt_ratio: float = 0.75,
 ) -> str | None:
+    if require_upright_hand and not hand_is_upright(landmarks, upright_max_tilt_ratio):
+        return None
+
     _, _, size = hand_center(landmarks)
     index_up = finger_is_extended(landmarks, LANDMARK_INDEX_TIP, LANDMARK_INDEX_PIP)
     middle_up = finger_is_extended(landmarks, LANDMARK_MIDDLE_TIP, LANDMARK_MIDDLE_PIP)

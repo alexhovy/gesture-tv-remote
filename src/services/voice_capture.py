@@ -1,7 +1,7 @@
 import asyncio
 import time
 
-from src.infrastructure.tv_remote import TvRemoteClient
+from src.infrastructure.tv.tv_remote import TvRemoteClient
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 

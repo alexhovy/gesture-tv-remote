@@ -11,19 +11,19 @@ from src.domain.constants import (
     TV_COMMAND_VOLUME_DOWN,
     TV_COMMAND_VOLUME_UP,
 )
-from src.infrastructure.androidtv_remote import AndroidTvRemoteClient
-from src.infrastructure.roku_remote import RokuRemoteClient
-from src.infrastructure.samsung_remote import SamsungTvRemoteClient
-from src.infrastructure.tv_command_translation import translate_tv_command
-from src.infrastructure.tv_remote import (
+from src.infrastructure.tv.androidtv_remote import AndroidTvRemoteClient
+from src.infrastructure.tv.roku_remote import RokuRemoteClient
+from src.infrastructure.tv.samsung_remote import SamsungTvRemoteClient
+from src.infrastructure.tv.tv_command_translation import translate_tv_command
+from src.infrastructure.tv.tv_remote import (
     TV_ADAPTER_ANDROIDTV,
     TV_ADAPTER_ROKU,
     TV_ADAPTER_SAMSUNG,
     TV_ADAPTER_WEBOS,
     TvRemoteCommandError,
 )
-from src.infrastructure.tv_remote_factory import create_tv_remote_client
-from src.infrastructure.webos_remote import WebOsRemoteClient
+from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
+from src.infrastructure.tv.webos_remote import WebOsRemoteClient
 from src.shared.config import AppConfig
 
 

@@ -3,7 +3,7 @@ import types
 import unittest
 from types import SimpleNamespace
 
-from src.infrastructure.video_preprocessing import CropRect
+from src.infrastructure.camera.video_preprocessing import CropRect
 
 
 def _install_service_import_stubs() -> None:
@@ -20,10 +20,10 @@ def _install_service_import_stubs() -> None:
     cv2.destroyAllWindows = lambda: None
     sys.modules.setdefault("cv2", cv2)
 
-    hand_tracking = types.ModuleType("src.infrastructure.hand_tracking")
+    hand_tracking = types.ModuleType("src.infrastructure.hand_tracking.hand_tracking")
     hand_tracking.DetectedHand = object
     hand_tracking.MediaPipeHandTracker = object
-    sys.modules.setdefault("src.infrastructure.hand_tracking", hand_tracking)
+    sys.modules.setdefault("src.infrastructure.hand_tracking.hand_tracking", hand_tracking)
 
 
 _install_service_import_stubs()

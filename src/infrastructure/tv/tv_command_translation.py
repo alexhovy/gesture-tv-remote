@@ -9,7 +9,7 @@ from src.domain.constants import (
     TV_COMMAND_VOLUME_DOWN,
     TV_COMMAND_VOLUME_UP,
 )
-from src.infrastructure.tv_remote import (
+from src.infrastructure.tv.tv_remote import (
     TV_ADAPTER_ANDROIDTV,
     TV_ADAPTER_ROKU,
     TV_ADAPTER_SAMSUNG,

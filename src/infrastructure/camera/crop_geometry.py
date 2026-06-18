@@ -1,4 +1,4 @@
-from src.infrastructure.video_preprocessing import CropRect
+from src.infrastructure.camera.video_preprocessing import CropRect
 
 
 def crop_from_center_zoom(center_x: float, center_y: float, zoom: float) -> CropRect:

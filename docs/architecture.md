@@ -34,10 +34,9 @@ libraries.
 
 `src/infrastructure` contains adapters for external systems:
 
-- TV remote pairing and command transport
-- MediaPipe hand tracking
-- model-file download
-- OpenCV landmark drawing
+- `tv`: TV remote pairing, command transport, and adapter command translation
+- `hand_tracking`: MediaPipe hand tracking and model-file download
+- `camera`: OpenCV frame preprocessing, crop geometry, projection, zoom, and overlays
 
 Infrastructure modules may depend on third-party libraries, but domain modules
 should not depend on infrastructure.
@@ -49,9 +48,9 @@ commands to the protocol-specific command names for Android TV, Samsung TV,
 webOS, or Roku. Voice capture is an adapter capability; currently only the
 Android TV adapter exposes the voice stream used by `VoiceCaptureService`.
 
-Camera preprocessing is split by responsibility: frame cropping lives in
-`video_preprocessing`, coordinate projection lives in `landmark_projection`, and
-auto-zoom state lives in `camera_zoom`.
+Camera preprocessing is split by responsibility inside `infrastructure/camera`:
+frame cropping lives in `video_preprocessing`, coordinate projection lives in
+`landmark_projection`, and auto-zoom state lives in `camera_zoom`.
 
 ### Shared
 

@@ -56,7 +56,7 @@ def apply_crop(
 
 
 def center_crop_for_zoom(zoom: float) -> CropRect:
-    from src.infrastructure.crop_geometry import crop_from_center_zoom
+    from src.infrastructure.camera.crop_geometry import crop_from_center_zoom
 
     return crop_from_center_zoom(0.5, 0.5, zoom)
 

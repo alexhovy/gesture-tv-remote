@@ -1,7 +1,7 @@
-from src.infrastructure.androidtv_remote import AndroidTvRemoteClient
-from src.infrastructure.roku_remote import RokuRemoteClient
-from src.infrastructure.samsung_remote import SamsungTvRemoteClient
-from src.infrastructure.tv_remote import (
+from src.infrastructure.tv.androidtv_remote import AndroidTvRemoteClient
+from src.infrastructure.tv.roku_remote import RokuRemoteClient
+from src.infrastructure.tv.samsung_remote import SamsungTvRemoteClient
+from src.infrastructure.tv.tv_remote import (
     TV_ADAPTER_ANDROIDTV,
     TV_ADAPTER_ROKU,
     TV_ADAPTER_SAMSUNG,
@@ -9,7 +9,7 @@ from src.infrastructure.tv_remote import (
     SUPPORTED_TV_ADAPTERS,
     TvRemoteClient,
 )
-from src.infrastructure.webos_remote import WebOsRemoteClient
+from src.infrastructure.tv.webos_remote import WebOsRemoteClient
 from src.shared.config import AppConfig
 
 

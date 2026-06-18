@@ -3,7 +3,7 @@ from typing import Any
 
 from src.domain.landmarks import hand_center
 from src.domain.session import HandState
-from src.infrastructure.video_preprocessing import CropRect
+from src.infrastructure.camera.video_preprocessing import CropRect
 
 
 def landmarks_to_original_bounds(landmarks: list[Any], crop: CropRect) -> CropRect:

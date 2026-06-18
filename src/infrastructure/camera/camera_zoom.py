@@ -1,9 +1,9 @@
 import math
 from typing import Any
 
-from src.infrastructure.crop_geometry import clamp, crop_from_center_zoom
-from src.infrastructure.landmark_projection import landmarks_to_original_bounds
-from src.infrastructure.video_preprocessing import CropRect, center_crop_for_zoom
+from src.infrastructure.camera.crop_geometry import clamp, crop_from_center_zoom
+from src.infrastructure.camera.landmark_projection import landmarks_to_original_bounds
+from src.infrastructure.camera.video_preprocessing import CropRect, center_crop_for_zoom
 from src.shared.config import AppConfig
 
 

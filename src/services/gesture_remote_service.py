@@ -12,22 +12,22 @@ from src.domain.constants import (
     TV_COMMAND_DPAD_CENTER,
 )
 from src.domain.session import GestureSession, HandState
-from src.infrastructure.camera_zoom import CameraZoomController
-from src.infrastructure.hand_model import download_model_if_missing
-from src.infrastructure.hand_tracking import DetectedHand, MediaPipeHandTracker
-from src.infrastructure.landmark_projection import (
+from src.infrastructure.camera.camera_zoom import CameraZoomController
+from src.infrastructure.hand_tracking.hand_model import download_model_if_missing
+from src.infrastructure.hand_tracking.hand_tracking import DetectedHand, MediaPipeHandTracker
+from src.infrastructure.camera.landmark_projection import (
     hand_states_to_original_space,
     landmarks_to_crop_space,
     landmarks_to_original_space,
 )
-from src.infrastructure.tv_remote_factory import create_tv_remote_client
-from src.infrastructure.video_preprocessing import (
+from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
+from src.infrastructure.camera.video_preprocessing import (
     CropRect,
     CroppedFrame,
     apply_crop,
     center_crop_for_zoom,
 )
-from src.infrastructure.video_overlay import draw_simple_landmarks
+from src.infrastructure.camera.video_overlay import draw_simple_landmarks
 from src.services.voice_capture import VoiceCaptureService
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger

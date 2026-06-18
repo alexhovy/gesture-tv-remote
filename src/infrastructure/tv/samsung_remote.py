@@ -1,5 +1,5 @@
-from src.infrastructure.tv_command_translation import translate_tv_command
-from src.infrastructure.tv_remote import TV_ADAPTER_SAMSUNG
+from src.infrastructure.tv.tv_command_translation import translate_tv_command
+from src.infrastructure.tv.tv_remote import TV_ADAPTER_SAMSUNG
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 

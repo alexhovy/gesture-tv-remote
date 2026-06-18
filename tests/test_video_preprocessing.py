@@ -1,13 +1,13 @@
 import unittest
 from types import SimpleNamespace
 
-from src.infrastructure.camera_zoom import CameraZoomController
-from src.infrastructure.landmark_projection import (
+from src.infrastructure.camera.camera_zoom import CameraZoomController
+from src.infrastructure.camera.landmark_projection import (
     hand_state_to_original_space,
     landmarks_to_crop_space,
     landmarks_to_original_bounds,
 )
-from src.infrastructure.video_preprocessing import (
+from src.infrastructure.camera.video_preprocessing import (
     CropRect,
     apply_center_crop_zoom,
     apply_crop,

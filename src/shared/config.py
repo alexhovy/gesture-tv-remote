@@ -31,6 +31,7 @@ class EnvVar:
     VOICE_CAPTURE_SECONDS = "GESTURE_TV_VOICE_CAPTURE_SECONDS"
     DEBUG_LOG_SECONDS = "GESTURE_TV_DEBUG_LOG_SECONDS"
     PRIMARY_LOST_GRACE_SECONDS = "GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS"
+    PRIMARY_MATCH_MAX_DISTANCE = "GESTURE_TV_PRIMARY_MATCH_MAX_DISTANCE"
     WEBCAM_INDEX = "GESTURE_TV_WEBCAM_INDEX"
     CAMERA_ZOOM = "GESTURE_TV_CAMERA_ZOOM"
     AUTO_ZOOM_ENABLED = "GESTURE_TV_AUTO_ZOOM_ENABLED"
@@ -78,6 +79,7 @@ class AppConfig:
     voice_capture_seconds: float = 5.0
     debug_log_seconds: float = 0.5
     primary_lost_grace_seconds: float = 0.35
+    primary_match_max_distance: float = 0.35
     webcam_index: int = 0
     camera_zoom: float = 1.0
     auto_zoom_enabled: bool = True
@@ -163,6 +165,11 @@ def _validate_config(config: AppConfig) -> None:
     _require_at_least(
         config.primary_lost_grace_seconds,
         "primary_lost_grace_seconds",
+        0.0,
+    )
+    _require_at_least(
+        config.primary_match_max_distance,
+        "primary_match_max_distance",
         0.0,
     )
     _require_at_least(config.webcam_index, "webcam_index", 0)
@@ -266,6 +273,7 @@ _CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (
     ("voice_capture_seconds", EnvVar.VOICE_CAPTURE_SECONDS, _float),
     ("debug_log_seconds", EnvVar.DEBUG_LOG_SECONDS, _float),
     ("primary_lost_grace_seconds", EnvVar.PRIMARY_LOST_GRACE_SECONDS, _float),
+    ("primary_match_max_distance", EnvVar.PRIMARY_MATCH_MAX_DISTANCE, _float),
     ("webcam_index", EnvVar.WEBCAM_INDEX, _int),
     ("camera_zoom", EnvVar.CAMERA_ZOOM, _float),
     ("auto_zoom_enabled", EnvVar.AUTO_ZOOM_ENABLED, _bool),

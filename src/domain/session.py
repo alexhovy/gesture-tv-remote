@@ -65,7 +65,7 @@ class GestureSession:
                 None,
             )
         else:
-            primary_index = self._nearest_hand_index(hand_states, self.primary_position)
+            primary_index = self._primary_hand_index(hand_states)
 
         primary_hand = hand_states[primary_index] if primary_index is not None else None
         secondary_hand = next(
@@ -289,22 +289,67 @@ class GestureSession:
         grace_seconds = max(0.0, self._config.primary_lost_grace_seconds)
         return now - self.primary_last_seen_time <= grace_seconds
 
-    @staticmethod
-    def _nearest_hand_index(
-        hands: list[HandState],
-        target_position: tuple[float, float] | None,
-    ) -> int | None:
-        if not hands or target_position is None:
+    def _primary_hand_index(self, hands: list[HandState]) -> int | None:
+        if not hands or self.primary_position is None:
             return None
 
-        target_x, target_y = target_position
-        return min(
-            range(len(hands)),
-            key=lambda index: math.hypot(
-                hands[index].center[0] - target_x,
-                hands[index].center[1] - target_y,
-            ),
-        )
+        max_distance = max(0.0, self._config.primary_match_max_distance)
+        candidates = [
+            index
+            for index, hand in enumerate(hands)
+            if self._distance_from_primary(hand) <= max_distance
+        ]
+        if not candidates:
+            return None
+
+        upright_candidates = [
+            index
+            for index in candidates
+            if hands[index].upright
+        ]
+        if not upright_candidates:
+            return min(
+                candidates,
+                key=lambda index: self._distance_from_primary(hands[index]),
+            )
+
+        if self.primary_previous_gesture is None:
+            return min(
+                upright_candidates,
+                key=lambda index: self._distance_from_primary(hands[index]),
+            )
+
+        same_gesture = [
+            index
+            for index in upright_candidates
+            if hands[index].gesture == self.primary_previous_gesture
+        ]
+        if same_gesture:
+            return min(
+                same_gesture,
+                key=lambda index: self._distance_from_primary(hands[index]),
+            )
+
+        primary_gestures = [GESTURE_OPEN_PALM, GESTURE_FIST]
+        primary_like = [
+            index
+            for index in upright_candidates
+            if hands[index].gesture in primary_gestures
+        ]
+        if primary_like:
+            return min(
+                primary_like,
+                key=lambda index: self._distance_from_primary(hands[index]),
+            )
+
+        return None
+
+    def _distance_from_primary(self, hand: HandState) -> float:
+        if self.primary_position is None:
+            return math.inf
+
+        target_x, target_y = self.primary_position
+        return math.hypot(hand.center[0] - target_x, hand.center[1] - target_y)
 
     @staticmethod
     def _scaled_distance(

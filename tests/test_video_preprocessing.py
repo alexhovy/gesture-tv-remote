@@ -1,13 +1,15 @@
 import unittest
 from types import SimpleNamespace
 
+from src.infrastructure.camera_zoom import CameraZoomController
+from src.infrastructure.landmark_projection import (
+    hand_state_to_original_space,
+    landmarks_to_original_bounds,
+)
 from src.infrastructure.video_preprocessing import (
-    CameraZoomController,
     CropRect,
     apply_center_crop_zoom,
     apply_crop,
-    hand_state_to_original_space,
-    landmarks_to_original_bounds,
 )
 from src.domain.constants import GESTURE_POINT
 from src.domain.session import HandState

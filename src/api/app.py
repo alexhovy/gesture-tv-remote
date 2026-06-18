@@ -2,6 +2,7 @@ import asyncio
 
 from src.services.gesture_remote_service import GestureRemoteService
 from src.shared.config import load_config_from_env
+from src.shared.logging import AppLogger
 
 
 async def main() -> None:
@@ -13,4 +14,4 @@ def run() -> None:
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        print("Exiting.")
+        AppLogger().info("Exiting.")

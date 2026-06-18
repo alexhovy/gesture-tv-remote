@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Any
 
 import mediapipe as mp
@@ -17,6 +18,12 @@ from src.domain.session import HandState
 from src.shared.config import AppConfig
 
 
+@dataclass(frozen=True)
+class DetectedHand:
+    landmarks: list[Any]
+    handedness: str
+
+
 class MediaPipeHandTracker:
     def __init__(self, config: AppConfig) -> None:
         options = HandLandmarkerOptions(
@@ -30,13 +37,19 @@ class MediaPipeHandTracker:
         self._config = config
         self._hands = HandLandmarker.create_from_options(options)
 
-    def detect(self, rgb_frame: Any, timestamp_ms: int) -> tuple[list[HandState], list[tuple[list, str]]]:
+    def detect(
+        self,
+        rgb_frame: Any,
+        timestamp_ms: int,
+    ) -> tuple[list[HandState], list[DetectedHand]]:
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         results = self._hands.detect_for_video(mp_image, timestamp_ms)
         detected_hands = self._get_detected_hands(results)
 
         hand_states = []
-        for landmarks, handedness in detected_hands:
+        for detected_hand in detected_hands:
+            landmarks = detected_hand.landmarks
+            handedness = detected_hand.handedness
             center_x, center_y, hand_size = hand_center(landmarks)
             upright = (
                 not self._config.require_upright_hands
@@ -67,7 +80,7 @@ class MediaPipeHandTracker:
         self._hands.close()
 
     @staticmethod
-    def _get_detected_hands(results) -> list[tuple[list, str]]:
+    def _get_detected_hands(results) -> list[DetectedHand]:
         detected_hands = []
         handedness_results = results.handedness or []
 
@@ -75,6 +88,6 @@ class MediaPipeHandTracker:
             handedness = HANDEDNESS_RIGHT
             if index < len(handedness_results) and handedness_results[index]:
                 handedness = handedness_results[index][0].category_name
-            detected_hands.append((landmarks, handedness))
+            detected_hands.append(DetectedHand(landmarks=landmarks, handedness=handedness))
 
         return detected_hands

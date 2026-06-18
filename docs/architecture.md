@@ -42,6 +42,10 @@ libraries.
 Infrastructure modules may depend on third-party libraries, but domain modules
 should not depend on infrastructure.
 
+Camera preprocessing is split by responsibility: frame cropping lives in
+`video_preprocessing`, coordinate projection lives in `landmark_projection`, and
+auto-zoom state lives in `camera_zoom`.
+
 ### Shared
 
 `src/shared` contains cross-cutting primitives such as configuration. Keep this
@@ -55,4 +59,3 @@ helpers.
 - Add orchestration in services only when it represents an application workflow.
 - Keep `main.py` and `src/api` free of business logic.
 - Add tests around domain behavior before changing gesture semantics.
-

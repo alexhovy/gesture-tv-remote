@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import os
 from pathlib import Path
+from typing import Callable
 
 
 class EnvVar:
@@ -84,158 +85,81 @@ class AppConfig:
 DEFAULT_CONFIG = AppConfig()
 
 
+ConfigParser = Callable[[dict[str, str], str, object], object]
+
+
 def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
     values = os.environ if environ is None else environ
     defaults = AppConfig()
 
-    return AppConfig(
-        app_name=values.get(EnvVar.APP_NAME, defaults.app_name),
-        tv_ip=values.get(EnvVar.TV_IP, defaults.tv_ip),
-        cert_file=_path(values, EnvVar.CERT_FILE, defaults.cert_file),
-        key_file=_path(values, EnvVar.KEY_FILE, defaults.key_file),
-        model_file=_path(values, EnvVar.MODEL_FILE, defaults.model_file),
-        model_url=values.get(EnvVar.MODEL_URL, defaults.model_url),
-        debounce_seconds=_float(
-            values,
-            EnvVar.DEBOUNCE_SECONDS,
-            defaults.debounce_seconds,
-        ),
-        home_chord_seconds=_float(
-            values,
-            EnvVar.HOME_CHORD_SECONDS,
-            defaults.home_chord_seconds,
-        ),
-        pointer_distance_ratio=_float(
-            values,
-            EnvVar.POINTER_DISTANCE_RATIO,
-            defaults.pointer_distance_ratio,
-        ),
-        pointer_min_distance=_float(
-            values,
-            EnvVar.POINTER_MIN_DISTANCE,
-            defaults.pointer_min_distance,
-        ),
-        pointer_max_distance=_float(
-            values,
-            EnvVar.POINTER_MAX_DISTANCE,
-            defaults.pointer_max_distance,
-        ),
-        pointer_dominance=_float(
-            values,
-            EnvVar.POINTER_DOMINANCE,
-            defaults.pointer_dominance,
-        ),
-        volume_distance_ratio=_float(
-            values,
-            EnvVar.VOLUME_DISTANCE_RATIO,
-            defaults.volume_distance_ratio,
-        ),
-        volume_min_distance=_float(
-            values,
-            EnvVar.VOLUME_MIN_DISTANCE,
-            defaults.volume_min_distance,
-        ),
-        volume_max_distance=_float(
-            values,
-            EnvVar.VOLUME_MAX_DISTANCE,
-            defaults.volume_max_distance,
-        ),
-        pinch_distance_ratio=_float(
-            values,
-            EnvVar.PINCH_DISTANCE_RATIO,
-            defaults.pinch_distance_ratio,
-        ),
-        require_upright_hands=_bool(
-            values,
-            EnvVar.REQUIRE_UPRIGHT_HANDS,
-            defaults.require_upright_hands,
-        ),
-        hand_upright_max_tilt_ratio=_float(
-            values,
-            EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO,
-            defaults.hand_upright_max_tilt_ratio,
-        ),
-        voice_capture_seconds=_float(
-            values,
-            EnvVar.VOICE_CAPTURE_SECONDS,
-            defaults.voice_capture_seconds,
-        ),
-        debug_log_seconds=_float(
-            values,
-            EnvVar.DEBUG_LOG_SECONDS,
-            defaults.debug_log_seconds,
-        ),
-        webcam_index=_int(values, EnvVar.WEBCAM_INDEX, defaults.webcam_index),
-        camera_zoom=_float(values, EnvVar.CAMERA_ZOOM, defaults.camera_zoom),
-        auto_zoom_enabled=_bool(
-            values,
-            EnvVar.AUTO_ZOOM_ENABLED,
-            defaults.auto_zoom_enabled,
-        ),
-        auto_zoom_min=_float(values, EnvVar.AUTO_ZOOM_MIN, defaults.auto_zoom_min),
-        auto_zoom_max=_float(values, EnvVar.AUTO_ZOOM_MAX, defaults.auto_zoom_max),
-        auto_zoom_padding=_float(
-            values,
-            EnvVar.AUTO_ZOOM_PADDING,
-            defaults.auto_zoom_padding,
-        ),
-        auto_zoom_smoothing=_float(
-            values,
-            EnvVar.AUTO_ZOOM_SMOOTHING,
-            defaults.auto_zoom_smoothing,
-        ),
-        auto_zoom_position_deadband=_float(
-            values,
-            EnvVar.AUTO_ZOOM_POSITION_DEADBAND,
-            defaults.auto_zoom_position_deadband,
-        ),
-        auto_zoom_scale_deadband=_float(
-            values,
-            EnvVar.AUTO_ZOOM_SCALE_DEADBAND,
-            defaults.auto_zoom_scale_deadband,
-        ),
-        auto_zoom_crop_reset_threshold=_float(
-            values,
-            EnvVar.AUTO_ZOOM_CROP_RESET_THRESHOLD,
-            defaults.auto_zoom_crop_reset_threshold,
-        ),
-        max_hands=_int(values, EnvVar.MAX_HANDS, defaults.max_hands),
-        min_hand_detection_confidence=_float(
-            values,
-            EnvVar.MIN_HAND_DETECTION_CONFIDENCE,
-            defaults.min_hand_detection_confidence,
-        ),
-        min_hand_presence_confidence=_float(
-            values,
-            EnvVar.MIN_HAND_PRESENCE_CONFIDENCE,
-            defaults.min_hand_presence_confidence,
-        ),
-        min_tracking_confidence=_float(
-            values,
-            EnvVar.MIN_TRACKING_CONFIDENCE,
-            defaults.min_tracking_confidence,
-        ),
-    )
+    config_values = {
+        field_name: parser(values, env_var, getattr(defaults, field_name))
+        for field_name, env_var, parser in _CONFIG_FIELDS
+    }
+    return AppConfig(**config_values)
 
 
-def _path(values: dict[str, str], name: str, default: Path) -> Path:
+def _str(values: dict[str, str], name: str, default: object) -> str:
+    raw_value = values.get(name)
+    return raw_value if raw_value else str(default)
+
+
+def _path(values: dict[str, str], name: str, default: object) -> Path:
     raw_value = values.get(name)
     return Path(raw_value) if raw_value else default
 
 
-def _float(values: dict[str, str], name: str, default: float) -> float:
+def _float(values: dict[str, str], name: str, default: object) -> float:
     raw_value = values.get(name)
-    return float(raw_value) if raw_value else default
+    return float(raw_value) if raw_value else float(default)
 
 
-def _int(values: dict[str, str], name: str, default: int) -> int:
+def _int(values: dict[str, str], name: str, default: object) -> int:
     raw_value = values.get(name)
-    return int(raw_value) if raw_value else default
+    return int(raw_value) if raw_value else int(default)
 
 
-def _bool(values: dict[str, str], name: str, default: bool) -> bool:
+def _bool(values: dict[str, str], name: str, default: object) -> bool:
     raw_value = values.get(name)
     if raw_value is None:
-        return default
+        return bool(default)
 
     return raw_value.lower() in {"1", "true", "yes", "on"}
+
+
+_CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (
+    ("app_name", EnvVar.APP_NAME, _str),
+    ("tv_ip", EnvVar.TV_IP, _str),
+    ("cert_file", EnvVar.CERT_FILE, _path),
+    ("key_file", EnvVar.KEY_FILE, _path),
+    ("model_file", EnvVar.MODEL_FILE, _path),
+    ("model_url", EnvVar.MODEL_URL, _str),
+    ("debounce_seconds", EnvVar.DEBOUNCE_SECONDS, _float),
+    ("home_chord_seconds", EnvVar.HOME_CHORD_SECONDS, _float),
+    ("pointer_distance_ratio", EnvVar.POINTER_DISTANCE_RATIO, _float),
+    ("pointer_min_distance", EnvVar.POINTER_MIN_DISTANCE, _float),
+    ("pointer_max_distance", EnvVar.POINTER_MAX_DISTANCE, _float),
+    ("pointer_dominance", EnvVar.POINTER_DOMINANCE, _float),
+    ("volume_distance_ratio", EnvVar.VOLUME_DISTANCE_RATIO, _float),
+    ("volume_min_distance", EnvVar.VOLUME_MIN_DISTANCE, _float),
+    ("volume_max_distance", EnvVar.VOLUME_MAX_DISTANCE, _float),
+    ("pinch_distance_ratio", EnvVar.PINCH_DISTANCE_RATIO, _float),
+    ("require_upright_hands", EnvVar.REQUIRE_UPRIGHT_HANDS, _bool),
+    ("hand_upright_max_tilt_ratio", EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO, _float),
+    ("voice_capture_seconds", EnvVar.VOICE_CAPTURE_SECONDS, _float),
+    ("debug_log_seconds", EnvVar.DEBUG_LOG_SECONDS, _float),
+    ("webcam_index", EnvVar.WEBCAM_INDEX, _int),
+    ("camera_zoom", EnvVar.CAMERA_ZOOM, _float),
+    ("auto_zoom_enabled", EnvVar.AUTO_ZOOM_ENABLED, _bool),
+    ("auto_zoom_min", EnvVar.AUTO_ZOOM_MIN, _float),
+    ("auto_zoom_max", EnvVar.AUTO_ZOOM_MAX, _float),
+    ("auto_zoom_padding", EnvVar.AUTO_ZOOM_PADDING, _float),
+    ("auto_zoom_smoothing", EnvVar.AUTO_ZOOM_SMOOTHING, _float),
+    ("auto_zoom_position_deadband", EnvVar.AUTO_ZOOM_POSITION_DEADBAND, _float),
+    ("auto_zoom_scale_deadband", EnvVar.AUTO_ZOOM_SCALE_DEADBAND, _float),
+    ("auto_zoom_crop_reset_threshold", EnvVar.AUTO_ZOOM_CROP_RESET_THRESHOLD, _float),
+    ("max_hands", EnvVar.MAX_HANDS, _int),
+    ("min_hand_detection_confidence", EnvVar.MIN_HAND_DETECTION_CONFIDENCE, _float),
+    ("min_hand_presence_confidence", EnvVar.MIN_HAND_PRESENCE_CONFIDENCE, _float),
+    ("min_tracking_confidence", EnvVar.MIN_TRACKING_CONFIDENCE, _float),
+)

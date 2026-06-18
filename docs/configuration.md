@@ -78,11 +78,10 @@ tracking. Values above `1.0` make hands larger in the tracking input, which can
 help finger landmark reliability when the camera is far away. Start with `1.5`;
 larger values reduce the field of view and can crop out two-hand gestures.
 
-Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the crop follow the last detected
-hand area. Auto zoom updates the next frame's crop from the current frame's
-landmarks, zooms out for wide two-hand bounds, and returns to center when hands
-are lost. Keep `GESTURE_TV_AUTO_ZOOM_MAX` conservative at first; `2.0` is a good
-starting point for preserving two-hand gestures.
+Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the displayed crop follow the
+last detected hand area. Auto zoom does not change the MediaPipe tracking input;
+tracking uses the stable `GESTURE_TV_CAMERA_ZOOM` crop. This prevents display
+zoom from cropping hands out of the detector input while it follows movement.
 
 `GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` keeps an active gesture session alive
 through brief primary-hand detection dropouts. This helps when a hand is close

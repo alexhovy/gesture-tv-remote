@@ -16,8 +16,16 @@ from src.infrastructure.android_tv_remote import AndroidTvRemoteClient
 from src.infrastructure.camera_zoom import CameraZoomController
 from src.infrastructure.hand_model import download_model_if_missing
 from src.infrastructure.hand_tracking import DetectedHand, MediaPipeHandTracker
-from src.infrastructure.landmark_projection import hand_states_to_original_space
-from src.infrastructure.video_preprocessing import CroppedFrame, apply_crop
+from src.infrastructure.landmark_projection import (
+    hand_states_to_original_space,
+    landmarks_to_original_space,
+)
+from src.infrastructure.video_preprocessing import (
+    CropRect,
+    CroppedFrame,
+    apply_crop,
+    center_crop_for_zoom,
+)
 from src.infrastructure.video_overlay import draw_simple_landmarks
 from src.services.voice_capture import VoiceCaptureService
 from src.shared.config import AppConfig
@@ -61,23 +69,22 @@ class GestureRemoteService:
                     break
 
                 frame = self._flip_frame(frame)
-                cropped_frame = self._crop_frame(frame, zoom_controller)
+                detection_frame = self._detection_frame(frame, self._config.camera_zoom)
                 hand_states, detected_hands = self._detect_hands(
                     hand_tracker,
-                    cropped_frame.frame,
+                    detection_frame.frame,
                 )
-                self._draw_detected_hands(cropped_frame.frame, detected_hands)
 
                 now = time.monotonic()
                 decision = self._gesture_session.evaluate(
-                    hand_states_to_original_space(hand_states, cropped_frame.crop),
+                    hand_states_to_original_space(hand_states, detection_frame.crop),
                     now,
                 )
 
                 crop_changed = self._update_zoom(
                     zoom_controller,
                     detected_hands,
-                    cropped_frame,
+                    detection_frame.crop,
                     decision.activated,
                     decision.primary_temporarily_lost,
                 )
@@ -99,7 +106,14 @@ class GestureRemoteService:
                     last_debug_message = decision.debug_message
                     last_debug_time = now
 
-                cv2.imshow(self._config.app_name, cropped_frame.frame)
+                display_frame = self._display_frame(frame, zoom_controller)
+                self._draw_detected_hands(
+                    display_frame.frame,
+                    detected_hands,
+                    detection_frame.crop,
+                    display_frame.crop,
+                )
+                cv2.imshow(self._config.app_name, display_frame.frame)
 
                 if cv2.waitKey(1) & 0xFF == ord("q"):
                     break
@@ -113,7 +127,11 @@ class GestureRemoteService:
         return cv2.flip(frame, 1)
 
     @staticmethod
-    def _crop_frame(frame: Any, zoom_controller: CameraZoomController) -> CroppedFrame:
+    def _detection_frame(frame: Any, camera_zoom: float) -> CroppedFrame:
+        return apply_crop(frame, center_crop_for_zoom(camera_zoom))
+
+    @staticmethod
+    def _display_frame(frame: Any, zoom_controller: CameraZoomController) -> CroppedFrame:
         return apply_crop(frame, zoom_controller.current_crop())
 
     @staticmethod
@@ -125,15 +143,27 @@ class GestureRemoteService:
         return hand_tracker.detect(rgb_frame, int(time.monotonic() * 1000))
 
     @staticmethod
-    def _draw_detected_hands(frame: Any, detected_hands: list[DetectedHand]) -> None:
+    def _draw_detected_hands(
+        frame: Any,
+        detected_hands: list[DetectedHand],
+        source_crop: CropRect,
+        display_crop: CropRect,
+    ) -> None:
         for detected_hand in detected_hands:
-            draw_simple_landmarks(frame, detected_hand.landmarks)
+            original_landmarks = landmarks_to_original_space(
+                detected_hand.landmarks,
+                source_crop,
+            )
+            draw_simple_landmarks(
+                frame,
+                _landmarks_to_crop_space(original_landmarks, display_crop),
+            )
 
     def _update_zoom(
         self,
         zoom_controller: CameraZoomController,
         detected_hands: list[DetectedHand],
-        cropped_frame: CroppedFrame,
+        detection_crop: CropRect,
         activated: bool,
         primary_temporarily_lost: bool,
     ) -> bool:
@@ -141,11 +171,11 @@ class GestureRemoteService:
             return False
 
         if not activated:
-            return zoom_controller.update([], cropped_frame.crop)
+            return zoom_controller.update([], detection_crop)
 
         return zoom_controller.update(
             [detected_hand.landmarks for detected_hand in detected_hands],
-            cropped_frame.crop,
+            detection_crop,
         )
 
     def _handle_decision(
@@ -204,3 +234,26 @@ class GestureRemoteService:
         )
         self._logger.info(f"Gesture: {gesture} -> {display_command}")
         self._remote.send_key_command(command)
+
+
+def _landmarks_to_crop_space(landmarks: list[Any], crop: CropRect) -> list[Any]:
+    if crop.width <= 0 or crop.height <= 0:
+        return landmarks
+
+    return [
+        _landmark_to_crop_space(landmark, crop)
+        for landmark in landmarks
+    ]
+
+
+def _landmark_to_crop_space(landmark: Any, crop: CropRect) -> Any:
+    from types import SimpleNamespace
+
+    mapped = SimpleNamespace(
+        x=(landmark.x - crop.x) / crop.width,
+        y=(landmark.y - crop.y) / crop.height,
+    )
+    for attribute in ("z", "visibility", "presence"):
+        if hasattr(landmark, attribute):
+            setattr(mapped, attribute, getattr(landmark, attribute))
+    return mapped

@@ -84,6 +84,8 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 | `GESTURE_TV_PINCH_DISTANCE_RATIO` | `0.22` |
 | `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` | `True` |
 | `GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` | `0.75` |
+| `GESTURE_TV_SECONDARY_REQUIRE_UPRIGHT` | `True` |
+| `GESTURE_TV_SECONDARY_HAND_UPRIGHT_MAX_TILT_RATIO` | `2.0` |
 | `GESTURE_TV_VOICE_CAPTURE_SECONDS` | `5.0` |
 | `GESTURE_TV_DEBUG_LOG_SECONDS` | `0.5` |
 | `GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` | `0.35` |
@@ -115,6 +117,15 @@ Numeric settings are validated at startup. Zoom values must be at least `1.0`,
 confidence values must be between `0.0` and `1.0`, max values must not be lower
 than their matching min values, and durations or distances cannot be negative.
 Boolean settings accept `1`, `true`, `yes`, `on`, `0`, `false`, `no`, and `off`.
+
+Primary-hand activation uses `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` and
+`GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` so accidental sideways or upside-down
+hands do not start control. Secondary-hand commands use the separate
+`GESTURE_TV_SECONDARY_REQUIRE_UPRIGHT` and
+`GESTURE_TV_SECONDARY_HAND_UPRIGHT_MAX_TILT_RATIO` settings. The secondary
+default keeps upside-down hands rejected but allows more side tilt than the
+primary hand, which helps when the second hand enters near the primary or near a
+frame edge.
 
 `GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` keeps an active gesture session alive
 through brief primary-hand detection dropouts. This helps when a hand is close

@@ -4,6 +4,7 @@ from types import SimpleNamespace
 from src.domain.constants import (
     GESTURE_OPEN_PALM,
     GESTURE_FIST,
+    GESTURE_MIC,
     GESTURE_OPEN_TO_FIST,
     GESTURE_PINCH,
     GESTURE_POINT,
@@ -11,7 +12,12 @@ from src.domain.constants import (
     GESTURE_TWO_FINGERS,
     GESTURE_VOLUME_DOWN,
 )
-from src.domain.landmarks import LANDMARK_COUNT, LANDMARK_INDEX_TIP
+from src.domain.landmarks import (
+    LANDMARK_COUNT,
+    LANDMARK_INDEX_TIP,
+    LANDMARK_MIDDLE_MCP,
+    LANDMARK_WRIST,
+)
 from src.domain.session import GestureSession, HandState
 from src.shared.config import AppConfig
 
@@ -137,6 +143,24 @@ class GestureSessionTests(unittest.TestCase):
 
         self.assertTrue(decision.activated)
         self.assertIsNotNone(decision.command_gesture)
+        self.assertIn("primary_index=0 secondary_index=1", decision.debug_message)
+        self.assertIn("zoom_hands=2", decision.debug_message)
+        self.assertIn(
+            "0:gesture=OPEN_PALM:upright=True",
+            decision.debug_message,
+        )
+        self.assertIn(
+            ":center=(0.20,0.50):size=0.20",
+            decision.debug_message,
+        )
+        self.assertIn(
+            "1:gesture=TWO_FINGERS:upright=True",
+            decision.debug_message,
+        )
+        self.assertIn(
+            ":center=(0.70,0.50):size=0.20",
+            decision.debug_message,
+        )
 
     def test_zoom_landmarks_include_valid_primary_and_secondary_hands(self) -> None:
         session = GestureSession(AppConfig())
@@ -191,6 +215,46 @@ class GestureSessionTests(unittest.TestCase):
             center=(0.70, 0.50),
             size=0.20,
             upright=False,
+            upright_vector=(0.30, -0.10),
+        )
+
+        decision = session.evaluate([primary, secondary], now=0.0)
+
+        self.assertTrue(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+        self.assertEqual(decision.zoom_landmarks, [primary.landmarks])
+
+    def test_loose_secondary_upright_gate_allows_tilted_secondary_hand(self) -> None:
+        session = GestureSession(
+            AppConfig(secondary_hand_upright_max_tilt_ratio=2.0)
+        )
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        secondary = _hand_state(
+            GESTURE_TWO_FINGERS,
+            center=(0.70, 0.50),
+            size=0.20,
+            upright=False,
+            upright_vector=(0.16, -0.10),
+        )
+
+        decision = session.evaluate([primary, secondary], now=0.0)
+
+        self.assertTrue(decision.activated)
+        self.assertEqual(decision.command_gesture, GESTURE_MIC)
+        self.assertEqual(decision.zoom_landmarks, [primary.landmarks, secondary.landmarks])
+        self.assertIn("secondary=TWO_FINGERS", decision.debug_message)
+
+    def test_secondary_upright_gate_rejects_upside_down_secondary_hand(self) -> None:
+        session = GestureSession(
+            AppConfig(secondary_hand_upright_max_tilt_ratio=2.0)
+        )
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        secondary = _hand_state(
+            GESTURE_TWO_FINGERS,
+            center=(0.70, 0.50),
+            size=0.20,
+            upright=False,
+            upright_vector=(0.00, 0.10),
         )
 
         decision = session.evaluate([primary, secondary], now=0.0)
@@ -304,11 +368,17 @@ def _hand_state(
     size: float,
     index_position: tuple[float, float] = (0.0, 0.0),
     upright: bool = True,
+    upright_vector: tuple[float, float] = (0.0, -1.0),
 ) -> HandState:
     landmarks = [SimpleNamespace(x=0.0, y=0.0) for _ in range(LANDMARK_COUNT)]
     landmarks[LANDMARK_INDEX_TIP] = SimpleNamespace(
         x=index_position[0],
         y=index_position[1],
+    )
+    landmarks[LANDMARK_WRIST] = SimpleNamespace(x=0.0, y=0.0)
+    landmarks[LANDMARK_MIDDLE_MCP] = SimpleNamespace(
+        x=upright_vector[0],
+        y=upright_vector[1],
     )
 
     return HandState(

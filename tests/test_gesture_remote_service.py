@@ -110,6 +110,23 @@ class GestureRemoteServiceTests(unittest.TestCase):
         self.assertFalse(changed)
         self.assertIsNone(zoom_controller.updated_with)
 
+    def test_debug_message_includes_detection_and_display_crops(self) -> None:
+        debug_message = GestureRemoteService._debug_message(
+            "hands=2 activated=True",
+            CropRect(0.0, 0.0, 1.0, 1.0),
+            CropRect(0.25, 0.25, 0.5, 0.5),
+        )
+
+        self.assertEqual(
+            debug_message,
+            (
+                "hands=2 activated=True "
+                "detection_crop=(0.00,0.00,1.00,1.00) "
+                "display_crop=(0.25,0.25,0.50,0.50)"
+            ),
+        )
+
+
 def _landmark(x: float, y: float):
     return SimpleNamespace(x=x, y=y)
 

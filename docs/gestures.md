@@ -23,8 +23,11 @@ primary hand. The other detected hand becomes the secondary hand.
 The primary hand is used for activation, select, and the HOME chord. The
 secondary hand is used for navigation, back, volume, and voice input.
 
+Primary activation requires a strict upright open palm. Secondary gestures use a
+separate, looser upright tolerance so the second hand can be recognized when it
+enters from the side while the primary hand remains locked.
+
 ## Debounce
 
 Most commands are emitted once per gesture change. DPAD and volume commands may
 repeat after the configured debounce interval.
-

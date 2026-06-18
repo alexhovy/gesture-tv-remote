@@ -37,6 +37,8 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.VOLUME_MAX_DISTANCE: "0.3",
                 EnvVar.REQUIRE_UPRIGHT_HANDS: "false",
                 EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO: "0.5",
+                EnvVar.SECONDARY_REQUIRE_UPRIGHT: "true",
+                EnvVar.SECONDARY_HAND_UPRIGHT_MAX_TILT_RATIO: "1.5",
                 EnvVar.PRIMARY_LOST_GRACE_SECONDS: "0.45",
                 EnvVar.PRIMARY_MATCH_MAX_DISTANCE: "0.25",
             }
@@ -65,6 +67,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.volume_max_distance, 0.3)
         self.assertFalse(config.require_upright_hands)
         self.assertEqual(config.hand_upright_max_tilt_ratio, 0.5)
+        self.assertTrue(config.secondary_require_upright)
+        self.assertEqual(config.secondary_hand_upright_max_tilt_ratio, 1.5)
         self.assertEqual(config.primary_lost_grace_seconds, 0.45)
         self.assertEqual(config.primary_match_max_distance, 0.25)
 

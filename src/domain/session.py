@@ -16,7 +16,12 @@ from src.domain.constants import (
     GESTURE_TWO_FINGERS,
 )
 from src.domain.gestures import detect_direction, detect_volume
-from src.domain.landmarks import LANDMARK_INDEX_TIP, landmark_position
+from src.domain.landmarks import (
+    LANDMARK_INDEX_TIP,
+    hand_is_upright,
+    hand_upright_metrics,
+    landmark_position,
+)
 from src.shared.config import AppConfig
 
 
@@ -55,6 +60,7 @@ class GestureSession:
         self.pointer_start_position: tuple[float, float] | None = None
 
     def evaluate(self, hand_states: list[HandState], now: float) -> GestureDecision:
+        primary_anchor = self.primary_position
         if self.primary_position is None:
             primary_index = next(
                 (
@@ -68,11 +74,13 @@ class GestureSession:
             primary_index = self._primary_hand_index(hand_states)
 
         primary_hand = hand_states[primary_index] if primary_index is not None else None
-        secondary_hand = next(
-            (hand for index, hand in enumerate(hand_states) if index != primary_index),
+        secondary_index = next(
+            (index for index, hand in enumerate(hand_states) if index != primary_index),
             None,
         )
+        secondary_hand = hand_states[secondary_index] if secondary_index is not None else None
         debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hand_states]
+        hand_debug = self._debug_hands(hand_states, primary_anchor)
 
         if primary_hand is None:
             if self._primary_missing_within_grace(now):
@@ -83,7 +91,9 @@ class GestureSession:
                     activated=True,
                     debug_message=(
                         f"hands={len(hand_states)} activated=True "
-                        f"gestures={debug_gestures} primary_temporarily_lost"
+                        f"gestures={debug_gestures} primary_temporarily_lost "
+                        f"primary_index=none secondary_index=none "
+                        f"zoom_hands=0 {hand_debug}"
                     ),
                     primary_temporarily_lost=True,
                 )
@@ -94,7 +104,9 @@ class GestureSession:
                 activated=False,
                 debug_message=(
                     f"hands={len(hand_states)} activated=False "
-                    f"gestures={debug_gestures} need_primary_open_palm_or_upright"
+                    f"gestures={debug_gestures} need_primary_open_palm_or_upright "
+                    f"primary_index=none secondary_index=none "
+                    f"zoom_hands=0 {hand_debug}"
                 ),
             )
 
@@ -105,12 +117,15 @@ class GestureSession:
                 activated=False,
                 debug_message=(
                     f"hands={len(hand_states)} activated=False "
-                    f"gestures={debug_gestures} need_primary_open_palm_or_upright"
+                    f"gestures={debug_gestures} need_primary_open_palm_or_upright "
+                    f"primary_index={primary_index} secondary_index=none "
+                    f"zoom_hands=0 {hand_debug}"
                 ),
             )
 
-        if secondary_hand is not None and not secondary_hand.upright:
+        if secondary_hand is not None and not self._secondary_hand_is_allowed(secondary_hand):
             secondary_hand = None
+            secondary_index = None
             self.volume_start_y = None
             self.pointer_start_position = None
 
@@ -245,7 +260,11 @@ class GestureSession:
                 f"size={secondary_size:.2f} "
                 f"pointer_distance={pointer_distance:.2f} "
                 f"volume_distance={volume_distance:.2f} "
-                f"command={command_gesture or DEBUG_NONE}"
+                f"command={command_gesture or DEBUG_NONE} "
+                f"primary_index={primary_index} "
+                f"secondary_index={secondary_index if secondary_index is not None else DEBUG_NONE} "
+                f"zoom_hands={len(zoom_landmarks)} "
+                f"{hand_debug}"
             ),
             zoom_landmarks=zoom_landmarks,
         )
@@ -350,6 +369,57 @@ class GestureSession:
 
         target_x, target_y = self.primary_position
         return math.hypot(hand.center[0] - target_x, hand.center[1] - target_y)
+
+    def _secondary_hand_is_allowed(self, hand: HandState) -> bool:
+        if not self._config.secondary_require_upright:
+            return True
+
+        return hand.upright or hand_is_upright(
+            hand.landmarks,
+            self._config.secondary_hand_upright_max_tilt_ratio,
+        )
+
+    @staticmethod
+    def _debug_hands(
+        hands: list[HandState],
+        primary_anchor: tuple[float, float] | None,
+    ) -> str:
+        if not hands:
+            return "hand_details=[]"
+
+        details = [
+            GestureSession._debug_hand(index, hand, primary_anchor)
+            for index, hand in enumerate(hands)
+        ]
+        return f"hand_details=[{';'.join(details)}]"
+
+    @staticmethod
+    def _debug_hand(
+        index: int,
+        hand: HandState,
+        primary_anchor: tuple[float, float] | None,
+    ) -> str:
+        center_x, center_y = hand.center
+        distance = "none"
+        if primary_anchor is not None:
+            distance_value = math.hypot(
+                center_x - primary_anchor[0],
+                center_y - primary_anchor[1],
+            )
+            distance = f"{distance_value:.2f}"
+        dx, dy, tilt_ratio = hand_upright_metrics(hand.landmarks)
+        tilt = "inf" if math.isinf(tilt_ratio) else f"{tilt_ratio:.2f}"
+
+        return (
+            f"{index}:gesture={hand.gesture or DEBUG_UNKNOWN}"
+            f":upright={hand.upright}"
+            f":upright_dx={dx:.2f}"
+            f":upright_dy={dy:.2f}"
+            f":upright_tilt={tilt}"
+            f":center=({center_x:.2f},{center_y:.2f})"
+            f":size={hand.size:.2f}"
+            f":primary_dist={distance}"
+        )
 
     @staticmethod
     def _scaled_distance(

@@ -98,15 +98,20 @@ class GestureRemoteService:
                 if crop_changed:
                     self._gesture_session.reset_motion_tracking()
 
+                display_frame = self._display_frame(frame, zoom_controller)
+                debug_message = self._debug_message(
+                    decision.debug_message,
+                    detection_frame.crop,
+                    display_frame.crop,
+                )
                 if (
-                    decision.debug_message != last_debug_message
+                    debug_message != last_debug_message
                     or now - last_debug_time >= self._config.debug_log_seconds
                 ):
-                    self._logger.debug(decision.debug_message)
-                    last_debug_message = decision.debug_message
+                    self._logger.debug(debug_message)
+                    last_debug_message = debug_message
                     last_debug_time = now
 
-                display_frame = self._display_frame(frame, zoom_controller)
                 self._draw_detected_hands(
                     display_frame.frame,
                     detected_hands,
@@ -175,6 +180,18 @@ class GestureRemoteService:
 
         return zoom_controller.update(zoom_landmarks, full_frame_crop)
 
+    @staticmethod
+    def _debug_message(
+        decision_debug_message: str,
+        detection_crop: CropRect,
+        display_crop: CropRect,
+    ) -> str:
+        return (
+            f"{decision_debug_message} "
+            f"detection_crop={_debug_crop(detection_crop)} "
+            f"display_crop={_debug_crop(display_crop)}"
+        )
+
     async def _handle_decision(
         self,
         command_gesture: str | None,
@@ -231,3 +248,10 @@ class GestureRemoteService:
         )
         self._logger.info(f"Gesture: {gesture} -> {display_command}")
         await self._remote.send_key_command(command)
+
+
+def _debug_crop(crop: CropRect) -> str:
+    return (
+        f"({crop.x:.2f},{crop.y:.2f},"
+        f"{crop.width:.2f},{crop.height:.2f})"
+    )

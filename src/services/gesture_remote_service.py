@@ -12,7 +12,6 @@ from src.domain.constants import (
     TV_COMMAND_DPAD_CENTER,
 )
 from src.domain.session import GestureSession, HandState
-from src.infrastructure.android_tv_remote import AndroidTvRemoteClient
 from src.infrastructure.camera_zoom import CameraZoomController
 from src.infrastructure.hand_model import download_model_if_missing
 from src.infrastructure.hand_tracking import DetectedHand, MediaPipeHandTracker
@@ -21,6 +20,7 @@ from src.infrastructure.landmark_projection import (
     landmarks_to_crop_space,
     landmarks_to_original_space,
 )
+from src.infrastructure.tv_remote_factory import create_tv_remote_client
 from src.infrastructure.video_preprocessing import (
     CropRect,
     CroppedFrame,
@@ -36,7 +36,7 @@ from src.shared.logging import AppLogger
 class GestureRemoteService:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
-        self._remote = AndroidTvRemoteClient(config)
+        self._remote = create_tv_remote_client(config)
         self._voice_capture = VoiceCaptureService(self._remote, config)
         self._gesture_session = GestureSession(config)
         self._logger = AppLogger()
@@ -89,7 +89,7 @@ class GestureRemoteService:
                     decision.activated,
                     decision.primary_temporarily_lost,
                 )
-                voice_task = self._handle_decision(
+                voice_task = await self._handle_decision(
                     decision.command_gesture,
                     decision.activated,
                     now,
@@ -179,7 +179,7 @@ class GestureRemoteService:
             detection_crop,
         )
 
-    def _handle_decision(
+    async def _handle_decision(
         self,
         command_gesture: str | None,
         activated: bool,
@@ -200,7 +200,7 @@ class GestureRemoteService:
             self._logger.debug(
                 f"sending command_gesture={command_gesture} command={command}"
             )
-            self._print_and_send_gesture(command_gesture, command)
+            await self._print_and_send_gesture(command_gesture, command)
 
         self._gesture_session.record_emit(command_gesture, now)
         return voice_task
@@ -229,9 +229,9 @@ class GestureRemoteService:
         cv2.destroyAllWindows()
         self._remote.disconnect()
 
-    def _print_and_send_gesture(self, gesture: str, command: str) -> None:
+    async def _print_and_send_gesture(self, gesture: str, command: str) -> None:
         display_command = (
             DISPLAY_COMMAND_SELECT if command == TV_COMMAND_DPAD_CENTER else command
         )
         self._logger.info(f"Gesture: {gesture} -> {display_command}")
-        self._remote.send_key_command(command)
+        await self._remote.send_key_command(command)

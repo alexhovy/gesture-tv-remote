@@ -16,7 +16,7 @@ only compose application services.
 `src/services` contains use cases and orchestration. `GestureRemoteService`
 coordinates webcam frames, hand tracking, gesture decisions, command dispatch,
 debug logging, and cleanup. `VoiceCaptureService` handles the voice-input use
-case.
+case when the selected TV adapter supports it.
 
 ### Domain
 
@@ -27,20 +27,27 @@ case.
 - gesture-session state transitions
 - command mappings and debounce behavior
 
-Domain code should not import OpenCV, MediaPipe, `androidtvremote2`, or audio
+Domain code should not import OpenCV, MediaPipe, TV-control libraries, or audio
 libraries.
 
 ### Infrastructure
 
 `src/infrastructure` contains adapters for external systems:
 
-- Android TV remote pairing and command transport
+- TV remote pairing and command transport
 - MediaPipe hand tracking
 - model-file download
 - OpenCV landmark drawing
 
 Infrastructure modules may depend on third-party libraries, but domain modules
 should not depend on infrastructure.
+
+TV control is adapter-based. `GestureRemoteService` asks the TV remote factory
+for a client selected by configuration, then sends app-level TV commands such as
+`HOME`, `BACK`, `DPAD_UP`, and `VOLUME_UP`. Each adapter translates those
+commands to the protocol-specific command names for Android TV, Samsung TV,
+webOS, or Roku. Voice capture is an adapter capability; currently only the
+Android TV adapter exposes the voice stream used by `VoiceCaptureService`.
 
 Camera preprocessing is split by responsibility: frame cropping lives in
 `video_preprocessing`, coordinate projection lives in `landmark_projection`, and

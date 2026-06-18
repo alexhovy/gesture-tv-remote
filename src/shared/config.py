@@ -6,9 +6,14 @@ from typing import Callable
 
 class EnvVar:
     APP_NAME = "GESTURE_TV_APP_NAME"
-    TV_IP = "GESTURE_TV_IP"
-    CERT_FILE = "GESTURE_TV_CERT_FILE"
-    KEY_FILE = "GESTURE_TV_KEY_FILE"
+    TV_ADAPTER = "GESTURE_TV_ADAPTER"
+    TV_HOST = "GESTURE_TV_HOST"
+    ANDROID_CERT_FILE = "GESTURE_TV_ANDROID_CERT_FILE"
+    ANDROID_KEY_FILE = "GESTURE_TV_ANDROID_KEY_FILE"
+    SAMSUNG_TOKEN_FILE = "GESTURE_TV_SAMSUNG_TOKEN_FILE"
+    SAMSUNG_PORT = "GESTURE_TV_SAMSUNG_PORT"
+    WEBOS_CLIENT_KEY_FILE = "GESTURE_TV_WEBOS_CLIENT_KEY_FILE"
+    ROKU_PORT = "GESTURE_TV_ROKU_PORT"
     MODEL_FILE = "GESTURE_TV_MODEL_FILE"
     MODEL_URL = "GESTURE_TV_MODEL_URL"
     DEBOUNCE_SECONDS = "GESTURE_TV_DEBOUNCE_SECONDS"
@@ -45,9 +50,14 @@ class EnvVar:
 @dataclass(frozen=True)
 class AppConfig:
     app_name: str = "Gesture TV Remote"
-    tv_ip: str = "192.168.0.5"
-    cert_file: Path = Path("certs/cert.pem")
-    key_file: Path = Path("certs/key.pem")
+    tv_adapter: str = "androidtv"
+    tv_host: str = "192.168.0.5"
+    android_cert_file: Path = Path("certs/android/cert.pem")
+    android_key_file: Path = Path("certs/android/key.pem")
+    samsung_token_file: Path = Path("certs/samsung/token.txt")
+    samsung_port: int = 8002
+    webos_client_key_file: Path = Path("certs/webos/client_key.txt")
+    roku_port: int = 8060
     model_file: Path = Path("models/hand_landmarker.task")
     model_url: str = (
         "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
@@ -86,6 +96,7 @@ class AppConfig:
 
 DEFAULT_CONFIG = AppConfig()
 
+_SUPPORTED_TV_ADAPTERS = {"androidtv", "samsung", "webos", "roku"}
 
 ConfigParser = Callable[[dict[str, str], str, object], object]
 
@@ -138,6 +149,13 @@ def _bool(values: dict[str, str], name: str, default: object) -> bool:
 
 
 def _validate_config(config: AppConfig) -> None:
+    if config.tv_adapter.lower() not in _SUPPORTED_TV_ADAPTERS:
+        supported = ", ".join(sorted(_SUPPORTED_TV_ADAPTERS))
+        raise ValueError(f"tv_adapter must be one of: {supported}")
+    if not config.tv_host.strip():
+        raise ValueError("tv_host must not be empty")
+    _require_between(config.samsung_port, "samsung_port", 1, 65535)
+    _require_between(config.roku_port, "roku_port", 1, 65535)
     _require_at_least(config.debounce_seconds, "debounce_seconds", 0.0)
     _require_at_least(config.home_chord_seconds, "home_chord_seconds", 0.0)
     _require_at_least(config.voice_capture_seconds, "voice_capture_seconds", 0.0)
@@ -223,9 +241,14 @@ def _require_between(
 
 _CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (
     ("app_name", EnvVar.APP_NAME, _str),
-    ("tv_ip", EnvVar.TV_IP, _str),
-    ("cert_file", EnvVar.CERT_FILE, _path),
-    ("key_file", EnvVar.KEY_FILE, _path),
+    ("tv_adapter", EnvVar.TV_ADAPTER, _str),
+    ("tv_host", EnvVar.TV_HOST, _str),
+    ("android_cert_file", EnvVar.ANDROID_CERT_FILE, _path),
+    ("android_key_file", EnvVar.ANDROID_KEY_FILE, _path),
+    ("samsung_token_file", EnvVar.SAMSUNG_TOKEN_FILE, _path),
+    ("samsung_port", EnvVar.SAMSUNG_PORT, _int),
+    ("webos_client_key_file", EnvVar.WEBOS_CLIENT_KEY_FILE, _path),
+    ("roku_port", EnvVar.ROKU_PORT, _int),
     ("model_file", EnvVar.MODEL_FILE, _path),
     ("model_url", EnvVar.MODEL_URL, _str),
     ("debounce_seconds", EnvVar.DEBOUNCE_SECONDS, _float),

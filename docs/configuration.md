@@ -5,23 +5,41 @@ loads those defaults and applies environment-variable overrides at startup.
 
 The current defaults preserve the MVP behavior:
 
-- TV IP: `192.168.0.5`
+- TV adapter: `androidtv`
+- TV host: `192.168.0.5`
 - webcam index: `0`
 - model file: `models/hand_landmarker.task`
-- cert file: `certs/cert.pem`
-- key file: `certs/key.pem`
+- Android TV cert file: `certs/android/cert.pem`
+- Android TV key file: `certs/android/key.pem`
 
-## Certificates
+## Pairing Credentials
 
-Pairing certificates are stored in `certs/`. They are ignored by git because
-they identify a paired TV session.
+Pairing credentials are stored in `certs/`. They are ignored by git because
+they identify paired TV sessions.
 
-On first pairing, `androidtvremote2` generates:
+On first Android TV pairing, `androidtvremote2` generates:
 
-- `certs/cert.pem`
-- `certs/key.pem`
+- `certs/android/cert.pem`
+- `certs/android/key.pem`
+
+Samsung tokens are stored in `certs/samsung/token.txt` by default. webOS client
+keys are stored in `certs/webos/client_key.txt` by default.
 
 Do not commit those files.
+
+## TV Adapters
+
+Set `GESTURE_TV_ADAPTER` to select the TV integration:
+
+| Value | Library | Notes |
+| --- | --- | --- |
+| `androidtv` | `androidtvremote2` | Supports pairing, key commands, and voice capture. |
+| `samsung` | `samsungtvws` | Supports key commands. Accept the pairing prompt on the TV when required. |
+| `webos` | `aiowebostv` | Supports key commands. Accept the pairing prompt on the TV when required. |
+| `roku` | `rokuecp` | Supports ECP key commands. |
+
+The `MIC` gesture starts voice capture only when the selected adapter returns a
+voice stream. Unsupported adapters log that microphone capture is skipped.
 
 ## Model File
 
@@ -33,9 +51,14 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 | Variable | Default |
 | --- | --- |
 | `GESTURE_TV_APP_NAME` | `Gesture TV Remote` |
-| `GESTURE_TV_IP` | `192.168.0.5` |
-| `GESTURE_TV_CERT_FILE` | `certs/cert.pem` |
-| `GESTURE_TV_KEY_FILE` | `certs/key.pem` |
+| `GESTURE_TV_ADAPTER` | `androidtv` |
+| `GESTURE_TV_HOST` | `192.168.0.5` |
+| `GESTURE_TV_ANDROID_CERT_FILE` | `certs/android/cert.pem` |
+| `GESTURE_TV_ANDROID_KEY_FILE` | `certs/android/key.pem` |
+| `GESTURE_TV_SAMSUNG_TOKEN_FILE` | `certs/samsung/token.txt` |
+| `GESTURE_TV_SAMSUNG_PORT` | `8002` |
+| `GESTURE_TV_WEBOS_CLIENT_KEY_FILE` | `certs/webos/client_key.txt` |
+| `GESTURE_TV_ROKU_PORT` | `8060` |
 | `GESTURE_TV_MODEL_FILE` | `models/hand_landmarker.task` |
 | `GESTURE_TV_MODEL_URL` | MediaPipe hand landmarker URL |
 | `GESTURE_TV_WEBCAM_INDEX` | `0` |
@@ -71,7 +94,7 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 Example:
 
 ```bash
-GESTURE_TV_IP=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 python main.py
+GESTURE_TV_ADAPTER=samsung GESTURE_TV_HOST=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 python main.py
 ```
 
 Pointer and volume movement thresholds are scaled from the detected secondary

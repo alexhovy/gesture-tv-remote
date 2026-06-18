@@ -1,0 +1,85 @@
+from src.infrastructure.tv_command_translation import translate_tv_command
+from src.infrastructure.tv_remote import TV_ADAPTER_WEBOS
+from src.shared.config import AppConfig
+from src.shared.logging import AppLogger
+
+
+class WebOsRemoteClient:
+    def __init__(self, config: AppConfig) -> None:
+        self._config = config
+        self._client = None
+        self._input = None
+        self._media = None
+        self._logger = AppLogger()
+
+    async def connect(self) -> bool:
+        try:
+            from aiowebostv import WebOsClient
+            from aiowebostv.controls import InputControl, MediaControl
+
+            self._config.webos_client_key_file.parent.mkdir(parents=True, exist_ok=True)
+            client_key = self._read_client_key()
+            client = WebOsClient(self._config.tv_host)
+            await client.connect()
+
+            registration_key = None
+            async for status in client.register(client_key):
+                registration_key = status.get("client-key", registration_key)
+
+            if registration_key:
+                self._write_client_key(registration_key)
+
+            self._client = client
+            self._input = await InputControl(client).connect_input()
+            self._media = MediaControl(client)
+        except Exception as error:
+            self._logger.error(
+                f"Could not connect to webOS TV at {self._config.tv_host}: {error}"
+            )
+            self._client = None
+            self._input = None
+            self._media = None
+            return False
+
+        self._logger.info(f"Connected to webOS TV at {self._config.tv_host}")
+        return True
+
+    async def send_key_command(self, command: str) -> None:
+        if self._client is None:
+            self._logger.info(f"TV not connected. Skipping command: {command}")
+            return
+
+        adapter_command = translate_tv_command(TV_ADAPTER_WEBOS, command)
+        try:
+            await self._send(adapter_command)
+        except Exception as error:
+            self._logger.error(f"webOS TV command {adapter_command} failed: {error}")
+
+    async def start_voice(self):
+        self._logger.info("Voice capture is not supported for webOS TV.")
+        return None
+
+    def disconnect(self) -> None:
+        if self._client is not None and hasattr(self._client, "close"):
+            self._client.close()
+
+    def _read_client_key(self) -> str | None:
+        if not self._config.webos_client_key_file.exists():
+            return None
+        return self._config.webos_client_key_file.read_text(encoding="utf-8").strip()
+
+    def _write_client_key(self, client_key: str) -> None:
+        self._config.webos_client_key_file.write_text(client_key, encoding="utf-8")
+
+    async def _send(self, adapter_command: str) -> None:
+        if adapter_command == "volume_up":
+            await self._maybe_await(self._media.volume_up())
+            return
+        if adapter_command == "volume_down":
+            await self._maybe_await(self._media.volume_down())
+            return
+        await self._maybe_await(getattr(self._input, adapter_command)())
+
+    async def _maybe_await(self, result) -> None:
+        if hasattr(result, "__await__"):
+            await result

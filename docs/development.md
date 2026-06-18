@@ -28,7 +28,6 @@ Press `q` to quit the webcam window.
 python -m unittest discover -s tests
 ```
 
-The current tests focus on pure domain behavior. Hardware-dependent behavior
-should be covered through adapters or integration tests when test doubles are
-available.
-
+The current tests focus on pure domain behavior and adapter selection or command
+translation. Hardware-dependent TV behavior should be covered through adapters
+or integration tests when test doubles are available.

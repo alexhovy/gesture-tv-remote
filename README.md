@@ -1,6 +1,13 @@
 # Gesture TV Remote
 
-Python MVP for controlling a Google TV with webcam hand gestures.
+Python MVP for controlling a TV with webcam hand gestures.
+
+Supported TV adapters:
+
+- Android TV / Google TV through `androidtvremote2`
+- Samsung TV through `samsungtvws`
+- LG webOS TV through `aiowebostv`
+- Roku through `rokuecp`
 
 ## Quick Start
 
@@ -26,5 +33,6 @@ ignored by git.
 
 ## Configuration
 
-The TV IP address defaults to `192.168.0.5`. Runtime settings can be overridden
-with environment variables; see [Configuration](docs/configuration.md).
+The TV adapter defaults to `androidtv` and the host defaults to `192.168.0.5`.
+Runtime settings can be overridden with environment variables; see
+[Configuration](docs/configuration.md).

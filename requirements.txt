@@ -1,4 +1,7 @@
 opencv-python
 mediapipe
 androidtvremote2
+samsungtvws
+aiowebostv
+rokuecp
 sounddevice

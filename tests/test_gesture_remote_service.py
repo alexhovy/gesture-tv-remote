@@ -20,18 +20,10 @@ def _install_service_import_stubs() -> None:
     cv2.destroyAllWindows = lambda: None
     sys.modules.setdefault("cv2", cv2)
 
-    android_remote = types.ModuleType("src.infrastructure.android_tv_remote")
-    android_remote.AndroidTvRemoteClient = object
-    sys.modules.setdefault("src.infrastructure.android_tv_remote", android_remote)
-
     hand_tracking = types.ModuleType("src.infrastructure.hand_tracking")
     hand_tracking.DetectedHand = object
     hand_tracking.MediaPipeHandTracker = object
     sys.modules.setdefault("src.infrastructure.hand_tracking", hand_tracking)
-
-    voice_capture = types.ModuleType("src.services.voice_capture")
-    voice_capture.VoiceCaptureService = object
-    sys.modules.setdefault("src.services.voice_capture", voice_capture)
 
 
 _install_service_import_stubs()

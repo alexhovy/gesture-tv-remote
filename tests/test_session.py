@@ -37,6 +37,46 @@ class GestureSessionTests(unittest.TestCase):
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
 
+    def test_decision_does_not_activate_from_non_upright_open_palm(self) -> None:
+        session = GestureSession(AppConfig())
+
+        decision = session.evaluate(
+            [
+                _hand_state(
+                    GESTURE_OPEN_PALM,
+                    center=(0.20, 0.50),
+                    size=0.20,
+                    upright=False,
+                )
+            ],
+            now=0.0,
+        )
+
+        self.assertFalse(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+
+    def test_active_session_deactivates_when_primary_is_not_upright(self) -> None:
+        session = GestureSession(AppConfig())
+        session.evaluate(
+            [_hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
+            now=0.0,
+        )
+
+        decision = session.evaluate(
+            [
+                _hand_state(
+                    None,
+                    center=(0.20, 0.50),
+                    size=0.20,
+                    upright=False,
+                )
+            ],
+            now=0.1,
+        )
+
+        self.assertFalse(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+
     def test_decision_reports_activation_alongside_command_gesture(self) -> None:
         session = GestureSession(AppConfig())
 
@@ -50,6 +90,25 @@ class GestureSessionTests(unittest.TestCase):
 
         self.assertTrue(decision.activated)
         self.assertIsNotNone(decision.command_gesture)
+
+    def test_non_upright_secondary_hand_is_ignored(self) -> None:
+        session = GestureSession(AppConfig())
+
+        decision = session.evaluate(
+            [
+                _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20),
+                _hand_state(
+                    GESTURE_TWO_FINGERS,
+                    center=(0.70, 0.50),
+                    size=0.20,
+                    upright=False,
+                ),
+            ],
+            now=0.0,
+        )
+
+        self.assertTrue(decision.activated)
+        self.assertIsNone(decision.command_gesture)
 
     def test_pointer_distance_scales_with_hand_size(self) -> None:
         self.assertEqual(
@@ -141,10 +200,11 @@ def _evaluate_volume_move(hand_size: float, start_y: float, end_y: float) -> str
 
 
 def _hand_state(
-    gesture: str,
+    gesture: str | None,
     center: tuple[float, float],
     size: float,
     index_position: tuple[float, float] = (0.0, 0.0),
+    upright: bool = True,
 ) -> HandState:
     landmarks = [SimpleNamespace(x=0.0, y=0.0) for _ in range(LANDMARK_COUNT)]
     landmarks[LANDMARK_INDEX_TIP] = SimpleNamespace(
@@ -157,6 +217,7 @@ def _hand_state(
         gesture=gesture,
         center=center,
         size=size,
+        upright=upright,
     )
 
 

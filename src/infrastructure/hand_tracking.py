@@ -12,7 +12,7 @@ from mediapipe.tasks.python.vision.hand_landmarker import (
 
 from src.domain.constants import HANDEDNESS_RIGHT
 from src.domain.gestures import detect_gesture
-from src.domain.landmarks import hand_center
+from src.domain.landmarks import hand_center, hand_is_upright
 from src.domain.session import HandState
 from src.shared.config import AppConfig
 
@@ -38,6 +38,13 @@ class MediaPipeHandTracker:
         hand_states = []
         for landmarks, handedness in detected_hands:
             center_x, center_y, hand_size = hand_center(landmarks)
+            upright = (
+                not self._config.require_upright_hands
+                or hand_is_upright(
+                    landmarks,
+                    self._config.hand_upright_max_tilt_ratio,
+                )
+            )
             hand_states.append(
                 HandState(
                     landmarks=landmarks,
@@ -50,6 +57,7 @@ class MediaPipeHandTracker:
                     ),
                     center=(center_x, center_y),
                     size=hand_size,
+                    upright=upright,
                 )
             )
 

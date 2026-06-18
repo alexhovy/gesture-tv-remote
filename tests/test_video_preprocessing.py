@@ -78,6 +78,7 @@ class VideoPreprocessingTests(unittest.TestCase):
             gesture=GESTURE_POINT,
             center=(0.50, 0.75),
             size=0.50,
+            upright=False,
         )
 
         mapped = hand_state_to_original_space(
@@ -93,6 +94,7 @@ class VideoPreprocessingTests(unittest.TestCase):
         self.assertAlmostEqual(mapped.center[0], 0.45)
         self.assertAlmostEqual(mapped.center[1], 0.40)
         self.assertAlmostEqual(mapped.size, 0.25)
+        self.assertFalse(mapped.upright)
 
     def test_auto_zoom_follows_detected_hand(self) -> None:
         controller = CameraZoomController(

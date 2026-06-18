@@ -26,6 +26,7 @@ class HandState:
     gesture: str | None
     center: tuple[float, float]
     size: float
+    upright: bool = True
 
 
 @dataclass(frozen=True)
@@ -56,7 +57,7 @@ class GestureSession:
                 (
                     index
                     for index, hand in enumerate(hand_states)
-                    if hand.gesture == GESTURE_OPEN_PALM
+                    if hand.upright and hand.gesture == GESTURE_OPEN_PALM
                 ),
                 None,
             )
@@ -70,16 +71,21 @@ class GestureSession:
         )
         debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hand_states]
 
-        if primary_hand is None:
+        if primary_hand is None or not primary_hand.upright:
             self._reset_activation()
             return GestureDecision(
                 command_gesture=None,
                 activated=False,
                 debug_message=(
                     f"hands={len(hand_states)} activated=False "
-                    f"gestures={debug_gestures} need_primary_open_palm"
+                    f"gestures={debug_gestures} need_primary_open_palm_or_upright"
                 ),
             )
+
+        if secondary_hand is not None and not secondary_hand.upright:
+            secondary_hand = None
+            self.volume_start_y = None
+            self.pointer_start_position = None
 
         primary_gesture = primary_hand.gesture
         self.primary_position = primary_hand.center

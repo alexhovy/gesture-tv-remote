@@ -193,6 +193,7 @@ def hand_state_to_original_space(hand_state: HandState, crop: CropRect) -> HandS
         gesture=hand_state.gesture,
         center=(center_x, center_y),
         size=hand_size,
+        upright=hand_state.upright,
     )
 
 

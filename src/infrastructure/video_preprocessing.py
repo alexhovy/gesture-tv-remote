@@ -56,20 +56,9 @@ def apply_crop(
 
 
 def center_crop_for_zoom(zoom: float) -> CropRect:
-    return _crop_from_center_zoom(0.5, 0.5, max(1.0, zoom))
+    from src.infrastructure.crop_geometry import crop_from_center_zoom
 
-
-def _crop_from_center_zoom(center_x: float, center_y: float, zoom: float) -> CropRect:
-    zoom = max(1.0, zoom)
-    crop_width = 1 / zoom
-    crop_height = 1 / zoom
-    x = _clamp(center_x - crop_width / 2, 0.0, 1.0 - crop_width)
-    y = _clamp(center_y - crop_height / 2, 0.0, 1.0 - crop_height)
-    return CropRect(x, y, crop_width, crop_height)
-
-
-def _clamp(value: float, minimum: float, maximum: float) -> float:
-    return min(max(value, minimum), maximum)
+    return crop_from_center_zoom(0.5, 0.5, zoom)
 
 
 def _resize_frame(frame: Any, size: tuple[int, int]) -> Any:

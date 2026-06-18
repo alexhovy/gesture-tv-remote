@@ -30,6 +30,7 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.VOLUME_MAX_DISTANCE: "0.3",
                 EnvVar.REQUIRE_UPRIGHT_HANDS: "false",
                 EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO: "0.5",
+                EnvVar.PRIMARY_LOST_GRACE_SECONDS: "0.45",
             }
         )
 
@@ -47,6 +48,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.volume_max_distance, 0.3)
         self.assertFalse(config.require_upright_hands)
         self.assertEqual(config.hand_upright_max_tilt_ratio, 0.5)
+        self.assertEqual(config.primary_lost_grace_seconds, 0.45)
 
 
 if __name__ == "__main__":

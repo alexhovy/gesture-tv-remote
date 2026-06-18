@@ -3,6 +3,8 @@ from types import SimpleNamespace
 
 from src.domain.constants import (
     GESTURE_OPEN_PALM,
+    GESTURE_FIST,
+    GESTURE_OPEN_TO_FIST,
     GESTURE_PINCH,
     GESTURE_POINT,
     GESTURE_POINT_RIGHT,
@@ -76,6 +78,50 @@ class GestureSessionTests(unittest.TestCase):
 
         self.assertFalse(decision.activated)
         self.assertIsNone(decision.command_gesture)
+
+    def test_active_session_stays_active_during_brief_primary_dropout(self) -> None:
+        session = GestureSession(AppConfig(primary_lost_grace_seconds=0.35))
+        session.evaluate(
+            [_hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
+            now=0.0,
+        )
+
+        decision = session.evaluate([], now=0.2)
+
+        self.assertTrue(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+        self.assertIn("primary_temporarily_lost", decision.debug_message)
+
+    def test_active_session_deactivates_after_primary_dropout_grace(self) -> None:
+        session = GestureSession(AppConfig(primary_lost_grace_seconds=0.35))
+        session.evaluate(
+            [_hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
+            now=0.0,
+        )
+
+        decision = session.evaluate([], now=0.36)
+
+        self.assertFalse(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+
+    def test_brief_primary_dropout_preserves_previous_gesture(self) -> None:
+        session = GestureSession(AppConfig(primary_lost_grace_seconds=0.35))
+        session.evaluate(
+            [_hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
+            now=0.0,
+        )
+        session.evaluate([], now=0.1)
+        session.evaluate(
+            [_hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
+            now=0.2,
+        )
+
+        decision = session.evaluate(
+            [_hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
+            now=0.6,
+        )
+
+        self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
 
     def test_decision_reports_activation_alongside_command_gesture(self) -> None:
         session = GestureSession(AppConfig())

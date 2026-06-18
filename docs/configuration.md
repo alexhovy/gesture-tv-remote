@@ -58,6 +58,7 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 | `GESTURE_TV_PINCH_DISTANCE_RATIO` | `0.22` |
 | `GESTURE_TV_VOICE_CAPTURE_SECONDS` | `5.0` |
 | `GESTURE_TV_DEBUG_LOG_SECONDS` | `0.5` |
+| `GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` | `0.35` |
 | `GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE` | `0.7` |
 | `GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE` | `0.7` |
 | `GESTURE_TV_MIN_TRACKING_CONFIDENCE` | `0.7` |
@@ -82,3 +83,9 @@ hand area. Auto zoom updates the next frame's crop from the current frame's
 landmarks, zooms out for wide two-hand bounds, and returns to center when hands
 are lost. Keep `GESTURE_TV_AUTO_ZOOM_MAX` conservative at first; `2.0` is a good
 starting point for preserving two-hand gestures.
+
+`GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` keeps an active gesture session alive
+through brief primary-hand detection dropouts. This helps when a hand is close
+to a frame or crop edge and MediaPipe occasionally reports zero hands for a
+frame or two. Once the primary hand is missing longer than the grace interval,
+the session deactivates normally.

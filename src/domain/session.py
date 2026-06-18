@@ -42,6 +42,7 @@ class GestureSession:
         self.last_command_time = 0.0
         self.last_command_gesture: str | None = None
         self.primary_position: tuple[float, float] | None = None
+        self.primary_last_seen_time: float | None = None
         self.primary_previous_gesture: str | None = None
         self.secondary_previous_gesture: str | None = None
         self.primary_close_time: float | None = None
@@ -71,7 +72,30 @@ class GestureSession:
         )
         debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hand_states]
 
-        if primary_hand is None or not primary_hand.upright:
+        if primary_hand is None:
+            if self._primary_missing_within_grace(now):
+                self.volume_start_y = None
+                self.pointer_start_position = None
+                return GestureDecision(
+                    command_gesture=None,
+                    activated=True,
+                    debug_message=(
+                        f"hands={len(hand_states)} activated=True "
+                        f"gestures={debug_gestures} primary_temporarily_lost"
+                    ),
+                )
+
+            self._reset_activation()
+            return GestureDecision(
+                command_gesture=None,
+                activated=False,
+                debug_message=(
+                    f"hands={len(hand_states)} activated=False "
+                    f"gestures={debug_gestures} need_primary_open_palm_or_upright"
+                ),
+            )
+
+        if not primary_hand.upright:
             self._reset_activation()
             return GestureDecision(
                 command_gesture=None,
@@ -89,6 +113,7 @@ class GestureSession:
 
         primary_gesture = primary_hand.gesture
         self.primary_position = primary_hand.center
+        self.primary_last_seen_time = now
         secondary_gesture = secondary_hand.gesture if secondary_hand else None
         secondary_center = secondary_hand.center if secondary_hand else None
         secondary_landmarks = secondary_hand.landmarks if secondary_hand else None
@@ -239,6 +264,7 @@ class GestureSession:
 
     def _reset_activation(self) -> None:
         self.primary_position = None
+        self.primary_last_seen_time = None
         self.primary_previous_gesture = None
         self.secondary_previous_gesture = None
         self.last_command_gesture = None
@@ -248,6 +274,13 @@ class GestureSession:
         self.secondary_back_pending = False
         self.volume_start_y = None
         self.pointer_start_position = None
+
+    def _primary_missing_within_grace(self, now: float) -> bool:
+        if self.primary_position is None or self.primary_last_seen_time is None:
+            return False
+
+        grace_seconds = max(0.0, self._config.primary_lost_grace_seconds)
+        return now - self.primary_last_seen_time <= grace_seconds
 
     @staticmethod
     def _nearest_hand_index(

@@ -25,6 +25,7 @@ class EnvVar:
     HAND_UPRIGHT_MAX_TILT_RATIO = "GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO"
     VOICE_CAPTURE_SECONDS = "GESTURE_TV_VOICE_CAPTURE_SECONDS"
     DEBUG_LOG_SECONDS = "GESTURE_TV_DEBUG_LOG_SECONDS"
+    PRIMARY_LOST_GRACE_SECONDS = "GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS"
     WEBCAM_INDEX = "GESTURE_TV_WEBCAM_INDEX"
     CAMERA_ZOOM = "GESTURE_TV_CAMERA_ZOOM"
     AUTO_ZOOM_ENABLED = "GESTURE_TV_AUTO_ZOOM_ENABLED"
@@ -66,6 +67,7 @@ class AppConfig:
     hand_upright_max_tilt_ratio: float = 0.75
     voice_capture_seconds: float = 5.0
     debug_log_seconds: float = 0.5
+    primary_lost_grace_seconds: float = 0.35
     webcam_index: int = 0
     camera_zoom: float = 1.0
     auto_zoom_enabled: bool = True
@@ -148,6 +150,7 @@ _CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (
     ("hand_upright_max_tilt_ratio", EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO, _float),
     ("voice_capture_seconds", EnvVar.VOICE_CAPTURE_SECONDS, _float),
     ("debug_log_seconds", EnvVar.DEBUG_LOG_SECONDS, _float),
+    ("primary_lost_grace_seconds", EnvVar.PRIMARY_LOST_GRACE_SECONDS, _float),
     ("webcam_index", EnvVar.WEBCAM_INDEX, _int),
     ("camera_zoom", EnvVar.CAMERA_ZOOM, _float),
     ("auto_zoom_enabled", EnvVar.AUTO_ZOOM_ENABLED, _bool),

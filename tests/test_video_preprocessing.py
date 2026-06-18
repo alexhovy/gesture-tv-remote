@@ -217,6 +217,32 @@ class VideoPreprocessingTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertNotEqual(controller.current_crop(), CropRect(0.0, 0.0, 1.0, 1.0))
 
+    def test_auto_zoom_zooms_out_when_hand_reaches_cropped_edge(self) -> None:
+        controller = CameraZoomController(
+            AppConfig(
+                auto_zoom_enabled=True,
+                auto_zoom_min=1.0,
+                auto_zoom_max=4.0,
+                auto_zoom_padding=0.0,
+                auto_zoom_smoothing=1.0,
+                auto_zoom_position_deadband=0.10,
+                auto_zoom_scale_deadband=0.20,
+            )
+        )
+        controller.update(
+            [[_landmark(0.40, 0.40), _landmark(0.60, 0.60)]],
+            CropRect(0.0, 0.0, 1.0, 1.0),
+        )
+        cropped = controller.current_crop()
+
+        changed = controller.update(
+            [[_landmark(0.90, 0.40), _landmark(0.98, 0.60)]],
+            cropped,
+        )
+
+        self.assertTrue(changed)
+        self.assertEqual(controller.current_crop(), CropRect(0.0, 0.0, 1.0, 1.0))
+
 
 class ResizedFrame:
     def __init__(self, source: FakeFrame, size: tuple[int, int]) -> None:

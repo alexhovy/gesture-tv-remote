@@ -34,6 +34,7 @@ class GestureDecision:
     command_gesture: str | None
     activated: bool
     debug_message: str
+    primary_temporarily_lost: bool = False
 
 
 class GestureSession:
@@ -83,6 +84,7 @@ class GestureSession:
                         f"hands={len(hand_states)} activated=True "
                         f"gestures={debug_gestures} primary_temporarily_lost"
                     ),
+                    primary_temporarily_lost=True,
                 )
 
             self._reset_activation()

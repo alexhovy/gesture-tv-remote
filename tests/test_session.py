@@ -90,6 +90,7 @@ class GestureSessionTests(unittest.TestCase):
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
+        self.assertTrue(decision.primary_temporarily_lost)
         self.assertIn("primary_temporarily_lost", decision.debug_message)
 
     def test_active_session_deactivates_after_primary_dropout_grace(self) -> None:

@@ -79,6 +79,7 @@ class GestureRemoteService:
                     detected_hands,
                     cropped_frame,
                     decision.activated,
+                    decision.primary_temporarily_lost,
                 )
                 voice_task = self._handle_decision(
                     decision.command_gesture,
@@ -134,10 +135,13 @@ class GestureRemoteService:
         detected_hands: list[DetectedHand],
         cropped_frame: CroppedFrame,
         activated: bool,
+        primary_temporarily_lost: bool,
     ) -> bool:
-        if not activated:
-            zoom_controller.reset()
+        if primary_temporarily_lost:
             return False
+
+        if not activated:
+            return zoom_controller.update([], cropped_frame.crop)
 
         return zoom_controller.update(
             [detected_hand.landmarks for detected_hand in detected_hands],

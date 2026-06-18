@@ -55,6 +55,12 @@ class CameraZoomController:
         target_x = (min_x + max_x) / 2
         target_y = (min_y + max_y) / 2
         target_zoom = self._target_zoom(max_x - min_x, max_y - min_y)
+        if _bounds_near_crop_edge(
+            hand_bounds,
+            crop,
+            self._config.auto_zoom_position_deadband,
+        ) and (crop.width < 1.0 or crop.height < 1.0):
+            target_zoom = self._min_zoom
         if not self._should_update(target_x, target_y, target_zoom, hand_bounds, crop):
             return False
         self._move_toward(target_x, target_y, target_zoom)

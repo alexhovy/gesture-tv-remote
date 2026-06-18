@@ -84,8 +84,7 @@ class GestureRemoteService:
 
                 crop_changed = self._update_zoom(
                     zoom_controller,
-                    detected_hands,
-                    detection_frame.crop,
+                    decision.zoom_landmarks,
                     decision.activated,
                     decision.primary_temporarily_lost,
                 )
@@ -163,21 +162,18 @@ class GestureRemoteService:
     def _update_zoom(
         self,
         zoom_controller: CameraZoomController,
-        detected_hands: list[DetectedHand],
-        detection_crop: CropRect,
+        zoom_landmarks: list[list[Any]],
         activated: bool,
         primary_temporarily_lost: bool,
     ) -> bool:
         if primary_temporarily_lost:
             return False
 
+        full_frame_crop = CropRect(0.0, 0.0, 1.0, 1.0)
         if not activated:
-            return zoom_controller.update([], detection_crop)
+            return zoom_controller.update([], full_frame_crop)
 
-        return zoom_controller.update(
-            [detected_hand.landmarks for detected_hand in detected_hands],
-            detection_crop,
-        )
+        return zoom_controller.update(zoom_landmarks, full_frame_crop)
 
     async def _handle_decision(
         self,

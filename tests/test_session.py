@@ -138,24 +138,40 @@ class GestureSessionTests(unittest.TestCase):
         self.assertTrue(decision.activated)
         self.assertIsNotNone(decision.command_gesture)
 
+    def test_zoom_landmarks_include_valid_primary_and_secondary_hands(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        secondary = _hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.20)
+
+        decision = session.evaluate([primary, secondary], now=0.0)
+
+        self.assertEqual(decision.zoom_landmarks, [primary.landmarks, secondary.landmarks])
+
     def test_non_upright_secondary_hand_is_ignored(self) -> None:
         session = GestureSession(AppConfig())
-
-        decision = session.evaluate(
-            [
-                _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20),
-                _hand_state(
-                    GESTURE_TWO_FINGERS,
-                    center=(0.70, 0.50),
-                    size=0.20,
-                    upright=False,
-                ),
-            ],
-            now=0.0,
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        secondary = _hand_state(
+            GESTURE_TWO_FINGERS,
+            center=(0.70, 0.50),
+            size=0.20,
+            upright=False,
         )
+
+        decision = session.evaluate([primary, secondary], now=0.0)
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
+        self.assertEqual(decision.zoom_landmarks, [primary.landmarks])
+
+    def test_unknown_secondary_hand_is_ignored_for_zoom(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        secondary = _hand_state(None, center=(0.70, 0.50), size=0.20)
+
+        decision = session.evaluate([primary, secondary], now=0.0)
+
+        self.assertTrue(decision.activated)
+        self.assertEqual(decision.zoom_landmarks, [primary.landmarks])
 
     def test_pointer_distance_scales_with_hand_size(self) -> None:
         self.assertEqual(

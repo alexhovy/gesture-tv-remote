@@ -1,5 +1,5 @@
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 from src.domain.constants import (
@@ -35,6 +35,7 @@ class GestureDecision:
     activated: bool
     debug_message: str
     primary_temporarily_lost: bool = False
+    zoom_landmarks: list[list[Any]] = field(default_factory=list)
 
 
 class GestureSession:
@@ -120,6 +121,9 @@ class GestureSession:
         secondary_center = secondary_hand.center if secondary_hand else None
         secondary_landmarks = secondary_hand.landmarks if secondary_hand else None
         secondary_size = secondary_hand.size if secondary_hand else 0.0
+        zoom_landmarks = [primary_hand.landmarks]
+        if secondary_hand is not None and secondary_gesture is not None:
+            zoom_landmarks.append(secondary_hand.landmarks)
 
         primary_closed = (
             self.primary_previous_gesture == GESTURE_OPEN_PALM
@@ -243,6 +247,7 @@ class GestureSession:
                 f"volume_distance={volume_distance:.2f} "
                 f"command={command_gesture or DEBUG_NONE}"
             ),
+            zoom_landmarks=zoom_landmarks,
         )
 
     def should_emit(self, command_gesture: str, command: str | None, now: float) -> bool:

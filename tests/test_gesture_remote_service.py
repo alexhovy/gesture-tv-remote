@@ -78,23 +78,23 @@ class GestureRemoteServiceTests(unittest.TestCase):
         self.assertEqual(detection_frame.frame.shape, frame.shape)
         self.assertEqual(detection_frame.crop, CropRect(0.25, 1 / 6, 0.5, 0.5))
 
-    def test_update_zoom_uses_detection_crop(self) -> None:
+    def test_update_zoom_uses_filtered_zoom_landmarks(self) -> None:
         zoom_controller = FakeZoomController()
         landmarks = [_landmark(0.25, 0.50), _landmark(0.75, 1.00)]
-        detected_hands = [SimpleNamespace(landmarks=landmarks)]
-        detection_crop = CropRect(0.20, 0.10, 0.50, 0.40)
 
         changed = GestureRemoteService._update_zoom(
             GestureRemoteService.__new__(GestureRemoteService),
             zoom_controller,
-            detected_hands,
-            detection_crop,
+            [landmarks],
             activated=True,
             primary_temporarily_lost=False,
         )
 
         self.assertTrue(changed)
-        self.assertEqual(zoom_controller.updated_with, ([landmarks], detection_crop))
+        self.assertEqual(
+            zoom_controller.updated_with,
+            ([landmarks], CropRect(0.0, 0.0, 1.0, 1.0)),
+        )
 
     def test_update_zoom_holds_crop_during_temporary_primary_loss(self) -> None:
         zoom_controller = FakeZoomController()
@@ -103,7 +103,6 @@ class GestureRemoteServiceTests(unittest.TestCase):
             GestureRemoteService.__new__(GestureRemoteService),
             zoom_controller,
             [],
-            CropRect(0.20, 0.10, 0.50, 0.40),
             activated=True,
             primary_temporarily_lost=True,
         )

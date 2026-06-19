@@ -4,7 +4,6 @@ from types import SimpleNamespace
 from src.domain.constants import (
     GESTURE_OPEN_PALM,
     GESTURE_FIST,
-    GESTURE_MIC,
     GESTURE_OPEN_TO_FIST,
     GESTURE_PINCH,
     GESTURE_POINT,
@@ -223,31 +222,14 @@ class GestureSessionTests(unittest.TestCase):
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
         self.assertEqual(decision.zoom_landmarks, [primary.landmarks])
-
-    def test_loose_secondary_upright_gate_allows_tilted_secondary_hand(self) -> None:
-        session = GestureSession(
-            AppConfig(secondary_hand_upright_max_tilt_ratio=2.0)
-        )
-        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        secondary = _hand_state(
-            GESTURE_TWO_FINGERS,
-            center=(0.70, 0.50),
-            size=0.20,
-            upright=False,
-            upright_vector=(0.16, -0.10),
+        self.assertIn("secondary_index=none", decision.debug_message)
+        self.assertIn(
+            "1:gesture=TWO_FINGERS:upright=False:upright_reason=tilted",
+            decision.debug_message,
         )
 
-        decision = session.evaluate([primary, secondary], now=0.0)
-
-        self.assertTrue(decision.activated)
-        self.assertEqual(decision.command_gesture, GESTURE_MIC)
-        self.assertEqual(decision.zoom_landmarks, [primary.landmarks, secondary.landmarks])
-        self.assertIn("secondary=TWO_FINGERS", decision.debug_message)
-
-    def test_secondary_upright_gate_rejects_upside_down_secondary_hand(self) -> None:
-        session = GestureSession(
-            AppConfig(secondary_hand_upright_max_tilt_ratio=2.0)
-        )
+    def test_upside_down_secondary_hand_is_ignored(self) -> None:
+        session = GestureSession(AppConfig())
         primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         secondary = _hand_state(
             GESTURE_TWO_FINGERS,
@@ -262,6 +244,11 @@ class GestureSessionTests(unittest.TestCase):
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
         self.assertEqual(decision.zoom_landmarks, [primary.landmarks])
+        self.assertIn("secondary_index=none", decision.debug_message)
+        self.assertIn(
+            "1:gesture=TWO_FINGERS:upright=False:upright_reason=upside_down",
+            decision.debug_message,
+        )
 
     def test_unknown_secondary_hand_is_ignored_for_zoom(self) -> None:
         session = GestureSession(AppConfig())

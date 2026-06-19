@@ -28,10 +28,6 @@ class EnvVar:
     PINCH_DISTANCE_RATIO = "GESTURE_TV_PINCH_DISTANCE_RATIO"
     REQUIRE_UPRIGHT_HANDS = "GESTURE_TV_REQUIRE_UPRIGHT_HANDS"
     HAND_UPRIGHT_MAX_TILT_RATIO = "GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO"
-    SECONDARY_REQUIRE_UPRIGHT = "GESTURE_TV_SECONDARY_REQUIRE_UPRIGHT"
-    SECONDARY_HAND_UPRIGHT_MAX_TILT_RATIO = (
-        "GESTURE_TV_SECONDARY_HAND_UPRIGHT_MAX_TILT_RATIO"
-    )
     VOICE_CAPTURE_SECONDS = "GESTURE_TV_VOICE_CAPTURE_SECONDS"
     DEBUG_LOG_SECONDS = "GESTURE_TV_DEBUG_LOG_SECONDS"
     PRIMARY_LOST_GRACE_SECONDS = "GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS"
@@ -80,8 +76,6 @@ class AppConfig:
     pinch_distance_ratio: float = 0.22
     require_upright_hands: bool = True
     hand_upright_max_tilt_ratio: float = 0.75
-    secondary_require_upright: bool = True
-    secondary_hand_upright_max_tilt_ratio: float = 2.0
     voice_capture_seconds: float = 5.0
     debug_log_seconds: float = 0.5
     primary_lost_grace_seconds: float = 0.35
@@ -235,11 +229,6 @@ def _validate_config(config: AppConfig) -> None:
         "hand_upright_max_tilt_ratio",
         0.0,
     )
-    _require_at_least(
-        config.secondary_hand_upright_max_tilt_ratio,
-        "secondary_hand_upright_max_tilt_ratio",
-        0.0,
-    )
 
 
 def _require_at_least(value: float | int, field_name: str, minimum: float | int) -> None:
@@ -281,12 +270,6 @@ _CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (
     ("pinch_distance_ratio", EnvVar.PINCH_DISTANCE_RATIO, _float),
     ("require_upright_hands", EnvVar.REQUIRE_UPRIGHT_HANDS, _bool),
     ("hand_upright_max_tilt_ratio", EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO, _float),
-    ("secondary_require_upright", EnvVar.SECONDARY_REQUIRE_UPRIGHT, _bool),
-    (
-        "secondary_hand_upright_max_tilt_ratio",
-        EnvVar.SECONDARY_HAND_UPRIGHT_MAX_TILT_RATIO,
-        _float,
-    ),
     ("voice_capture_seconds", EnvVar.VOICE_CAPTURE_SECONDS, _float),
     ("debug_log_seconds", EnvVar.DEBUG_LOG_SECONDS, _float),
     ("primary_lost_grace_seconds", EnvVar.PRIMARY_LOST_GRACE_SECONDS, _float),

@@ -23,9 +23,9 @@ primary hand. The other detected hand becomes the secondary hand.
 The primary hand is used for activation, select, and the HOME chord. The
 secondary hand is used for navigation, back, volume, and voice input.
 
-Primary activation requires a strict upright open palm. Secondary gestures use a
-separate, looser upright tolerance so the second hand can be recognized when it
-enters from the side while the primary hand remains locked.
+Both primary and secondary gestures require upright hands when
+`GESTURE_TV_REQUIRE_UPRIGHT_HANDS` is enabled. The primary hand must be an
+upright open palm to activate controls.
 
 ## Debounce
 

@@ -86,6 +86,18 @@ def hand_is_upright(landmarks: list[Any], max_tilt_ratio: float) -> bool:
     return tilt_ratio <= max(0.0, max_tilt_ratio)
 
 
+def hand_upright_reason(landmarks: list[Any], max_tilt_ratio: float) -> str:
+    _, dy, tilt_ratio = hand_upright_metrics(landmarks)
+
+    if dy >= 0:
+        return "upside_down"
+
+    if tilt_ratio > max(0.0, max_tilt_ratio):
+        return "tilted"
+
+    return "ok"
+
+
 def hand_center(landmarks: list[Any]) -> tuple[float, float, float]:
     x = sum(landmark.x for landmark in landmarks) / len(landmarks)
     y = sum(landmark.y for landmark in landmarks) / len(landmarks)

@@ -18,8 +18,8 @@ from src.domain.constants import (
 from src.domain.gestures import detect_direction, detect_volume
 from src.domain.landmarks import (
     LANDMARK_INDEX_TIP,
-    hand_is_upright,
     hand_upright_metrics,
+    hand_upright_reason,
     landmark_position,
 )
 from src.shared.config import AppConfig
@@ -123,7 +123,7 @@ class GestureSession:
                 ),
             )
 
-        if secondary_hand is not None and not self._secondary_hand_is_allowed(secondary_hand):
+        if secondary_hand is not None and not secondary_hand.upright:
             secondary_hand = None
             secondary_index = None
             self.volume_start_y = None
@@ -370,17 +370,8 @@ class GestureSession:
         target_x, target_y = self.primary_position
         return math.hypot(hand.center[0] - target_x, hand.center[1] - target_y)
 
-    def _secondary_hand_is_allowed(self, hand: HandState) -> bool:
-        if not self._config.secondary_require_upright:
-            return True
-
-        return hand.upright or hand_is_upright(
-            hand.landmarks,
-            self._config.secondary_hand_upright_max_tilt_ratio,
-        )
-
-    @staticmethod
     def _debug_hands(
+        self,
         hands: list[HandState],
         primary_anchor: tuple[float, float] | None,
     ) -> str:
@@ -388,13 +379,13 @@ class GestureSession:
             return "hand_details=[]"
 
         details = [
-            GestureSession._debug_hand(index, hand, primary_anchor)
+            self._debug_hand(index, hand, primary_anchor)
             for index, hand in enumerate(hands)
         ]
         return f"hand_details=[{';'.join(details)}]"
 
-    @staticmethod
     def _debug_hand(
+        self,
         index: int,
         hand: HandState,
         primary_anchor: tuple[float, float] | None,
@@ -409,10 +400,15 @@ class GestureSession:
             distance = f"{distance_value:.2f}"
         dx, dy, tilt_ratio = hand_upright_metrics(hand.landmarks)
         tilt = "inf" if math.isinf(tilt_ratio) else f"{tilt_ratio:.2f}"
+        reason = hand_upright_reason(
+            hand.landmarks,
+            self._config.hand_upright_max_tilt_ratio,
+        )
 
         return (
             f"{index}:gesture={hand.gesture or DEBUG_UNKNOWN}"
             f":upright={hand.upright}"
+            f":upright_reason={reason}"
             f":upright_dx={dx:.2f}"
             f":upright_dy={dy:.2f}"
             f":upright_tilt={tilt}"

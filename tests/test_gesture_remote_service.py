@@ -1,8 +1,14 @@
+import asyncio
 import sys
 import types
 import unittest
 from types import SimpleNamespace
 
+from src.domain.constants import (
+    TV_COMMAND_HOME,
+    TV_COMMAND_VOLUME_DOWN,
+    TV_COMMAND_VOLUME_UP,
+)
 from src.infrastructure.camera.video_preprocessing import CropRect
 
 
@@ -28,7 +34,10 @@ def _install_service_import_stubs() -> None:
 
 _install_service_import_stubs()
 
-from src.services.gesture_remote_service import GestureRemoteService  # noqa: E402
+from src.services.gesture_remote_service import (  # noqa: E402
+    GestureRemoteService,
+    RemoteCommandDispatcher,
+)
 
 
 class FakeFrame:
@@ -125,6 +134,71 @@ class GestureRemoteServiceTests(unittest.TestCase):
                 "display_crop=(0.25,0.25,0.50,0.50)"
             ),
         )
+
+
+class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
+    async def test_repeatable_commands_coalesce_while_remote_is_busy(self) -> None:
+        remote = BlockingRemote()
+        dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
+        dispatcher.start()
+
+        dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
+        await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
+
+        dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
+        dispatcher.enqueue("VOLUME_DOWN", TV_COMMAND_VOLUME_DOWN)
+
+        self.assertEqual(remote.commands, [TV_COMMAND_VOLUME_UP])
+
+        remote.release_first.set()
+        await asyncio.wait_for(remote.second_started.wait(), timeout=1.0)
+
+        self.assertEqual(
+            remote.commands,
+            [TV_COMMAND_VOLUME_UP, TV_COMMAND_VOLUME_DOWN],
+        )
+        await dispatcher.close()
+
+    async def test_nonrepeatable_command_replaces_stale_repeatable_command(self) -> None:
+        remote = BlockingRemote()
+        dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
+        dispatcher.start()
+
+        dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
+        await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
+
+        dispatcher.enqueue("VOLUME_DOWN", TV_COMMAND_VOLUME_DOWN)
+        dispatcher.enqueue("HOME", TV_COMMAND_HOME)
+
+        remote.release_first.set()
+        await asyncio.wait_for(remote.second_started.wait(), timeout=1.0)
+
+        self.assertEqual(remote.commands, [TV_COMMAND_VOLUME_UP, TV_COMMAND_HOME])
+        await dispatcher.close()
+
+
+class BlockingRemote:
+    def __init__(self) -> None:
+        self.commands = []
+        self.first_started = asyncio.Event()
+        self.second_started = asyncio.Event()
+        self.release_first = asyncio.Event()
+
+    async def send_key_command(self, command: str) -> None:
+        self.commands.append(command)
+        if len(self.commands) == 1:
+            self.first_started.set()
+            await self.release_first.wait()
+        elif len(self.commands) == 2:
+            self.second_started.set()
+
+
+class FakeLogger:
+    def __init__(self) -> None:
+        self.messages = []
+
+    def info(self, message: str) -> None:
+        self.messages.append(message)
 
 
 def _landmark(x: float, y: float):

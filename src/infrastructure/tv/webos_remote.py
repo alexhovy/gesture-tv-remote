@@ -1,3 +1,4 @@
+from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_WEBOS
 from src.shared.config import AppConfig
@@ -73,13 +74,9 @@ class WebOsRemoteClient:
 
     async def _send(self, adapter_command: str) -> None:
         if adapter_command == "volume_up":
-            await self._maybe_await(self._media.volume_up())
+            await call_remote_method(self._media.volume_up)
             return
         if adapter_command == "volume_down":
-            await self._maybe_await(self._media.volume_down())
+            await call_remote_method(self._media.volume_down)
             return
-        await self._maybe_await(getattr(self._input, adapter_command)())
-
-    async def _maybe_await(self, result) -> None:
-        if hasattr(result, "__await__"):
-            await result
+        await call_remote_method(getattr(self._input, adapter_command))

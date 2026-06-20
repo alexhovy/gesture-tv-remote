@@ -1,11 +1,13 @@
 import asyncio
 import contextlib
 import time
+from collections import deque
+from dataclasses import dataclass
 from typing import Any
 
 import cv2
 
-from src.domain.commands import GESTURE_TO_COMMAND
+from src.domain.commands import GESTURE_TO_COMMAND, REPEATABLE_COMMANDS
 from src.domain.constants import (
     DISPLAY_COMMAND_SELECT,
     GESTURE_MIC,
@@ -40,6 +42,7 @@ class GestureRemoteService:
         self._voice_capture = VoiceCaptureService(self._remote, config)
         self._gesture_session = GestureSession(config)
         self._logger = AppLogger()
+        self._command_dispatcher = RemoteCommandDispatcher(self._remote, self._logger)
 
     async def run(self) -> None:
         if not await self._remote.connect():
@@ -58,6 +61,7 @@ class GestureRemoteService:
         last_debug_time = 0.0
         last_debug_message = ""
         zoom_controller = CameraZoomController(self._config)
+        self._command_dispatcher.start()
 
         try:
             download_model_if_missing(self._config)
@@ -213,7 +217,7 @@ class GestureRemoteService:
             self._logger.debug(
                 f"sending command_gesture={command_gesture} command={command}"
             )
-            await self._print_and_send_gesture(command_gesture, command)
+            self._command_dispatcher.enqueue(command_gesture, command)
 
         self._gesture_session.record_emit(command_gesture, now)
         return voice_task
@@ -240,14 +244,8 @@ class GestureRemoteService:
             hand_tracker.close()
         cap.release()
         cv2.destroyAllWindows()
+        await self._command_dispatcher.close()
         self._remote.disconnect()
-
-    async def _print_and_send_gesture(self, gesture: str, command: str) -> None:
-        display_command = (
-            DISPLAY_COMMAND_SELECT if command == TV_COMMAND_DPAD_CENTER else command
-        )
-        self._logger.info(f"Gesture: {gesture} -> {display_command}")
-        await self._remote.send_key_command(command)
 
 
 def _debug_crop(crop: CropRect) -> str:
@@ -255,3 +253,94 @@ def _debug_crop(crop: CropRect) -> str:
         f"({crop.x:.2f},{crop.y:.2f},"
         f"{crop.width:.2f},{crop.height:.2f})"
     )
+
+
+@dataclass(frozen=True)
+class RemoteCommandRequest:
+    gesture: str
+    command: str
+
+
+class RemoteCommandDispatcher:
+    def __init__(self, remote: Any, logger: AppLogger) -> None:
+        self._remote = remote
+        self._logger = logger
+        self._commands: deque[RemoteCommandRequest] = deque()
+        self._latest_repeatable: RemoteCommandRequest | None = None
+        self._has_work: asyncio.Event | None = None
+        self._worker_task: asyncio.Task | None = None
+        self._sending = False
+        self._closed = False
+
+    def start(self) -> None:
+        if self._worker_task is not None and not self._worker_task.done():
+            return
+        self._has_work = asyncio.Event()
+        self._worker_task = asyncio.create_task(self._run())
+
+    def enqueue(self, gesture: str, command: str) -> None:
+        if self._closed:
+            return
+        if self._has_work is None:
+            self.start()
+
+        request = RemoteCommandRequest(gesture=gesture, command=command)
+        if command in REPEATABLE_COMMANDS and self._is_busy():
+            self._latest_repeatable = request
+            self._has_work.set()
+            return
+
+        if command not in REPEATABLE_COMMANDS:
+            self._latest_repeatable = None
+        self._commands.append(request)
+        self._has_work.set()
+
+    async def close(self) -> None:
+        self._closed = True
+        self._commands.clear()
+        self._latest_repeatable = None
+        if self._worker_task is None:
+            return
+
+        self._worker_task.cancel()
+        with contextlib.suppress(asyncio.CancelledError):
+            await self._worker_task
+        self._worker_task = None
+
+    async def _run(self) -> None:
+        if self._has_work is None:
+            return
+
+        while True:
+            await self._has_work.wait()
+            while True:
+                request = self._next_request()
+                if request is None:
+                    self._has_work.clear()
+                    break
+
+                self._sending = True
+                try:
+                    await self._send(request)
+                finally:
+                    self._sending = False
+
+    async def _send(self, request: RemoteCommandRequest) -> None:
+        display_command = (
+            DISPLAY_COMMAND_SELECT
+            if request.command == TV_COMMAND_DPAD_CENTER
+            else request.command
+        )
+        self._logger.info(f"Gesture: {request.gesture} -> {display_command}")
+        await self._remote.send_key_command(request.command)
+
+    def _next_request(self) -> RemoteCommandRequest | None:
+        if self._commands:
+            return self._commands.popleft()
+
+        request = self._latest_repeatable
+        self._latest_repeatable = None
+        return request
+
+    def _is_busy(self) -> bool:
+        return self._sending or bool(self._commands)

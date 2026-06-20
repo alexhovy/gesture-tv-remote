@@ -1,3 +1,4 @@
+from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_SAMSUNG
 from src.shared.config import AppConfig
@@ -39,7 +40,7 @@ class SamsungTvRemoteClient:
 
         adapter_command = translate_tv_command(TV_ADAPTER_SAMSUNG, command)
         try:
-            self._remote.send_key(adapter_command)
+            await call_remote_method(self._remote.send_key, adapter_command)
         except Exception as error:
             self._logger.error(f"Samsung TV command {adapter_command} failed: {error}")
 

@@ -1,3 +1,4 @@
+from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU
 from src.shared.config import AppConfig
@@ -34,11 +35,9 @@ class RokuRemoteClient:
         try:
             keypress = getattr(self._remote, "keypress", None)
             if keypress is not None:
-                result = keypress(adapter_command)
+                await call_remote_method(keypress, adapter_command)
             else:
-                result = self._remote.remote(adapter_command)
-            if hasattr(result, "__await__"):
-                await result
+                await call_remote_method(self._remote.remote, adapter_command)
         except Exception as error:
             self._logger.error(f"Roku command {adapter_command} failed: {error}")
 

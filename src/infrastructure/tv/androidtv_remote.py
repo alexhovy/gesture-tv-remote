@@ -1,3 +1,4 @@
+from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV
 from src.shared.config import AppConfig
@@ -65,7 +66,7 @@ class AndroidTvRemoteClient:
 
         adapter_command = translate_tv_command(TV_ADAPTER_ANDROIDTV, command)
         try:
-            self._remote.send_key_command(adapter_command)
+            await call_remote_method(self._remote.send_key_command, adapter_command)
         except ConnectionClosed:
             self._logger.error("Android TV connection closed. Command not sent.")
         except ValueError as error:

@@ -310,7 +310,7 @@ class GestureSessionTests(unittest.TestCase):
             ],
             now=0.2,
         )
-        returning_down = session.evaluate(
+        slight_return = session.evaluate(
             [
                 primary,
                 _hand_state(
@@ -321,6 +321,18 @@ class GestureSessionTests(unittest.TestCase):
                 ),
             ],
             now=0.3,
+        )
+        returning_down = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.56),
+                    size=0.20,
+                    index_position=(0.50, 0.56),
+                ),
+            ],
+            now=0.35,
         )
         released = session.evaluate(
             [
@@ -349,9 +361,61 @@ class GestureSessionTests(unittest.TestCase):
 
         self.assertEqual(first_down.command_gesture, GESTURE_POINT_DOWN)
         self.assertEqual(held_down.command_gesture, GESTURE_POINT_DOWN)
+        self.assertEqual(slight_return.command_gesture, GESTURE_POINT_DOWN)
         self.assertIsNone(returning_down.command_gesture)
         self.assertIsNone(released.command_gesture)
         self.assertEqual(second_down.command_gesture, GESTURE_POINT_DOWN)
+
+    def test_pointer_hold_remains_repeatable_after_debounce(self) -> None:
+        session = GestureSession(AppConfig(debounce_seconds=0.3))
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                ),
+            ],
+            now=0.0,
+        )
+        first_down = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.60),
+                    size=0.20,
+                    index_position=(0.50, 0.60),
+                ),
+            ],
+            now=0.1,
+        )
+        self.assertTrue(
+            session.should_emit(first_down.command_gesture, "DPAD_DOWN", now=0.1)
+        )
+        session.record_emit(first_down.command_gesture, now=0.1)
+
+        held_down = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.58),
+                    size=0.20,
+                    index_position=(0.50, 0.58),
+                ),
+            ],
+            now=0.41,
+        )
+
+        self.assertEqual(held_down.command_gesture, GESTURE_POINT_DOWN)
+        self.assertTrue(
+            session.should_emit(held_down.command_gesture, "DPAD_DOWN", now=0.41)
+        )
 
     def test_volume_distance_scales_with_hand_size(self) -> None:
         self.assertEqual(
@@ -387,12 +451,19 @@ class GestureSessionTests(unittest.TestCase):
             ],
             now=0.2,
         )
-        returning_down = session.evaluate(
+        slight_return = session.evaluate(
             [
                 primary,
                 _hand_state(GESTURE_PINCH, center=(0.70, 0.57), size=0.20),
             ],
             now=0.3,
+        )
+        returning_down = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.56), size=0.20),
+            ],
+            now=0.35,
         )
         released = session.evaluate(
             [
@@ -411,6 +482,7 @@ class GestureSessionTests(unittest.TestCase):
 
         self.assertEqual(first_down.command_gesture, GESTURE_VOLUME_DOWN)
         self.assertEqual(held_down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertEqual(slight_return.command_gesture, GESTURE_VOLUME_DOWN)
         self.assertIsNone(returning_down.command_gesture)
         self.assertIsNone(released.command_gesture)
         self.assertEqual(second_down.command_gesture, GESTURE_VOLUME_DOWN)

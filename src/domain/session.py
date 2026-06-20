@@ -396,7 +396,7 @@ class GestureSession:
             setattr(self, returning_attr, False)
             return gesture
 
-        release_delta = activation_distance * 0.25
+        release_delta = activation_distance * 0.75
         if magnitude <= peak_distance - release_delta:
             setattr(self, returning_attr, True)
 

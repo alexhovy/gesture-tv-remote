@@ -270,6 +270,63 @@ class GestureSessionTests(unittest.TestCase):
             _evaluate_pointer_move(hand_size=0.25, start_x=0.50, end_x=0.55)
         )
 
+    def test_pointer_movement_accumulates_before_threshold(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                ),
+            ],
+            now=0.0,
+        )
+        first_under_threshold = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.52),
+                    size=0.20,
+                    index_position=(0.50, 0.52),
+                ),
+            ],
+            now=0.1,
+        )
+        second_under_threshold = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.54),
+                    size=0.20,
+                    index_position=(0.50, 0.54),
+                ),
+            ],
+            now=0.2,
+        )
+        crossed_threshold = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.56),
+                    size=0.20,
+                    index_position=(0.50, 0.56),
+                ),
+            ],
+            now=0.3,
+        )
+
+        self.assertIsNone(first_under_threshold.command_gesture)
+        self.assertIsNone(second_under_threshold.command_gesture)
+        self.assertEqual(crossed_threshold.command_gesture, GESTURE_POINT_DOWN)
+
     def test_pointer_return_to_center_suppresses_repeat_until_released(self) -> None:
         session = GestureSession(AppConfig())
         primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
@@ -425,6 +482,43 @@ class GestureSessionTests(unittest.TestCase):
         self.assertIsNone(
             _evaluate_volume_move(hand_size=0.25, start_y=0.50, end_y=0.54)
         )
+
+    def test_volume_movement_accumulates_before_threshold(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.50), size=0.20),
+            ],
+            now=0.0,
+        )
+        first_under_threshold = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.52), size=0.20),
+            ],
+            now=0.1,
+        )
+        second_under_threshold = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.54), size=0.20),
+            ],
+            now=0.2,
+        )
+        crossed_threshold = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.56), size=0.20),
+            ],
+            now=0.3,
+        )
+
+        self.assertIsNone(first_under_threshold.command_gesture)
+        self.assertIsNone(second_under_threshold.command_gesture)
+        self.assertEqual(crossed_threshold.command_gesture, GESTURE_VOLUME_DOWN)
 
     def test_volume_return_to_center_suppresses_repeat_until_released(self) -> None:
         session = GestureSession(AppConfig())

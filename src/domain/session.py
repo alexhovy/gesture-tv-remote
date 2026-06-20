@@ -331,8 +331,9 @@ class GestureSession:
             return None
 
         if gesture is None:
-            self.volume_start_y = current_y
-            self._reset_volume_repeat_state()
+            if self.volume_active_gesture is not None:
+                self.volume_start_y = current_y
+                self._reset_volume_repeat_state()
             return None
 
         magnitude = abs(current_y - start_y)
@@ -356,8 +357,9 @@ class GestureSession:
             return None
 
         if gesture is None:
-            self.pointer_start_position = current_position
-            self._reset_pointer_repeat_state()
+            if self.pointer_active_gesture is not None:
+                self.pointer_start_position = current_position
+                self._reset_pointer_repeat_state()
             return None
 
         magnitude = self._pointer_motion_magnitude(

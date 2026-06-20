@@ -1,7 +1,9 @@
+import threading
 import unittest
 from types import SimpleNamespace
 
 from src.infrastructure.camera.camera_zoom import CameraZoomController
+from src.infrastructure.camera.frame_source import LatestFrameSource
 from src.infrastructure.camera.landmark_projection import (
     hand_state_to_original_space,
     landmarks_to_crop_space,
@@ -41,6 +43,19 @@ class VideoPreprocessingTests(unittest.TestCase):
         frame = FakeFrame(4, 6)
 
         self.assertIs(apply_center_crop_zoom(frame, 1.0), frame)
+
+    def test_latest_frame_source_keeps_newest_frame(self) -> None:
+        first_frame = FakeFrame(4, 6)
+        second_frame = FakeFrame(5, 7)
+        capture = FakeCapture([first_frame, second_frame])
+        source = LatestFrameSource(capture)
+
+        source.start()
+        self.assertTrue(capture.finished.wait(timeout=1.0))
+        source.stop()
+
+        self.assertIs(source.latest(), second_frame)
+        self.assertTrue(source.failed())
 
     def test_center_crop_zoom_preserves_frame_dimensions(self) -> None:
         frame = FakeFrame(6, 8)
@@ -270,6 +285,18 @@ class ResizedFrame:
         width, height = size
         self.shape = (height, width, 3)
         self.source_crop = source.crop
+
+
+class FakeCapture:
+    def __init__(self, frames: list[FakeFrame]) -> None:
+        self._frames = frames
+        self.finished = threading.Event()
+
+    def read(self):
+        if self._frames:
+            return True, self._frames.pop(0)
+        self.finished.set()
+        return False, None
 
 
 def _fake_resize(frame: FakeFrame, size: tuple[int, int]) -> ResizedFrame:

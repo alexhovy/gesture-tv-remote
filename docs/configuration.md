@@ -44,15 +44,17 @@ voice stream. Unsupported adapters log that microphone capture is skipped.
 ## Model File
 
 On first run, the app downloads Google's `hand_landmarker.task` model into
-`models/`. The file is ignored by git.
+`models/`. The file is ignored by git. Downloads use a bounded timeout and
+retry count, write to a temporary file first, and atomically replace the final
+model file only after a complete download.
 
 ## Environment Variables
 
 | Variable | Default |
 | --- | --- |
 | `GESTURE_TV_APP_NAME` | `Gesture TV Remote` |
-| `GESTURE_TV_ADAPTER` | `androidtv` |
-| `GESTURE_TV_HOST` | `192.168.0.5` |
+| `GESTURE_TV_ADAPTER` | `samsung` |
+| `GESTURE_TV_HOST` | `192.168.8.7` |
 | `GESTURE_TV_ANDROID_CERT_FILE` | `certs/android/cert.pem` |
 | `GESTURE_TV_ANDROID_KEY_FILE` | `certs/android/key.pem` |
 | `GESTURE_TV_SAMSUNG_TOKEN_FILE` | `certs/samsung/token.txt` |
@@ -61,6 +63,8 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 | `GESTURE_TV_ROKU_PORT` | `8060` |
 | `GESTURE_TV_MODEL_FILE` | `models/hand_landmarker.task` |
 | `GESTURE_TV_MODEL_URL` | MediaPipe hand landmarker URL |
+| `GESTURE_TV_MODEL_DOWNLOAD_TIMEOUT_SECONDS` | `20.0` |
+| `GESTURE_TV_MODEL_DOWNLOAD_RETRIES` | `2` |
 | `GESTURE_TV_WEBCAM_INDEX` | `0` |
 | `GESTURE_TV_CAMERA_ZOOM` | `1.0` |
 | `GESTURE_TV_AUTO_ZOOM_ENABLED` | `True` |

@@ -1,6 +1,7 @@
 import asyncio
 import time
 
+from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_remote import TvRemoteClient
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
@@ -55,7 +56,7 @@ class VoiceCaptureService:
                         chunk = await asyncio.wait_for(chunks.get(), timeout=timeout)
                     except asyncio.TimeoutError:
                         break
-                    voice_stream.send_chunk(chunk)
+                    await call_remote_method(voice_stream.send_chunk, chunk)
             self._logger.info("Microphone: finished.")
         except asyncio.TimeoutError:
             self._logger.error("TV did not start a voice session.")
@@ -65,4 +66,4 @@ class VoiceCaptureService:
             self._logger.error(f"TV voice session failed: {error}")
         finally:
             if voice_stream is not None:
-                voice_stream.end()
+                await call_remote_method(voice_stream.end)

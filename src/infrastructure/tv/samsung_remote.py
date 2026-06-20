@@ -22,7 +22,7 @@ class SamsungTvRemoteClient:
                 token_file=str(self._config.samsung_token_file),
                 name=self._config.app_name,
             )
-            self._remote.open()
+            await call_remote_method(self._remote.open)
         except Exception as error:
             self._logger.error(
                 f"Could not connect to Samsung TV at {self._config.tv_host}: {error}"
@@ -48,6 +48,6 @@ class SamsungTvRemoteClient:
         self._logger.info("Voice capture is not supported for Samsung TV.")
         return None
 
-    def disconnect(self) -> None:
+    async def disconnect(self) -> None:
         if self._remote is not None and hasattr(self._remote, "close"):
-            self._remote.close()
+            await call_remote_method(self._remote.close)

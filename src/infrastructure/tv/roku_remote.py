@@ -15,7 +15,11 @@ class RokuRemoteClient:
         try:
             from rokuecp import Roku
 
-            self._remote = Roku(self._config.tv_host, port=self._config.roku_port)
+            self._remote = await call_remote_method(
+                Roku,
+                self._config.tv_host,
+                port=self._config.roku_port,
+            )
         except Exception as error:
             self._logger.error(
                 f"Could not connect to Roku at {self._config.tv_host}: {error}"
@@ -45,7 +49,7 @@ class RokuRemoteClient:
         self._logger.info("Voice capture is not supported for Roku.")
         return None
 
-    def disconnect(self) -> None:
+    async def disconnect(self) -> None:
         close = getattr(self._remote, "close", None)
         if close is not None:
-            close()
+            await call_remote_method(close)

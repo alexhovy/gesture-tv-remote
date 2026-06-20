@@ -106,5 +106,15 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
 
         to_thread.assert_not_called()
 
+    async def test_sync_remote_method_returning_awaitable_is_awaited(self) -> None:
+        async def fake_to_thread(method, *args, **kwargs):
+            return method(*args, **kwargs)
+
+        async def result() -> str:
+            return "ok"
+
+        with patch("src.infrastructure.tv.async_call.asyncio.to_thread", fake_to_thread):
+            self.assertEqual(await call_remote_method(lambda: result()), "ok")
+
 if __name__ == "__main__":
     unittest.main()

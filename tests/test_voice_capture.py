@@ -19,7 +19,7 @@ class UnsupportedVoiceRemote:
         self.started_voice = True
         return None
 
-    def disconnect(self) -> None:
+    async def disconnect(self) -> None:
         pass
 
 

@@ -15,6 +15,7 @@ from src.domain.constants import (
 )
 from src.domain.session import GestureSession, HandState
 from src.infrastructure.camera.camera_zoom import CameraZoomController
+from src.infrastructure.camera.frame_source import LatestFrameSource
 from src.infrastructure.hand_tracking.hand_model import download_model_if_missing
 from src.infrastructure.hand_tracking.hand_tracking import DetectedHand, MediaPipeHandTracker
 from src.infrastructure.camera.landmark_projection import (
@@ -49,29 +50,35 @@ class GestureRemoteService:
             self._logger.info("TV connection failed. Exiting.")
             return
 
-        cap = cv2.VideoCapture(self._config.webcam_index)
-        if not cap.isOpened():
+        cap = await asyncio.to_thread(cv2.VideoCapture, self._config.webcam_index)
+        if not await asyncio.to_thread(cap.isOpened):
             self._logger.error("Could not open webcam.")
-            cap.release()
-            self._remote.disconnect()
+            await asyncio.to_thread(cap.release)
+            await self._remote.disconnect()
             return
 
         hand_tracker = None
         voice_task = None
+        frame_source = LatestFrameSource(cap)
         last_debug_time = 0.0
         last_debug_message = ""
         zoom_controller = CameraZoomController(self._config)
         self._command_dispatcher.start()
+        frame_source.start()
 
         try:
-            download_model_if_missing(self._config)
+            await asyncio.to_thread(download_model_if_missing, self._config)
             hand_tracker = MediaPipeHandTracker(self._config)
 
             while True:
-                ok, frame = cap.read()
-                if not ok:
+                if frame_source.failed():
                     self._logger.error("Could not read frame from webcam.")
                     break
+
+                frame = frame_source.latest()
+                if frame is None:
+                    await asyncio.sleep(0.005)
+                    continue
 
                 frame = self._flip_frame(frame)
                 detection_frame = self._detection_frame(frame, self._config.camera_zoom)
@@ -124,12 +131,12 @@ class GestureRemoteService:
                 )
                 cv2.imshow(self._config.app_name, display_frame.frame)
 
-                if cv2.waitKey(1) & 0xFF == ord("q"):
+                if cv2.pollKey() & 0xFF == ord("q"):
                     break
 
                 await asyncio.sleep(0)
         finally:
-            await self._cleanup(voice_task, hand_tracker, cap)
+            await self._cleanup(voice_task, hand_tracker, cap, frame_source)
 
     @staticmethod
     def _flip_frame(frame: Any) -> Any:
@@ -235,17 +242,20 @@ class GestureRemoteService:
         voice_task: asyncio.Task | None,
         hand_tracker: MediaPipeHandTracker | None,
         cap: Any,
+        frame_source: LatestFrameSource | None,
     ) -> None:
         if voice_task is not None and not voice_task.done():
             voice_task.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await voice_task
+        if frame_source is not None:
+            frame_source.stop()
         if hand_tracker is not None:
-            hand_tracker.close()
-        cap.release()
-        cv2.destroyAllWindows()
+            await asyncio.to_thread(hand_tracker.close)
+        await asyncio.to_thread(cap.release)
+        await asyncio.to_thread(cv2.destroyAllWindows)
         await self._command_dispatcher.close()
-        self._remote.disconnect()
+        await self._remote.disconnect()
 
 
 def _debug_crop(crop: CropRect) -> str:

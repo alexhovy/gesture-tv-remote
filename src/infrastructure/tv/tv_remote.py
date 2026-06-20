@@ -32,7 +32,7 @@ class TvRemoteClient(Protocol):
     async def start_voice(self) -> VoiceStream | None:
         ...
 
-    def disconnect(self) -> None:
+    async def disconnect(self) -> None:
         ...
 
 

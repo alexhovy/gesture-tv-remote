@@ -48,6 +48,6 @@ ignored by git.
 
 ## Configuration
 
-The TV adapter defaults to `androidtv` and the host defaults to `192.168.0.5`.
+The TV adapter defaults to `samsung` and the host defaults to `192.168.8.7`.
 Runtime settings can be overridden with environment variables; see
 [Configuration](docs/configuration.md).

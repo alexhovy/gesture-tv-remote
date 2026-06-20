@@ -32,6 +32,8 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.SAMSUNG_PORT: "8001",
                 EnvVar.WEBOS_CLIENT_KEY_FILE: "local/webos/client_key.txt",
                 EnvVar.ROKU_PORT: "8061",
+                EnvVar.MODEL_DOWNLOAD_TIMEOUT_SECONDS: "3.5",
+                EnvVar.MODEL_DOWNLOAD_RETRIES: "4",
                 EnvVar.DEBOUNCE_SECONDS: "0.25",
                 EnvVar.POINTER_DISTANCE_RATIO: "0.5",
                 EnvVar.VOLUME_MAX_DISTANCE: "0.3",
@@ -60,6 +62,8 @@ class ConfigTests(unittest.TestCase):
             Path("local/webos/client_key.txt"),
         )
         self.assertEqual(config.roku_port, 8061)
+        self.assertEqual(config.model_download_timeout_seconds, 3.5)
+        self.assertEqual(config.model_download_retries, 4)
         self.assertEqual(config.debounce_seconds, 0.25)
         self.assertEqual(config.pointer_distance_ratio, 0.5)
         self.assertEqual(config.volume_max_distance, 0.3)
@@ -100,6 +104,10 @@ class ConfigTests(unittest.TestCase):
     def test_load_config_rejects_confidence_outside_unit_interval(self) -> None:
         with self.assertRaisesRegex(ValueError, "min_tracking_confidence"):
             load_config_from_env({EnvVar.MIN_TRACKING_CONFIDENCE: "1.2"})
+
+    def test_load_config_rejects_invalid_model_download_settings(self) -> None:
+        with self.assertRaisesRegex(ValueError, "model_download_timeout_seconds"):
+            load_config_from_env({EnvVar.MODEL_DOWNLOAD_TIMEOUT_SECONDS: "0"})
 
 
 if __name__ == "__main__":

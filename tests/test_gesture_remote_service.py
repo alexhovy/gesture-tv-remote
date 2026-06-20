@@ -23,6 +23,7 @@ def _install_service_import_stubs() -> None:
     cv2.circle = lambda *args, **kwargs: None
     cv2.imshow = lambda *args, **kwargs: None
     cv2.waitKey = lambda delay: 0
+    cv2.pollKey = lambda: 0
     cv2.destroyAllWindows = lambda: None
     sys.modules.setdefault("cv2", cv2)
 

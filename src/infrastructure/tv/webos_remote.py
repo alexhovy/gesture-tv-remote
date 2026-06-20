@@ -60,9 +60,9 @@ class WebOsRemoteClient:
         self._logger.info("Voice capture is not supported for webOS TV.")
         return None
 
-    def disconnect(self) -> None:
+    async def disconnect(self) -> None:
         if self._client is not None and hasattr(self._client, "close"):
-            self._client.close()
+            await call_remote_method(self._client.close)
 
     def _read_client_key(self) -> str | None:
         if not self._config.webos_client_key_file.exists():

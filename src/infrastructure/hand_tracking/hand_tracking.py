@@ -1,3 +1,4 @@
+import threading
 from dataclasses import dataclass
 from typing import Any
 
@@ -28,13 +29,17 @@ class MediaPipeHandTracker:
     def __init__(self, config: AppConfig) -> None:
         options = HandLandmarkerOptions(
             base_options=BaseOptions(model_asset_path=str(config.model_file)),
-            running_mode=VisionTaskRunningMode.VIDEO,
+            running_mode=VisionTaskRunningMode.LIVE_STREAM,
             num_hands=config.max_hands,
             min_hand_detection_confidence=config.min_hand_detection_confidence,
             min_hand_presence_confidence=config.min_hand_presence_confidence,
             min_tracking_confidence=config.min_tracking_confidence,
+            result_callback=self._handle_result,
         )
         self._config = config
+        self._lock = threading.Lock()
+        self._latest: tuple[list[HandState], list[DetectedHand]] = ([], [])
+        self._last_timestamp_ms = -1
         self._hands = HandLandmarker.create_from_options(options)
 
     def detect(
@@ -43,10 +48,18 @@ class MediaPipeHandTracker:
         timestamp_ms: int,
     ) -> tuple[list[HandState], list[DetectedHand]]:
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
-        results = self._hands.detect_for_video(mp_image, timestamp_ms)
-        detected_hands = self._get_detected_hands(results)
+        timestamp_ms = self._next_timestamp(timestamp_ms)
+        self._hands.detect_async(mp_image, timestamp_ms)
+        with self._lock:
+            return self._latest
 
+    def close(self) -> None:
+        self._hands.close()
+
+    def _handle_result(self, results, output_image, timestamp_ms: int) -> None:
+        del output_image, timestamp_ms
         hand_states = []
+        detected_hands = self._get_detected_hands(results)
         for detected_hand in detected_hands:
             landmarks = detected_hand.landmarks
             handedness = detected_hand.handedness
@@ -74,10 +87,14 @@ class MediaPipeHandTracker:
                 )
             )
 
-        return hand_states, detected_hands
+        with self._lock:
+            self._latest = (hand_states, detected_hands)
 
-    def close(self) -> None:
-        self._hands.close()
+    def _next_timestamp(self, timestamp_ms: int) -> int:
+        with self._lock:
+            timestamp_ms = max(timestamp_ms, self._last_timestamp_ms + 1)
+            self._last_timestamp_ms = timestamp_ms
+            return timestamp_ms
 
     @staticmethod
     def _get_detected_hands(results) -> list[DetectedHand]:

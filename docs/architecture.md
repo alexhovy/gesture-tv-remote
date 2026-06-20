@@ -49,8 +49,14 @@ webOS, or Roku. Voice capture is an adapter capability; currently only the
 Android TV adapter exposes the voice stream used by `VoiceCaptureService`.
 
 Camera preprocessing is split by responsibility inside `infrastructure/camera`:
-frame cropping lives in `video_preprocessing`, coordinate projection lives in
-`landmark_projection`, and auto-zoom state lives in `camera_zoom`.
+latest-frame capture lives in `frame_source`, frame cropping lives in
+`video_preprocessing`, coordinate projection lives in `landmark_projection`, and
+auto-zoom state lives in `camera_zoom`. Camera capture keeps only the newest
+frame so slow processing cannot build a stale frame backlog.
+
+Hand tracking uses MediaPipe live-stream mode. The service submits frames and
+consumes the latest completed result, allowing MediaPipe to skip frames while it
+is busy instead of blocking the display and gesture loop.
 
 ### Shared
 

@@ -16,6 +16,8 @@ class EnvVar:
     ROKU_PORT = "GESTURE_TV_ROKU_PORT"
     MODEL_FILE = "GESTURE_TV_MODEL_FILE"
     MODEL_URL = "GESTURE_TV_MODEL_URL"
+    MODEL_DOWNLOAD_TIMEOUT_SECONDS = "GESTURE_TV_MODEL_DOWNLOAD_TIMEOUT_SECONDS"
+    MODEL_DOWNLOAD_RETRIES = "GESTURE_TV_MODEL_DOWNLOAD_RETRIES"
     DEBOUNCE_SECONDS = "GESTURE_TV_DEBOUNCE_SECONDS"
     HOME_CHORD_SECONDS = "GESTURE_TV_HOME_CHORD_SECONDS"
     POINTER_DISTANCE_RATIO = "GESTURE_TV_POINTER_DISTANCE_RATIO"
@@ -51,8 +53,8 @@ class EnvVar:
 @dataclass(frozen=True)
 class AppConfig:
     app_name: str = "Gesture TV Remote"
-    tv_adapter: str = "androidtv"
-    tv_host: str = "192.168.0.5"
+    tv_adapter: str = "samsung"
+    tv_host: str = "192.168.8.7"
     android_cert_file: Path = Path("certs/android/cert.pem")
     android_key_file: Path = Path("certs/android/key.pem")
     samsung_token_file: Path = Path("certs/samsung/token.txt")
@@ -64,6 +66,8 @@ class AppConfig:
         "https://storage.googleapis.com/mediapipe-models/hand_landmarker/"
         "hand_landmarker/float16/latest/hand_landmarker.task"
     )
+    model_download_timeout_seconds: float = 20.0
+    model_download_retries: int = 2
     debounce_seconds: float = 0.3
     home_chord_seconds: float = 0.35
     pointer_distance_ratio: float = 0.25
@@ -161,6 +165,12 @@ def _validate_config(config: AppConfig) -> None:
     _require_at_least(config.debounce_seconds, "debounce_seconds", 0.0)
     _require_at_least(config.home_chord_seconds, "home_chord_seconds", 0.0)
     _require_at_least(config.voice_capture_seconds, "voice_capture_seconds", 0.0)
+    _require_at_least(
+        config.model_download_timeout_seconds,
+        "model_download_timeout_seconds",
+        0.1,
+    )
+    _require_at_least(config.model_download_retries, "model_download_retries", 0)
     _require_at_least(config.debug_log_seconds, "debug_log_seconds", 0.0)
     _require_at_least(
         config.primary_lost_grace_seconds,
@@ -258,6 +268,12 @@ _CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (
     ("roku_port", EnvVar.ROKU_PORT, _int),
     ("model_file", EnvVar.MODEL_FILE, _path),
     ("model_url", EnvVar.MODEL_URL, _str),
+    (
+        "model_download_timeout_seconds",
+        EnvVar.MODEL_DOWNLOAD_TIMEOUT_SECONDS,
+        _float,
+    ),
+    ("model_download_retries", EnvVar.MODEL_DOWNLOAD_RETRIES, _int),
     ("debounce_seconds", EnvVar.DEBOUNCE_SECONDS, _float),
     ("home_chord_seconds", EnvVar.HOME_CHORD_SECONDS, _float),
     ("pointer_distance_ratio", EnvVar.POINTER_DISTANCE_RATIO, _float),

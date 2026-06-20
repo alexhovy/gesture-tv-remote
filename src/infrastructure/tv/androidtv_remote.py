@@ -77,6 +77,6 @@ class AndroidTvRemoteClient:
             return None
         return await self._remote.start_voice()
 
-    def disconnect(self) -> None:
+    async def disconnect(self) -> None:
         if self._remote is not None:
-            self._remote.disconnect()
+            await call_remote_method(self._remote.disconnect)

@@ -1,5 +1,6 @@
 import asyncio
 import contextlib
+import threading
 import time
 from collections import deque
 from dataclasses import dataclass
@@ -251,20 +252,11 @@ class GestureRemoteService:
             voice_task.cancel()
             await self._cleanup_step("voice capture", voice_task)
         if frame_source is not None:
-            await self._cleanup_step(
-                "frame source",
-                asyncio.to_thread(frame_source.stop),
-            )
+            await self._cleanup_sync_step("frame source", frame_source.stop)
         if hand_tracker is not None:
-            await self._cleanup_step(
-                "hand tracker",
-                asyncio.to_thread(hand_tracker.close),
-            )
-        await self._cleanup_step("camera", asyncio.to_thread(cap.release))
-        await self._cleanup_step(
-            "OpenCV windows",
-            asyncio.to_thread(cv2.destroyAllWindows),
-        )
+            await self._cleanup_sync_step("hand tracker", hand_tracker.close)
+        await self._cleanup_sync_step("camera", cap.release)
+        self._cleanup_now("OpenCV windows", cv2.destroyAllWindows)
         await self._cleanup_step("command dispatcher", self._command_dispatcher.close())
         await self._cleanup_step("TV remote", self._remote.disconnect())
 
@@ -275,6 +267,41 @@ class GestureRemoteService:
             pass
         except TimeoutError:
             self._logger.error(f"Timed out while cleaning up {name}.")
+        except Exception as error:
+            self._logger.error(f"Error while cleaning up {name}: {error}")
+
+    async def _cleanup_sync_step(self, name: str, method: Any) -> None:
+        done = threading.Event()
+        error: list[BaseException] = []
+
+        def run() -> None:
+            try:
+                method()
+            except BaseException as cleanup_error:
+                error.append(cleanup_error)
+            finally:
+                done.set()
+
+        thread = threading.Thread(
+            target=run,
+            name=f"cleanup-{name.replace(' ', '-')}",
+            daemon=True,
+        )
+        thread.start()
+        deadline = time.monotonic() + CLEANUP_TIMEOUT_SECONDS
+        while not done.is_set() and time.monotonic() < deadline:
+            await asyncio.sleep(0.01)
+
+        if not done.is_set():
+            self._logger.error(f"Timed out while cleaning up {name}.")
+            return
+
+        if error:
+            self._logger.error(f"Error while cleaning up {name}: {error[0]}")
+
+    def _cleanup_now(self, name: str, method: Any) -> None:
+        try:
+            method()
         except Exception as error:
             self._logger.error(f"Error while cleaning up {name}: {error}")
 

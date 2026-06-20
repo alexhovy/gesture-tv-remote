@@ -1,8 +1,10 @@
 import asyncio
 import sys
+import time
 import types
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 from src.domain.constants import (
     TV_COMMAND_HOME,
@@ -137,6 +139,29 @@ class GestureRemoteServiceTests(unittest.TestCase):
         )
 
 
+class GestureRemoteCleanupTests(unittest.IsolatedAsyncioTestCase):
+    async def test_sync_cleanup_timeout_does_not_wait_for_blocked_method(self) -> None:
+        service = GestureRemoteService.__new__(GestureRemoteService)
+        service._logger = FakeLogger()
+
+        def blocked_cleanup() -> None:
+            time.sleep(10.0)
+
+        with patch(
+            "src.services.gesture_remote_service.CLEANUP_TIMEOUT_SECONDS",
+            0.01,
+        ):
+            started = time.monotonic()
+            await service._cleanup_sync_step("blocked cleanup", blocked_cleanup)
+            elapsed = time.monotonic() - started
+
+        self.assertLess(elapsed, 0.5)
+        self.assertIn(
+            "Timed out while cleaning up blocked cleanup.",
+            service._logger.messages,
+        )
+
+
 class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
     async def test_repeatable_commands_coalesce_while_remote_is_busy(self) -> None:
         remote = BlockingRemote()
@@ -199,6 +224,9 @@ class FakeLogger:
         self.messages = []
 
     def info(self, message: str) -> None:
+        self.messages.append(message)
+
+    def error(self, message: str) -> None:
         self.messages.append(message)
 
 

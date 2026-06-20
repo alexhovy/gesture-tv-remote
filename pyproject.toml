@@ -1,3 +1,29 @@
+[project]
+name = "gesture-tv-remote"
+version = "0.1.0"
+description = "Python MVP for controlling a TV with webcam hand gestures."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "aiowebostv",
+    "androidtvremote2",
+    "mediapipe",
+    "opencv-python",
+    "rokuecp",
+    "samsungtvws",
+    "sounddevice",
+]
+
+[dependency-groups]
+dev = [
+    "black",
+    "mypy",
+    "ruff",
+]
+
+[tool.uv]
+package = false
+
 [tool.black]
 line-length = 88
 target-version = ["py312"]

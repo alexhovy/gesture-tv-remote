@@ -2,22 +2,30 @@
 
 ## Setup
 
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-```
-
-On Windows PowerShell, activate the virtual environment with:
+Install `uv` first if it is not already available.
 
 ```powershell
-.venv\Scripts\Activate.ps1
+python -m pip install uv
+```
+
+Restart the terminal after installation so PowerShell can pick up the updated
+`PATH`.
+
+```bash
+uv sync
+```
+
+If PowerShell still cannot find `uv` after installing it with Python, run it as
+a Python module:
+
+```powershell
+python -m uv sync
 ```
 
 ## Run
 
 ```bash
-python main.py
+uv run python main.py
 ```
 
 Press `q` to quit the webcam window.
@@ -25,7 +33,7 @@ Press `q` to quit the webcam window.
 ## Test
 
 ```bash
-python -m unittest discover -s tests
+uv run python -m unittest discover -s tests
 ```
 
 The current tests focus on pure domain behavior and adapter selection or command

@@ -7,6 +7,7 @@ from src.domain.constants import (
     GESTURE_OPEN_TO_FIST,
     GESTURE_PINCH,
     GESTURE_POINT,
+    GESTURE_POINT_DOWN,
     GESTURE_POINT_RIGHT,
     GESTURE_TWO_FINGERS,
     GESTURE_VOLUME_DOWN,
@@ -269,6 +270,89 @@ class GestureSessionTests(unittest.TestCase):
             _evaluate_pointer_move(hand_size=0.25, start_x=0.50, end_x=0.55)
         )
 
+    def test_pointer_return_to_center_suppresses_repeat_until_released(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                ),
+            ],
+            now=0.0,
+        )
+        first_down = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.56),
+                    size=0.20,
+                    index_position=(0.50, 0.56),
+                ),
+            ],
+            now=0.1,
+        )
+        held_down = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.60),
+                    size=0.20,
+                    index_position=(0.50, 0.60),
+                ),
+            ],
+            now=0.2,
+        )
+        returning_down = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.57),
+                    size=0.20,
+                    index_position=(0.50, 0.57),
+                ),
+            ],
+            now=0.3,
+        )
+        released = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.51),
+                    size=0.20,
+                    index_position=(0.50, 0.51),
+                ),
+            ],
+            now=0.4,
+        )
+        second_down = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.70, 0.57),
+                    size=0.20,
+                    index_position=(0.50, 0.57),
+                ),
+            ],
+            now=0.5,
+        )
+
+        self.assertEqual(first_down.command_gesture, GESTURE_POINT_DOWN)
+        self.assertEqual(held_down.command_gesture, GESTURE_POINT_DOWN)
+        self.assertIsNone(returning_down.command_gesture)
+        self.assertIsNone(released.command_gesture)
+        self.assertEqual(second_down.command_gesture, GESTURE_POINT_DOWN)
+
     def test_volume_distance_scales_with_hand_size(self) -> None:
         self.assertEqual(
             _evaluate_volume_move(hand_size=0.10, start_y=0.50, end_y=0.54),
@@ -277,6 +361,59 @@ class GestureSessionTests(unittest.TestCase):
         self.assertIsNone(
             _evaluate_volume_move(hand_size=0.25, start_y=0.50, end_y=0.54)
         )
+
+    def test_volume_return_to_center_suppresses_repeat_until_released(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.50), size=0.20),
+            ],
+            now=0.0,
+        )
+        first_down = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.56), size=0.20),
+            ],
+            now=0.1,
+        )
+        held_down = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.60), size=0.20),
+            ],
+            now=0.2,
+        )
+        returning_down = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.57), size=0.20),
+            ],
+            now=0.3,
+        )
+        released = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.51), size=0.20),
+            ],
+            now=0.4,
+        )
+        second_down = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.57), size=0.20),
+            ],
+            now=0.5,
+        )
+
+        self.assertEqual(first_down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertEqual(held_down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIsNone(returning_down.command_gesture)
+        self.assertIsNone(released.command_gesture)
+        self.assertEqual(second_down.command_gesture, GESTURE_VOLUME_DOWN)
 
     def test_scaled_distance_clamps_to_minimum_and_maximum(self) -> None:
         self.assertEqual(

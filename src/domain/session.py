@@ -13,6 +13,10 @@ from src.domain.constants import (
     GESTURE_OPEN_TO_FIST,
     GESTURE_PINCH,
     GESTURE_POINT,
+    GESTURE_POINT_DOWN,
+    GESTURE_POINT_LEFT,
+    GESTURE_POINT_RIGHT,
+    GESTURE_POINT_UP,
     GESTURE_TWO_FINGERS,
 )
 from src.domain.gestures import detect_direction, detect_volume
@@ -57,7 +61,13 @@ class GestureSession:
         self.primary_select_pending = False
         self.secondary_back_pending = False
         self.volume_start_y: float | None = None
+        self.volume_active_gesture: str | None = None
+        self.volume_peak_distance = 0.0
+        self.volume_returning_to_neutral = False
         self.pointer_start_position: tuple[float, float] | None = None
+        self.pointer_active_gesture: str | None = None
+        self.pointer_peak_distance = 0.0
+        self.pointer_returning_to_neutral = False
 
     def evaluate(self, hand_states: list[HandState], now: float) -> GestureDecision:
         primary_anchor = self.primary_position
@@ -84,8 +94,7 @@ class GestureSession:
 
         if primary_hand is None:
             if self._primary_missing_within_grace(now):
-                self.volume_start_y = None
-                self.pointer_start_position = None
+                self.reset_motion_tracking()
                 return GestureDecision(
                     command_gesture=None,
                     activated=True,
@@ -126,8 +135,7 @@ class GestureSession:
         if secondary_hand is not None and not secondary_hand.upright:
             secondary_hand = None
             secondary_index = None
-            self.volume_start_y = None
-            self.pointer_start_position = None
+            self.reset_motion_tracking()
 
         primary_gesture = primary_hand.gesture
         self.primary_position = primary_hand.center
@@ -176,8 +184,7 @@ class GestureSession:
             self.secondary_close_time = None
             self.primary_select_pending = False
             self.secondary_back_pending = False
-            self.volume_start_y = None
-            self.pointer_start_position = None
+            self.reset_motion_tracking()
         elif self.primary_select_pending and self.primary_close_time is not None:
             if now - self.primary_close_time > self._config.home_chord_seconds:
                 command_gesture = GESTURE_OPEN_TO_FIST
@@ -191,7 +198,7 @@ class GestureSession:
 
         if command_gesture is None and secondary_hand is not None:
             if secondary_gesture == GESTURE_PINCH and secondary_center is not None:
-                self.pointer_start_position = None
+                self._reset_pointer_tracking()
                 if self.volume_start_y is None:
                     self.volume_start_y = secondary_center[1]
                 volume_distance = self._scaled_distance(
@@ -205,9 +212,15 @@ class GestureSession:
                     secondary_center[1],
                     volume_distance,
                 )
+                volume_gesture = self._filtered_volume_gesture(
+                    volume_gesture,
+                    self.volume_start_y,
+                    secondary_center[1],
+                    volume_distance,
+                )
                 command_gesture = volume_gesture
             else:
-                self.volume_start_y = None
+                self._reset_volume_tracking()
 
             if (
                 command_gesture is None
@@ -233,9 +246,15 @@ class GestureSession:
                     self._config.pointer_dominance,
                     GESTURE_POINT,
                 )
+                pointer_gesture = self._filtered_pointer_gesture(
+                    pointer_gesture,
+                    self.pointer_start_position,
+                    pointer_position,
+                    pointer_distance,
+                )
                 command_gesture = pointer_gesture
             elif secondary_gesture != GESTURE_POINT:
-                self.pointer_start_position = None
+                self._reset_pointer_tracking()
 
             if command_gesture is None and secondary_gesture == GESTURE_TWO_FINGERS:
                 mic_gesture = GESTURE_MIC
@@ -285,8 +304,8 @@ class GestureSession:
         self.last_command_gesture = None
 
     def reset_motion_tracking(self) -> None:
-        self.volume_start_y = None
-        self.pointer_start_position = None
+        self._reset_volume_tracking()
+        self._reset_pointer_tracking()
 
     def _reset_activation(self) -> None:
         self.primary_position = None
@@ -298,8 +317,122 @@ class GestureSession:
         self.secondary_close_time = None
         self.primary_select_pending = False
         self.secondary_back_pending = False
+        self._reset_volume_tracking()
+        self._reset_pointer_tracking()
+
+    def _filtered_volume_gesture(
+        self,
+        gesture: str | None,
+        start_y: float | None,
+        current_y: float,
+        distance: float,
+    ) -> str | None:
+        if start_y is None:
+            return None
+
+        if gesture is None:
+            self.volume_start_y = current_y
+            self._reset_volume_repeat_state()
+            return None
+
+        magnitude = abs(current_y - start_y)
+        return self._filtered_motion_gesture(
+            gesture,
+            magnitude,
+            distance,
+            active_gesture_attr="volume_active_gesture",
+            peak_distance_attr="volume_peak_distance",
+            returning_attr="volume_returning_to_neutral",
+        )
+
+    def _filtered_pointer_gesture(
+        self,
+        gesture: str | None,
+        start_position: tuple[float, float] | None,
+        current_position: tuple[float, float],
+        distance: float,
+    ) -> str | None:
+        if start_position is None:
+            return None
+
+        if gesture is None:
+            self.pointer_start_position = current_position
+            self._reset_pointer_repeat_state()
+            return None
+
+        magnitude = self._pointer_motion_magnitude(
+            gesture,
+            start_position,
+            current_position,
+        )
+        return self._filtered_motion_gesture(
+            gesture,
+            magnitude,
+            distance,
+            active_gesture_attr="pointer_active_gesture",
+            peak_distance_attr="pointer_peak_distance",
+            returning_attr="pointer_returning_to_neutral",
+        )
+
+    def _filtered_motion_gesture(
+        self,
+        gesture: str,
+        magnitude: float,
+        activation_distance: float,
+        active_gesture_attr: str,
+        peak_distance_attr: str,
+        returning_attr: str,
+    ) -> str | None:
+        active_gesture = getattr(self, active_gesture_attr)
+        if gesture != active_gesture:
+            setattr(self, active_gesture_attr, gesture)
+            setattr(self, peak_distance_attr, magnitude)
+            setattr(self, returning_attr, False)
+            return gesture
+
+        peak_distance = getattr(self, peak_distance_attr)
+        if magnitude >= peak_distance:
+            setattr(self, peak_distance_attr, magnitude)
+            setattr(self, returning_attr, False)
+            return gesture
+
+        release_delta = activation_distance * 0.25
+        if magnitude <= peak_distance - release_delta:
+            setattr(self, returning_attr, True)
+
+        return None if getattr(self, returning_attr) else gesture
+
+    @staticmethod
+    def _pointer_motion_magnitude(
+        gesture: str,
+        start_position: tuple[float, float],
+        current_position: tuple[float, float],
+    ) -> float:
+        start_x, start_y = start_position
+        current_x, current_y = current_position
+        if gesture in {GESTURE_POINT_LEFT, GESTURE_POINT_RIGHT}:
+            return abs(current_x - start_x)
+        if gesture in {GESTURE_POINT_UP, GESTURE_POINT_DOWN}:
+            return abs(current_y - start_y)
+        return math.dist(start_position, current_position)
+
+    def _reset_volume_tracking(self) -> None:
         self.volume_start_y = None
+        self._reset_volume_repeat_state()
+
+    def _reset_volume_repeat_state(self) -> None:
+        self.volume_active_gesture = None
+        self.volume_peak_distance = 0.0
+        self.volume_returning_to_neutral = False
+
+    def _reset_pointer_tracking(self) -> None:
         self.pointer_start_position = None
+        self._reset_pointer_repeat_state()
+
+    def _reset_pointer_repeat_state(self) -> None:
+        self.pointer_active_gesture = None
+        self.pointer_peak_distance = 0.0
+        self.pointer_returning_to_neutral = False
 
     def _primary_missing_within_grace(self, now: float) -> bool:
         if self.primary_position is None or self.primary_last_seen_time is None:

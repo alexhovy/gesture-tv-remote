@@ -30,4 +30,7 @@ upright open palm to activate controls.
 ## Debounce
 
 Most commands are emitted once per gesture change. DPAD and volume commands may
-repeat after the configured debounce interval.
+repeat after the configured debounce interval while the gesture is held away
+from its starting point. Moving the pointer or pinch back toward center
+suppresses further repeats until the gesture reaches neutral, which resets the
+starting point for the next intentional movement.

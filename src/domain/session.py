@@ -330,12 +330,22 @@ class GestureSession:
         if start_y is None:
             return None
 
+        magnitude = abs(current_y - start_y)
         if gesture is None:
             if self.volume_active_gesture is not None:
-                self.volume_returning_to_neutral = True
+                if self._is_motion_neutral(magnitude, distance):
+                    self.volume_start_y = current_y
+                    self._reset_volume_repeat_state()
+                else:
+                    self.volume_returning_to_neutral = True
             return None
 
-        magnitude = abs(current_y - start_y)
+        if self.volume_returning_to_neutral:
+            if self._is_motion_neutral(magnitude, distance):
+                self.volume_start_y = current_y
+                self._reset_volume_repeat_state()
+            return None
+
         return self._filtered_motion_gesture(
             gesture,
             magnitude,
@@ -355,16 +365,23 @@ class GestureSession:
         if start_position is None:
             return None
 
+        magnitude = math.dist(start_position, current_position)
         if gesture is None:
             if self.pointer_active_gesture is not None:
-                self.pointer_returning_to_neutral = True
+                if self._is_motion_neutral(magnitude, distance):
+                    self.pointer_start_position = current_position
+                    self._reset_pointer_repeat_state()
+                else:
+                    self.pointer_returning_to_neutral = True
             return None
 
-        magnitude = self._pointer_motion_magnitude(
-            gesture,
-            start_position,
-            current_position,
-        )
+        if self.pointer_returning_to_neutral:
+            if self._is_motion_neutral(magnitude, distance):
+                self.pointer_start_position = current_position
+                self._reset_pointer_repeat_state()
+            return None
+
+        magnitude = self._pointer_motion_magnitude(gesture, start_position, current_position)
         return self._filtered_motion_gesture(
             gesture,
             magnitude,
@@ -387,6 +404,10 @@ class GestureSession:
             return None
 
         active_gesture = getattr(self, active_gesture_attr)
+        if active_gesture is not None and gesture != active_gesture:
+            setattr(self, returning_attr, True)
+            return None
+
         if gesture != active_gesture:
             setattr(self, active_gesture_attr, gesture)
             setattr(self, peak_distance_attr, magnitude)
@@ -404,6 +425,10 @@ class GestureSession:
             setattr(self, returning_attr, True)
 
         return None if getattr(self, returning_attr) else gesture
+
+    @staticmethod
+    def _is_motion_neutral(magnitude: float, activation_distance: float) -> bool:
+        return magnitude <= activation_distance * 0.45
 
     @staticmethod
     def _pointer_motion_magnitude(

@@ -34,6 +34,6 @@ repeat after the configured debounce interval while the gesture is held away
 from its starting point. Slow movement below the command threshold still
 accumulates from that starting point until it crosses the threshold. Small hold
 jitter still repeats. Moving the pointer or pinch substantially back toward
-center suppresses further repeats while that same gesture remains held. Release
-and restart the point or pinch gesture to reset the starting point for the next
-intentional movement, including movement in the opposite direction.
+center suppresses further repeats while it is returning. Once the pointer or
+pinch reaches neutral, the starting point resets and the same held gesture can
+start a new intentional movement, including movement in a different direction.

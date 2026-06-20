@@ -47,6 +47,9 @@ for a client selected by configuration, then sends app-level TV commands such as
 commands to the protocol-specific command names for Android TV, Samsung TV,
 webOS, or Roku. Voice capture is an adapter capability; currently only the
 Android TV adapter exposes the voice stream used by `VoiceCaptureService`.
+Adapters backed by synchronous TV libraries own their own single-worker
+executor so connection objects are opened, used, reconnected, and closed on one
+thread without blocking the gesture loop.
 
 Camera preprocessing is split by responsibility inside `infrastructure/camera`:
 latest-frame capture lives in `frame_source`, frame cropping lives in

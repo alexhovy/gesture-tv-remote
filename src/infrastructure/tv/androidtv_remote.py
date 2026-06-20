@@ -1,3 +1,5 @@
+import asyncio
+
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV
@@ -41,7 +43,8 @@ class AndroidTvRemoteClient:
             self._logger.info("Starting pairing. Enter the code shown on your TV.")
             try:
                 await remote.async_start_pairing()
-                pairing_code = input("Pairing code: ").strip()
+                pairing_code = await asyncio.to_thread(input, "Pairing code: ")
+                pairing_code = pairing_code.strip()
                 await remote.async_finish_pairing(pairing_code)
                 await remote.async_connect()
             except (CannotConnect, ConnectionClosed, InvalidAuth) as error:

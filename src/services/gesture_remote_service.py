@@ -36,6 +36,9 @@ from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
 
+CLEANUP_TIMEOUT_SECONDS = 1.0
+
+
 class GestureRemoteService:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
@@ -246,16 +249,34 @@ class GestureRemoteService:
     ) -> None:
         if voice_task is not None and not voice_task.done():
             voice_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError):
-                await voice_task
+            await self._cleanup_step("voice capture", voice_task)
         if frame_source is not None:
-            frame_source.stop()
+            await self._cleanup_step(
+                "frame source",
+                asyncio.to_thread(frame_source.stop),
+            )
         if hand_tracker is not None:
-            await asyncio.to_thread(hand_tracker.close)
-        await asyncio.to_thread(cap.release)
-        await asyncio.to_thread(cv2.destroyAllWindows)
-        await self._command_dispatcher.close()
-        await self._remote.disconnect()
+            await self._cleanup_step(
+                "hand tracker",
+                asyncio.to_thread(hand_tracker.close),
+            )
+        await self._cleanup_step("camera", asyncio.to_thread(cap.release))
+        await self._cleanup_step(
+            "OpenCV windows",
+            asyncio.to_thread(cv2.destroyAllWindows),
+        )
+        await self._cleanup_step("command dispatcher", self._command_dispatcher.close())
+        await self._cleanup_step("TV remote", self._remote.disconnect())
+
+    async def _cleanup_step(self, name: str, awaitable: Any) -> None:
+        try:
+            await asyncio.wait_for(awaitable, timeout=CLEANUP_TIMEOUT_SECONDS)
+        except asyncio.CancelledError:
+            pass
+        except TimeoutError:
+            self._logger.error(f"Timed out while cleaning up {name}.")
+        except Exception as error:
+            self._logger.error(f"Error while cleaning up {name}: {error}")
 
 
 def _debug_crop(crop: CropRect) -> str:

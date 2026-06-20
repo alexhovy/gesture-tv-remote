@@ -1,5 +1,10 @@
 import asyncio
+import sys
+import tempfile
+import threading
+import types
 import unittest
+from pathlib import Path
 from unittest.mock import patch
 
 from src.domain.constants import (
@@ -115,6 +120,161 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
 
         with patch("src.infrastructure.tv.async_call.asyncio.to_thread", fake_to_thread):
             self.assertEqual(await call_remote_method(lambda: result()), "ok")
+
+
+class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self._previous_module = sys.modules.get("samsungtvws")
+
+    async def asyncTearDown(self) -> None:
+        if self._previous_module is None:
+            sys.modules.pop("samsungtvws", None)
+        else:
+            sys.modules["samsungtvws"] = self._previous_module
+
+    async def test_sync_client_calls_stay_on_one_worker_thread(self) -> None:
+        fake_remote = _install_fake_samsung()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = SamsungTvRemoteClient(
+                AppConfig(
+                    tv_host="tv.local",
+                    samsung_token_file=Path(temp_dir) / "token.txt",
+                )
+            )
+
+            self.assertTrue(await client.connect())
+            await client.send_key_command(TV_COMMAND_DPAD_LEFT)
+            await client.disconnect()
+
+        instance = fake_remote.instances[0]
+        thread_ids = {thread_id for _, thread_id in instance.operations}
+        self.assertEqual(len(thread_ids), 1)
+        self.assertEqual(
+            [name for name, _ in instance.operations],
+            ["init", "open", "send:KEY_LEFT", "close"],
+        )
+
+    async def test_command_reconnects_and_retries_after_socket_failure(self) -> None:
+        fake_remote = _install_fake_samsung(fail_first_send=True)
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = SamsungTvRemoteClient(
+                AppConfig(
+                    tv_host="tv.local",
+                    samsung_token_file=Path(temp_dir) / "token.txt",
+                )
+            )
+
+            self.assertTrue(await client.connect())
+            await client.send_key_command(TV_COMMAND_DPAD_RIGHT)
+            await client.disconnect()
+
+        self.assertEqual(len(fake_remote.instances), 2)
+        self.assertEqual(
+            [name for name, _ in fake_remote.instances[0].operations],
+            ["init", "open", "send:KEY_RIGHT", "close"],
+        )
+        self.assertEqual(
+            [name for name, _ in fake_remote.instances[1].operations],
+            ["init", "open", "send:KEY_RIGHT", "close"],
+        )
+
+
+class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self._previous_module = sys.modules.get("rokuecp")
+
+    async def asyncTearDown(self) -> None:
+        if self._previous_module is None:
+            sys.modules.pop("rokuecp", None)
+        else:
+            sys.modules["rokuecp"] = self._previous_module
+
+    async def test_sync_client_calls_stay_on_one_worker_thread(self) -> None:
+        fake_remote = _install_fake_roku()
+        client = RokuRemoteClient(AppConfig(tv_host="roku.local"))
+
+        self.assertTrue(await client.connect())
+        await client.send_key_command(TV_COMMAND_DPAD_UP)
+        await client.disconnect()
+
+        instance = fake_remote.instances[0]
+        thread_ids = {thread_id for _, thread_id in instance.operations}
+        self.assertEqual(len(thread_ids), 1)
+        self.assertEqual(
+            [name for name, _ in instance.operations],
+            ["init", "keypress:Up", "close"],
+        )
+
+    async def test_command_reconnects_and_retries_after_socket_failure(self) -> None:
+        fake_remote = _install_fake_roku(fail_first_send=True)
+        client = RokuRemoteClient(AppConfig(tv_host="roku.local"))
+
+        self.assertTrue(await client.connect())
+        await client.send_key_command(TV_COMMAND_DPAD_DOWN)
+        await client.disconnect()
+
+        self.assertEqual(len(fake_remote.instances), 2)
+        self.assertEqual(
+            [name for name, _ in fake_remote.instances[0].operations],
+            ["init", "keypress:Down", "close"],
+        )
+        self.assertEqual(
+            [name for name, _ in fake_remote.instances[1].operations],
+            ["init", "keypress:Down", "close"],
+        )
+
+
+def _install_fake_samsung(fail_first_send: bool = False):
+    class FakeSamsungTVWS:
+        instances = []
+        send_count = 0
+
+        def __init__(self, **kwargs):
+            self.kwargs = kwargs
+            self.operations = [("init", threading.get_ident())]
+            FakeSamsungTVWS.instances.append(self)
+
+        def open(self):
+            self.operations.append(("open", threading.get_ident()))
+
+        def send_key(self, key):
+            FakeSamsungTVWS.send_count += 1
+            self.operations.append((f"send:{key}", threading.get_ident()))
+            if fail_first_send and FakeSamsungTVWS.send_count == 1:
+                raise OSError("socket is already closed")
+
+        def close(self):
+            self.operations.append(("close", threading.get_ident()))
+
+    module = types.SimpleNamespace(SamsungTVWS=FakeSamsungTVWS)
+    sys.modules["samsungtvws"] = module
+    return FakeSamsungTVWS
+
+
+def _install_fake_roku(fail_first_send: bool = False):
+    class FakeRoku:
+        instances = []
+        send_count = 0
+
+        def __init__(self, host, port):
+            self.host = host
+            self.port = port
+            self.operations = [("init", threading.get_ident())]
+            FakeRoku.instances.append(self)
+
+        def keypress(self, key):
+            FakeRoku.send_count += 1
+            self.operations.append((f"keypress:{key}", threading.get_ident()))
+            if fail_first_send and FakeRoku.send_count == 1:
+                raise OSError("socket is already closed")
+
+        def close(self):
+            self.operations.append(("close", threading.get_ident()))
+
+    module = types.SimpleNamespace(Roku=FakeRoku)
+    sys.modules["rokuecp"] = module
+    return FakeRoku
+
 
 if __name__ == "__main__":
     unittest.main()

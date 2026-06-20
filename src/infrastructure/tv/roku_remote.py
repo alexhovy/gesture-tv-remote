@@ -1,4 +1,4 @@
-from src.infrastructure.tv.async_call import call_remote_method
+from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU
 from src.shared.config import AppConfig
@@ -10,16 +10,11 @@ class RokuRemoteClient:
         self._config = config
         self._remote = None
         self._logger = AppLogger()
+        self._executor = ThreadBoundRemoteExecutor("roku-tv")
 
     async def connect(self) -> bool:
         try:
-            from rokuecp import Roku
-
-            self._remote = await call_remote_method(
-                Roku,
-                self._config.tv_host,
-                port=self._config.roku_port,
-            )
+            await self._executor.call(self._connect_sync)
         except Exception as error:
             self._logger.error(
                 f"Could not connect to Roku at {self._config.tv_host}: {error}"
@@ -37,19 +32,58 @@ class RokuRemoteClient:
 
         adapter_command = translate_tv_command(TV_ADAPTER_ROKU, command)
         try:
-            keypress = getattr(self._remote, "keypress", None)
-            if keypress is not None:
-                await call_remote_method(keypress, adapter_command)
-            else:
-                await call_remote_method(self._remote.remote, adapter_command)
+            await self._executor.call(self._send_key_sync, adapter_command)
         except Exception as error:
-            self._logger.error(f"Roku command {adapter_command} failed: {error}")
+            self._logger.debug(
+                f"Roku command {adapter_command} failed, reconnecting: {error}"
+            )
+            try:
+                await self._executor.call(self._reconnect_sync)
+                await self._executor.call(self._send_key_sync, adapter_command)
+            except Exception as retry_error:
+                self._logger.error(
+                    f"Roku command {adapter_command} failed: {retry_error}"
+                )
 
     async def start_voice(self):
         self._logger.info("Voice capture is not supported for Roku.")
         return None
 
     async def disconnect(self) -> None:
-        close = getattr(self._remote, "close", None)
-        if close is not None:
-            await call_remote_method(close)
+        try:
+            await self._executor.call(self._close_sync)
+        finally:
+            self._executor.shutdown()
+
+    def _connect_sync(self) -> None:
+        from rokuecp import Roku
+
+        self._remote = Roku(
+            self._config.tv_host,
+            port=self._config.roku_port,
+        )
+
+    def _send_key_sync(self, adapter_command: str) -> None:
+        if self._remote is None:
+            raise RuntimeError("Roku is not connected")
+
+        keypress = getattr(self._remote, "keypress", None)
+        if keypress is not None:
+            keypress(adapter_command)
+        else:
+            self._remote.remote(adapter_command)
+
+    def _reconnect_sync(self) -> None:
+        self._close_sync(ignore_errors=True)
+        self._connect_sync()
+
+    def _close_sync(self, ignore_errors: bool = False) -> None:
+        try:
+            close = getattr(self._remote, "close", None)
+            if close is not None:
+                close()
+        except Exception:
+            if not ignore_errors:
+                raise
+        finally:
+            self._remote = None

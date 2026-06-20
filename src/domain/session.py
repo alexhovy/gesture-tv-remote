@@ -332,8 +332,7 @@ class GestureSession:
 
         if gesture is None:
             if self.volume_active_gesture is not None:
-                self.volume_start_y = current_y
-                self._reset_volume_repeat_state()
+                self.volume_returning_to_neutral = True
             return None
 
         magnitude = abs(current_y - start_y)
@@ -358,8 +357,7 @@ class GestureSession:
 
         if gesture is None:
             if self.pointer_active_gesture is not None:
-                self.pointer_start_position = current_position
-                self._reset_pointer_repeat_state()
+                self.pointer_returning_to_neutral = True
             return None
 
         magnitude = self._pointer_motion_magnitude(
@@ -385,6 +383,9 @@ class GestureSession:
         peak_distance_attr: str,
         returning_attr: str,
     ) -> str | None:
+        if getattr(self, returning_attr):
+            return None
+
         active_gesture = getattr(self, active_gesture_attr)
         if gesture != active_gesture:
             setattr(self, active_gesture_attr, gesture)

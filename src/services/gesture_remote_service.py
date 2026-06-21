@@ -103,7 +103,7 @@ class GestureRemoteService:
                     now,
                 )
 
-                crop_changed = self._update_zoom(
+                self._update_zoom(
                     zoom_controller,
                     decision.zoom_landmarks,
                     decision.activated,
@@ -115,9 +115,6 @@ class GestureRemoteService:
                     now,
                     voice_task,
                 )
-
-                if crop_changed:
-                    self._gesture_session.reset_motion_tracking()
 
                 display_frame = self._display_frame(frame, zoom_controller)
                 debug_message = self._debug_message(
@@ -220,8 +217,10 @@ class GestureRemoteService:
         now: float,
         voice_task: asyncio.Task | None,
     ) -> asyncio.Task | None:
-        if not activated or command_gesture is None:
+        if not activated:
             self._gesture_session.record_idle()
+            return voice_task
+        if command_gesture is None:
             return voice_task
 
         command = GESTURE_TO_COMMAND.get(command_gesture)

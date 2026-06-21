@@ -1,4 +1,3 @@
-import math
 from dataclasses import dataclass
 
 from src.domain.constants import (
@@ -6,96 +5,161 @@ from src.domain.constants import (
     GESTURE_POINT_LEFT,
     GESTURE_POINT_RIGHT,
     GESTURE_POINT_UP,
+    GESTURE_VOLUME_DOWN,
+    GESTURE_VOLUME_UP,
 )
 
-
-@dataclass(frozen=True)
-class MotionFilterState:
-    active_gesture: str | None
-    peak_distance: float
-    returning_to_neutral: bool
+MOTION_ACTIVATION_RATIO = 0.72
+MOTION_NEUTRAL_RATIO = 0.45
+MOTION_EPSILON = 1e-9
 
 
 @dataclass(frozen=True)
-class MotionFilterResult:
-    command_gesture: str | None
-    active_gesture: str | None
-    peak_distance: float
-    returning_to_neutral: bool
+class JoystickDecision:
+    gesture: str | None
+    magnitude: float
+    activation_distance: float
+    neutral_distance: float
+    threshold_ratio: float
+    in_neutral: bool
     blocked_reason: str | None = None
 
 
-def filter_motion_gesture(
-    gesture: str,
-    magnitude: float,
-    activation_distance: float,
-    state: MotionFilterState,
-) -> MotionFilterResult:
-    if state.returning_to_neutral:
-        return MotionFilterResult(
-            command_gesture=None,
-            active_gesture=state.active_gesture,
-            peak_distance=state.peak_distance,
-            returning_to_neutral=True,
-            blocked_reason="returning_to_neutral",
+def activation_distance(distance: float) -> float:
+    return distance * MOTION_ACTIVATION_RATIO
+
+
+def neutral_distance(activation_distance: float) -> float:
+    return activation_distance * MOTION_NEUTRAL_RATIO
+
+
+def classify_pointer_joystick(
+    anchor_position: tuple[float, float] | None,
+    current_position: tuple[float, float],
+    distance: float,
+    dominance: float,
+    prefix: str,
+) -> JoystickDecision:
+    activation = activation_distance(distance)
+    neutral = neutral_distance(activation)
+    if anchor_position is None:
+        return JoystickDecision(None, 0.0, activation, neutral, 0.0, True, "missing_anchor")
+
+    anchor_x, anchor_y = anchor_position
+    current_x, current_y = current_position
+    dx = current_x - anchor_x
+    dy = current_y - anchor_y
+    abs_dx = abs(dx)
+    abs_dy = abs(dy)
+    magnitude = max(abs_dx, abs_dy)
+    threshold_ratio = _threshold_ratio(magnitude, activation)
+
+    if magnitude <= neutral + MOTION_EPSILON:
+        return JoystickDecision(
+            None,
+            magnitude,
+            activation,
+            neutral,
+            threshold_ratio,
+            True,
+            "neutral",
         )
 
-    if state.active_gesture is not None and gesture != state.active_gesture:
-        return MotionFilterResult(
-            command_gesture=None,
-            active_gesture=state.active_gesture,
-            peak_distance=state.peak_distance,
-            returning_to_neutral=True,
-            blocked_reason="direction_changed_before_neutral",
+    if abs_dx + MOTION_EPSILON < activation and abs_dy + MOTION_EPSILON < activation:
+        return JoystickDecision(
+            None,
+            magnitude,
+            activation,
+            neutral,
+            threshold_ratio,
+            False,
+            "below_threshold",
         )
 
-    if gesture != state.active_gesture:
-        return MotionFilterResult(
-            command_gesture=gesture,
-            active_gesture=gesture,
-            peak_distance=magnitude,
-            returning_to_neutral=False,
+    if abs_dx + MOTION_EPSILON >= activation and abs_dx >= dominance * abs_dy:
+        direction = GESTURE_POINT_RIGHT if dx > 0 else GESTURE_POINT_LEFT
+        magnitude = abs_dx
+        return JoystickDecision(
+            f"{prefix}_{direction.removeprefix('POINT_')}",
+            magnitude,
+            activation,
+            neutral,
+            _threshold_ratio(magnitude, activation),
+            False,
         )
 
-    if magnitude >= state.peak_distance:
-        return MotionFilterResult(
-            command_gesture=None,
-            active_gesture=state.active_gesture,
-            peak_distance=magnitude,
-            returning_to_neutral=False,
+    if abs_dy + MOTION_EPSILON >= activation and abs_dy >= dominance * abs_dx:
+        direction = GESTURE_POINT_DOWN if dy > 0 else GESTURE_POINT_UP
+        magnitude = abs_dy
+        return JoystickDecision(
+            f"{prefix}_{direction.removeprefix('POINT_')}",
+            magnitude,
+            activation,
+            neutral,
+            _threshold_ratio(magnitude, activation),
+            False,
         )
 
-    release_delta = activation_distance * 0.75
-    if magnitude <= state.peak_distance - release_delta:
-        return MotionFilterResult(
-            command_gesture=None,
-            active_gesture=state.active_gesture,
-            peak_distance=state.peak_distance,
-            returning_to_neutral=True,
-            blocked_reason="returning_to_neutral",
-        )
-
-    return MotionFilterResult(
-        command_gesture=None,
-        active_gesture=state.active_gesture,
-        peak_distance=state.peak_distance,
-        returning_to_neutral=False,
+    return JoystickDecision(
+        None,
+        magnitude,
+        activation,
+        neutral,
+        threshold_ratio,
+        False,
+        "axis_ambiguous",
     )
 
 
-def is_motion_neutral(magnitude: float, activation_distance: float) -> bool:
-    return magnitude <= activation_distance
+def classify_volume_joystick(
+    anchor_y: float | None,
+    current_y: float,
+    distance: float,
+) -> JoystickDecision:
+    activation = activation_distance(distance)
+    neutral = neutral_distance(activation)
+    if anchor_y is None:
+        return JoystickDecision(None, 0.0, activation, neutral, 0.0, True, "missing_anchor")
+
+    dy = current_y - anchor_y
+    magnitude = abs(dy)
+    threshold_ratio = _threshold_ratio(magnitude, activation)
+
+    if magnitude <= neutral + MOTION_EPSILON:
+        return JoystickDecision(
+            None,
+            magnitude,
+            activation,
+            neutral,
+            threshold_ratio,
+            True,
+            "neutral",
+        )
+
+    if magnitude + MOTION_EPSILON < activation:
+        return JoystickDecision(
+            None,
+            magnitude,
+            activation,
+            neutral,
+            threshold_ratio,
+            False,
+            "below_threshold",
+        )
+
+    gesture = GESTURE_VOLUME_DOWN if dy > 0 else GESTURE_VOLUME_UP
+    return JoystickDecision(
+        gesture,
+        magnitude,
+        activation,
+        neutral,
+        threshold_ratio,
+        False,
+    )
 
 
-def pointer_motion_magnitude(
-    gesture: str,
-    start_position: tuple[float, float],
-    current_position: tuple[float, float],
-) -> float:
-    start_x, start_y = start_position
-    current_x, current_y = current_position
-    if gesture in {GESTURE_POINT_LEFT, GESTURE_POINT_RIGHT}:
-        return abs(current_x - start_x)
-    if gesture in {GESTURE_POINT_UP, GESTURE_POINT_DOWN}:
-        return abs(current_y - start_y)
-    return math.dist(start_position, current_position)
+def _threshold_ratio(magnitude: float, threshold: float) -> float:
+    if threshold <= 0:
+        return 0.0
+
+    return magnitude / threshold

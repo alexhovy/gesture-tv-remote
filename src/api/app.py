@@ -4,7 +4,7 @@ from collections.abc import Callable
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.shared.config import AppConfig, load_config_from_env
-from src.shared.logging import AppLogger
+from src.shared.logging import AppLogger, configure_app_logging
 
 
 async def main() -> None:
@@ -31,6 +31,7 @@ def create_config_provider() -> Callable[[], AppConfig]:
 
 
 def run() -> None:
+    configure_app_logging()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

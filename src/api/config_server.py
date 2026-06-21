@@ -2,7 +2,7 @@ from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.network.mdns import MdnsPublisher
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.shared.config import AppConfig, load_config_from_env
-from src.shared.logging import AppLogger
+from src.shared.logging import AppLogger, configure_app_logging
 from src.web.config_app import create_config_server
 
 
@@ -42,6 +42,7 @@ def run_config_server(
 
 
 def run() -> None:
+    configure_app_logging()
     run_config_server()
 
 

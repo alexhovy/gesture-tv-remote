@@ -19,12 +19,10 @@ from src.domain.constants import (
     GESTURE_VOLUME_DOWN,
     GESTURE_VOLUME_UP,
 )
-from src.domain.gestures import detect_direction, detect_volume
 from src.domain.motion_filter import (
-    MotionFilterState,
-    filter_motion_gesture,
-    is_motion_neutral,
-    pointer_motion_magnitude,
+    JoystickDecision,
+    classify_pointer_joystick,
+    classify_volume_joystick,
 )
 from src.domain.session_debug import GestureSessionDebugMixin
 from src.domain.session_types import GestureDecision, HandState
@@ -32,6 +30,8 @@ from src.shared.config import AppConfig
 
 
 class GestureSession(GestureSessionDebugMixin):
+    MOTION_NEUTRAL_SETTLE_FRAMES = 3
+
     def __init__(self, config: AppConfig) -> None:
         self._config = config
         self.last_command_time = 0.0
@@ -44,18 +44,30 @@ class GestureSession(GestureSessionDebugMixin):
         self.secondary_close_time: float | None = None
         self.primary_select_pending = False
         self.secondary_back_pending = False
-        self.volume_start_y: float | None = None
+        self.volume_anchor_y: float | None = None
         self.volume_active_gesture: str | None = None
-        self.volume_peak_distance = 0.0
-        self.volume_returning_to_neutral = False
+        self.volume_armed = True
+        self.volume_neutral_frames = 0
+        self.volume_phase = "idle"
         self.volume_last_blocked_reason: str | None = None
-        self.volume_rebased = False
-        self.pointer_start_position: tuple[float, float] | None = None
+        self.volume_candidate_gesture: str | None = None
+        self.volume_candidate_magnitude = 0.0
+        self.volume_activation_distance = 0.0
+        self.volume_neutral_distance = 0.0
+        self.volume_threshold_ratio = 0.0
+        self.volume_in_neutral = True
+        self.pointer_anchor_position: tuple[float, float] | None = None
         self.pointer_active_gesture: str | None = None
-        self.pointer_peak_distance = 0.0
-        self.pointer_returning_to_neutral = False
+        self.pointer_armed = True
+        self.pointer_neutral_frames = 0
+        self.pointer_phase = "idle"
         self.pointer_last_blocked_reason: str | None = None
-        self.pointer_rebased = False
+        self.pointer_candidate_gesture: str | None = None
+        self.pointer_candidate_magnitude = 0.0
+        self.pointer_activation_distance = 0.0
+        self.pointer_neutral_distance = 0.0
+        self.pointer_threshold_ratio = 0.0
+        self.pointer_in_neutral = True
 
     def update_config(self, config: AppConfig) -> None:
         self._config = config
@@ -163,9 +175,9 @@ class GestureSession(GestureSessionDebugMixin):
         pointer_distance = 0.0
         pointer_position = None
         self.pointer_last_blocked_reason = None
-        self.pointer_rebased = False
         self.volume_last_blocked_reason = None
-        self.volume_rebased = False
+        self._reset_pointer_diagnostics()
+        self._reset_volume_diagnostics()
 
         both_closed = (
             self.primary_close_time is not None
@@ -197,24 +209,24 @@ class GestureSession(GestureSessionDebugMixin):
         if command_gesture is None and secondary_hand is not None:
             if secondary_gesture == GESTURE_PINCH and secondary_center is not None:
                 self._reset_pointer_tracking()
-                if self.volume_start_y is None:
-                    self.volume_start_y = secondary_center[1]
+                if self.volume_anchor_y is None:
+                    self.volume_anchor_y = secondary_center[1]
                 volume_distance = self._scaled_distance(
                     secondary_size,
                     self._config.volume_distance_ratio,
                     self._config.volume_min_distance,
                     self._config.volume_max_distance,
                 )
-                volume_gesture = detect_volume(
-                    self.volume_start_y,
+                volume_candidate = classify_volume_joystick(
+                    self.volume_anchor_y,
                     secondary_center[1],
                     volume_distance,
                 )
-                volume_gesture = self._filtered_volume_gesture(
-                    volume_gesture,
-                    self.volume_start_y,
+                self._record_volume_decision(volume_candidate)
+                volume_gesture = self._volume_joystick_command(
+                    volume_candidate,
                     secondary_center[1],
-                    volume_distance,
+                    now,
                 )
                 command_gesture = volume_gesture
             else:
@@ -226,26 +238,26 @@ class GestureSession(GestureSessionDebugMixin):
                 and secondary_center is not None
             ):
                 pointer_position = secondary_center
-                if self.pointer_start_position is None:
-                    self.pointer_start_position = pointer_position
+                if self.pointer_anchor_position is None:
+                    self.pointer_anchor_position = pointer_position
                 pointer_distance = self._scaled_distance(
                     secondary_size,
                     self._config.pointer_distance_ratio,
                     self._config.pointer_min_distance,
                     self._config.pointer_max_distance,
                 )
-                pointer_gesture = detect_direction(
-                    self.pointer_start_position,
+                pointer_candidate = classify_pointer_joystick(
+                    self.pointer_anchor_position,
                     pointer_position,
                     pointer_distance,
                     self._config.pointer_dominance,
                     GESTURE_POINT,
                 )
-                pointer_gesture = self._filtered_pointer_gesture(
-                    pointer_gesture,
-                    self.pointer_start_position,
+                self._record_pointer_decision(pointer_candidate)
+                pointer_gesture = self._pointer_joystick_command(
+                    pointer_candidate,
                     pointer_position,
-                    pointer_distance,
+                    now,
                 )
                 command_gesture = pointer_gesture
             elif secondary_gesture != GESTURE_POINT:
@@ -287,7 +299,10 @@ class GestureSession(GestureSessionDebugMixin):
 
     def should_emit(self, command_gesture: str, command: str | None, now: float) -> bool:
         gesture_changed = command_gesture != self.last_command_gesture
-        return gesture_changed
+        if gesture_changed:
+            return True
+
+        return now - self.last_command_time >= self._config.debounce_seconds
 
     def record_emit(self, command_gesture: str, now: float) -> None:
         self.last_command_time = now
@@ -313,135 +328,145 @@ class GestureSession(GestureSessionDebugMixin):
         self._reset_volume_tracking()
         self._reset_pointer_tracking()
 
-    def _filtered_volume_gesture(
+    def _volume_joystick_command(
         self,
-        gesture: str | None,
-        start_y: float | None,
+        decision: JoystickDecision,
         current_y: float,
-        distance: float,
+        now: float,
     ) -> str | None:
-        if start_y is None:
+        if decision.in_neutral:
+            self._settle_volume_neutral(current_y)
             return None
 
-        magnitude = abs(current_y - start_y)
-
-        if gesture is None:
-            if self.volume_active_gesture is None:
-                return None
-
-            if is_motion_neutral(magnitude, distance):
-                self.volume_start_y = current_y
-                self._reset_volume_motion_state()
-                self.volume_rebased = True
-            else:
-                self.volume_returning_to_neutral = True
-                self.volume_last_blocked_reason = "returning_to_neutral"
-            return None
-
-        if self.volume_returning_to_neutral:
-            if is_motion_neutral(magnitude, distance):
-                self.volume_start_y = current_y
-                self._reset_volume_motion_state()
-                self.volume_rebased = True
-            else:
-                self.volume_last_blocked_reason = "returning_to_neutral"
-            return None
-
-        if self.volume_active_gesture is not None and gesture != self.volume_active_gesture:
-            self.volume_returning_to_neutral = True
-            self.volume_last_blocked_reason = "direction_changed_before_neutral"
-            return None
-
-        result = filter_motion_gesture(
-            gesture,
-            magnitude,
-            distance,
-            MotionFilterState(
-                active_gesture=self.volume_active_gesture,
-                peak_distance=self.volume_peak_distance,
-                returning_to_neutral=self.volume_returning_to_neutral,
-            ),
+        return self._motion_command(
+            decision,
+            active_gesture_attr="volume_active_gesture",
+            armed_attr="volume_armed",
+            neutral_frames_attr="volume_neutral_frames",
+            phase_attr="volume_phase",
+            blocked_reason_attr="volume_last_blocked_reason",
         )
-        self.volume_active_gesture = result.active_gesture
-        self.volume_peak_distance = result.peak_distance
-        self.volume_returning_to_neutral = result.returning_to_neutral
-        self.volume_last_blocked_reason = result.blocked_reason
-        return result.command_gesture
 
-    def _filtered_pointer_gesture(
+    def _pointer_joystick_command(
         self,
-        gesture: str | None,
-        start_position: tuple[float, float] | None,
+        decision: JoystickDecision,
         current_position: tuple[float, float],
-        distance: float,
+        now: float,
     ) -> str | None:
-        if start_position is None:
+        if decision.in_neutral:
+            self._settle_pointer_neutral(current_position)
             return None
 
-        magnitude = math.dist(start_position, current_position)
-
-        if gesture is None:
-            if self.pointer_active_gesture is None:
-                return None
-
-            if is_motion_neutral(magnitude, distance):
-                self.pointer_start_position = current_position
-                self._reset_pointer_motion_state()
-                self.pointer_rebased = True
-            else:
-                self.pointer_returning_to_neutral = True
-                self.pointer_last_blocked_reason = "returning_to_neutral"
-            return None
-
-        if self.pointer_returning_to_neutral:
-            if is_motion_neutral(magnitude, distance):
-                self.pointer_start_position = current_position
-                self._reset_pointer_motion_state()
-                self.pointer_rebased = True
-            else:
-                self.pointer_last_blocked_reason = "returning_to_neutral"
-            return None
-
-        if self.pointer_active_gesture is not None and gesture != self.pointer_active_gesture:
-            self.pointer_returning_to_neutral = True
-            self.pointer_last_blocked_reason = "direction_changed_before_neutral"
-            return None
-
-        magnitude = pointer_motion_magnitude(gesture, start_position, current_position)
-
-        result = filter_motion_gesture(
-            gesture,
-            magnitude,
-            distance,
-            MotionFilterState(
-                active_gesture=self.pointer_active_gesture,
-                peak_distance=self.pointer_peak_distance,
-                returning_to_neutral=self.pointer_returning_to_neutral,
-            ),
+        return self._motion_command(
+            decision,
+            active_gesture_attr="pointer_active_gesture",
+            armed_attr="pointer_armed",
+            neutral_frames_attr="pointer_neutral_frames",
+            phase_attr="pointer_phase",
+            blocked_reason_attr="pointer_last_blocked_reason",
         )
-        self.pointer_active_gesture = result.active_gesture
-        self.pointer_peak_distance = result.peak_distance
-        self.pointer_returning_to_neutral = result.returning_to_neutral
-        self.pointer_last_blocked_reason = result.blocked_reason
-        return result.command_gesture
+
+    def _motion_command(
+        self,
+        decision: JoystickDecision,
+        active_gesture_attr: str,
+        armed_attr: str,
+        neutral_frames_attr: str,
+        phase_attr: str,
+        blocked_reason_attr: str,
+    ) -> str | None:
+        setattr(self, neutral_frames_attr, 0)
+        if decision.gesture is None:
+            if getattr(self, armed_attr):
+                setattr(self, phase_attr, "armed")
+            else:
+                setattr(self, phase_attr, "triggered")
+                setattr(self, blocked_reason_attr, "awaiting_neutral")
+            return None
+
+        if getattr(self, armed_attr):
+            setattr(self, active_gesture_attr, decision.gesture)
+            setattr(self, armed_attr, False)
+            setattr(self, phase_attr, "triggered")
+            return decision.gesture
+
+        setattr(self, phase_attr, "triggered")
+        setattr(self, blocked_reason_attr, "awaiting_neutral")
+        return None
+
+    def _settle_volume_neutral(self, current_y: float) -> None:
+        self.volume_neutral_frames += 1
+        self.volume_phase = "settling"
+        self.volume_last_blocked_reason = "settling_neutral"
+        if self.volume_neutral_frames < self.MOTION_NEUTRAL_SETTLE_FRAMES:
+            return
+
+        self.volume_anchor_y = current_y
+        self._reset_volume_motion_state()
+
+    def _settle_pointer_neutral(self, current_position: tuple[float, float]) -> None:
+        self.pointer_neutral_frames += 1
+        self.pointer_phase = "settling"
+        self.pointer_last_blocked_reason = "settling_neutral"
+        if self.pointer_neutral_frames < self.MOTION_NEUTRAL_SETTLE_FRAMES:
+            return
+
+        self.pointer_anchor_position = current_position
+        self._reset_pointer_motion_state()
+
+    def _record_volume_decision(self, decision: JoystickDecision) -> None:
+        self.volume_candidate_gesture = decision.gesture
+        self.volume_candidate_magnitude = decision.magnitude
+        self.volume_activation_distance = decision.activation_distance
+        self.volume_neutral_distance = decision.neutral_distance
+        self.volume_threshold_ratio = decision.threshold_ratio
+        self.volume_in_neutral = decision.in_neutral
+        self.volume_last_blocked_reason = decision.blocked_reason
+
+    def _record_pointer_decision(self, decision: JoystickDecision) -> None:
+        self.pointer_candidate_gesture = decision.gesture
+        self.pointer_candidate_magnitude = decision.magnitude
+        self.pointer_activation_distance = decision.activation_distance
+        self.pointer_neutral_distance = decision.neutral_distance
+        self.pointer_threshold_ratio = decision.threshold_ratio
+        self.pointer_in_neutral = decision.in_neutral
+        self.pointer_last_blocked_reason = decision.blocked_reason
 
     def _reset_volume_tracking(self) -> None:
-        self.volume_start_y = None
+        self.volume_anchor_y = None
         self._reset_volume_motion_state()
 
     def _reset_volume_motion_state(self) -> None:
         self.volume_active_gesture = None
-        self.volume_peak_distance = 0.0
-        self.volume_returning_to_neutral = False
+        self.volume_armed = True
+        self.volume_neutral_frames = 0
+        self.volume_phase = "armed"
+
+    def _reset_volume_diagnostics(self) -> None:
+        self.volume_candidate_gesture = None
+        self.volume_candidate_magnitude = 0.0
+        self.volume_activation_distance = 0.0
+        self.volume_neutral_distance = 0.0
+        self.volume_threshold_ratio = 0.0
+        self.volume_in_neutral = True
 
     def _reset_pointer_tracking(self) -> None:
-        self.pointer_start_position = None
+        self.pointer_anchor_position = None
         self._reset_pointer_motion_state()
 
     def _reset_pointer_motion_state(self) -> None:
         self.pointer_active_gesture = None
-        self.pointer_peak_distance = 0.0
-        self.pointer_returning_to_neutral = False
+        self.pointer_armed = True
+        self.pointer_neutral_frames = 0
+        self.pointer_phase = "armed"
+
+    def _reset_pointer_diagnostics(self) -> None:
+        self.pointer_candidate_gesture = None
+        self.pointer_candidate_magnitude = 0.0
+        self.pointer_activation_distance = 0.0
+        self.pointer_neutral_distance = 0.0
+        self.pointer_threshold_ratio = 0.0
+        self.pointer_in_neutral = True
 
     def _primary_missing_within_grace(self, now: float) -> bool:
         if self.primary_position is None or self.primary_last_seen_time is None:

@@ -54,25 +54,37 @@ class GestureSessionDebugMixin:
         )
 
     def _debug_pointer_state(self, current_position: tuple[float, float] | None) -> str:
-        start = self._debug_position(self.pointer_start_position)
+        anchor = self._debug_position(self.pointer_anchor_position)
         current = self._debug_position(current_position)
-        dx, dy = self._debug_delta(self.pointer_start_position, current_position)
+        dx, dy = self._debug_delta(self.pointer_anchor_position, current_position)
         return (
-            f"start={start}:active={self.pointer_active_gesture or DEBUG_NONE}"
+            f"anchor={anchor}:active={self.pointer_active_gesture or DEBUG_NONE}"
+            f":phase={self.pointer_phase}"
+            f":armed={self.pointer_armed}"
+            f":settle_frames={self.pointer_neutral_frames}"
             f":current={current}:dx={dx}:dy={dy}"
-            f":peak={self.pointer_peak_distance:.2f}"
-            f":returning={self.pointer_returning_to_neutral}"
-            f":rebased={self.pointer_rebased}"
+            f":candidate={self.pointer_candidate_gesture or DEBUG_NONE}"
+            f":magnitude={self.pointer_candidate_magnitude:.3f}"
+            f":activation={self.pointer_activation_distance:.3f}"
+            f":neutral={self.pointer_neutral_distance:.3f}"
+            f":threshold_ratio={self.pointer_threshold_ratio:.2f}"
+            f":in_neutral={self.pointer_in_neutral}"
             f":blocked={self.pointer_last_blocked_reason or DEBUG_NONE}"
         )
 
     def _debug_volume_state(self) -> str:
-        start = DEBUG_NONE if self.volume_start_y is None else f"{self.volume_start_y:.2f}"
+        anchor = DEBUG_NONE if self.volume_anchor_y is None else f"{self.volume_anchor_y:.2f}"
         return (
-            f"start={start}:active={self.volume_active_gesture or DEBUG_NONE}"
-            f":peak={self.volume_peak_distance:.2f}"
-            f":returning={self.volume_returning_to_neutral}"
-            f":rebased={self.volume_rebased}"
+            f"anchor={anchor}:active={self.volume_active_gesture or DEBUG_NONE}"
+            f":phase={self.volume_phase}"
+            f":armed={self.volume_armed}"
+            f":settle_frames={self.volume_neutral_frames}"
+            f":candidate={self.volume_candidate_gesture or DEBUG_NONE}"
+            f":magnitude={self.volume_candidate_magnitude:.3f}"
+            f":activation={self.volume_activation_distance:.3f}"
+            f":neutral={self.volume_neutral_distance:.3f}"
+            f":threshold_ratio={self.volume_threshold_ratio:.2f}"
+            f":in_neutral={self.volume_in_neutral}"
             f":blocked={self.volume_last_blocked_reason or DEBUG_NONE}"
         )
 

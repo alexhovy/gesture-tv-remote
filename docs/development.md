@@ -51,3 +51,15 @@ uv run python -m unittest discover -s tests
 The current tests focus on pure domain behavior and adapter selection or command
 translation. Hardware-dependent TV behavior should be covered through adapters
 or integration tests when test doubles are available.
+
+## Gesture Log Analysis
+
+Gesture debug logs can be summarized with:
+
+```bash
+uv run python scripts/analyze_gesture_log.py logs/logs.txt
+```
+
+The analyzer reports command counts, candidate classifications, blocked reasons,
+neutral-zone frames, and near-threshold misses. Use it when tuning pointer or
+volume motion behavior so threshold changes are based on measured log patterns.

@@ -29,13 +29,14 @@ upright open palm to activate controls.
 
 ## Debounce
 
-Most commands are emitted once per gesture change. DPAD and volume gestures emit
-once for each intentional movement away from neutral; holding the pointer or
-pinch away from the starting point does not keep sending commands. Slow movement
-below the command threshold still accumulates from that starting point until it
-crosses the threshold. Moving the pointer or pinch substantially back toward
-center suppresses opposite-direction commands while it is returning. The return
-movement must enter the neutral zone before the same held gesture can begin
-another intentional movement. When neutral is reached, the current hand position
-becomes the new starting point, so pointer and volume commands can move in any
-direction without releasing and remaking the gesture.
+Most commands are emitted once per gesture change. DPAD and volume gestures use
+a joystick-style anchor. When the secondary hand first points or pinches, its
+current position becomes the anchor. A small neutral zone around that anchor does
+not emit commands; while the hand stays in that neutral zone, the anchor follows
+the hand so the user can settle naturally without needing to hit an exact point.
+
+Moving outside the activation distance emits the dominant direction. Holding the
+same direction does not repeat commands. Returning to the neutral zone for a
+short stable settle period re-arms motion and recenters the anchor. Moving to a
+different direction before that neutral return is ignored so return strokes do
+not become accidental opposite commands.

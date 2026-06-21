@@ -166,7 +166,12 @@ GESTURE_TV_ADAPTER=samsung GESTURE_TV_HOST=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 p
 
 Pointer and volume movement thresholds are scaled from the detected secondary
 hand size, then clamped by their min/max distance settings. This keeps gestures
-more consistent when the user moves closer to or farther from the camera.
+more consistent when the user moves closer to or farther from the camera. The
+runtime applies activation hysteresis below that scaled distance. A smaller
+internal neutral zone around the current anchor recenters pointer and volume
+motion after the hand has settled near rest. Holding outside the activation
+distance does not repeat commands; another command requires returning to neutral
+long enough to re-arm the motion state.
 
 `GESTURE_TV_CAMERA_ZOOM` applies digital center-crop zoom before MediaPipe hand
 tracking. Values above `1.0` make hands larger in the tracking input, which can

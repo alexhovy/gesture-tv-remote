@@ -143,7 +143,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
 
 
 class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
-    async def test_idle_decision_records_idle_state(self) -> None:
+    async def test_activated_empty_decision_does_not_clear_last_command(self) -> None:
         service = GestureRemoteService.__new__(GestureRemoteService)
         service._gesture_session = FakeGestureSession()
 
@@ -155,7 +155,7 @@ class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIsNone(voice_task)
-        self.assertTrue(service._gesture_session.idle_recorded)
+        self.assertFalse(service._gesture_session.idle_recorded)
 
 
 class GestureRemoteConfigReloadTests(unittest.TestCase):

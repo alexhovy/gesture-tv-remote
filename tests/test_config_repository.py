@@ -1,6 +1,7 @@
 import sqlite3
 import tempfile
 import unittest
+from contextlib import closing
 from pathlib import Path
 
 from src.infrastructure.data_access.sqlite_store import SqliteStore
@@ -68,7 +69,7 @@ class ConfigRepositoryTests(unittest.TestCase):
                 )
             )
 
-            with sqlite3.connect(db_file) as connection:
+            with closing(sqlite3.connect(db_file)) as connection:
                 column_types = {
                     row[1]: row[2]
                     for row in connection.execute("PRAGMA table_info(app_config)")
@@ -94,30 +95,31 @@ class ConfigRepositoryTests(unittest.TestCase):
     def test_get_config_adds_missing_columns_to_existing_table(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             db_file = Path(temp_dir) / "config.sqlite3"
-            with sqlite3.connect(db_file) as connection:
-                connection.execute(
-                    """
-                    CREATE TABLE app_config (
-                        id INTEGER PRIMARY KEY,
-                        app_name TEXT NOT NULL,
-                        tv_adapter TEXT NOT NULL,
-                        tv_host TEXT NOT NULL,
-                        updated_at TEXT NOT NULL
+            with closing(sqlite3.connect(db_file)) as connection:
+                with connection:
+                    connection.execute(
+                        """
+                        CREATE TABLE app_config (
+                            id INTEGER PRIMARY KEY,
+                            app_name TEXT NOT NULL,
+                            tv_adapter TEXT NOT NULL,
+                            tv_host TEXT NOT NULL,
+                            updated_at TEXT NOT NULL
+                        )
+                        """
                     )
-                    """
-                )
-                connection.execute(
-                    """
-                    INSERT INTO app_config (
-                        id,
-                        app_name,
-                        tv_adapter,
-                        tv_host,
-                        updated_at
+                    connection.execute(
+                        """
+                        INSERT INTO app_config (
+                            id,
+                            app_name,
+                            tv_adapter,
+                            tv_host,
+                            updated_at
+                        )
+                        VALUES (1, 'Old Config', 'roku', '10.0.0.63', 'now')
+                        """
                     )
-                    VALUES (1, 'Old Config', 'roku', '10.0.0.63', 'now')
-                    """
-                )
 
             config = _repository(db_file).get_config()
 

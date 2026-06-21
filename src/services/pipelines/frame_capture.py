@@ -7,7 +7,6 @@ from src.infrastructure.camera.frame_source import LatestFrameSource
 from src.infrastructure.camera.video_preprocessing import (
     CroppedFrame,
     apply_crop,
-    center_crop_for_zoom,
 )
 from src.services.pipeline_metrics import PipelineMetrics
 
@@ -37,8 +36,12 @@ class FrameCapturePipeline:
     def flip_frame(self, frame: Any) -> Any:
         return cv2.flip(frame, 1)
 
-    def detection_frame(self, frame: Any, camera_zoom: float) -> CroppedFrame:
-        return apply_crop(frame, center_crop_for_zoom(camera_zoom))
+    def detection_frame(
+        self,
+        frame: Any,
+        zoom_controller: CameraZoomController,
+    ) -> CroppedFrame:
+        return apply_crop(frame, zoom_controller.current_crop())
 
     def display_frame(
         self,

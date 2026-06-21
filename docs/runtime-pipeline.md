@@ -10,9 +10,9 @@ runtime collaborators:
 
 | Pipeline | Responsibility |
 | --- | --- |
-| `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and creates detection/display crops. |
+| `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies the current zoom crop for detection and display. |
 | `DetectionPipeline` | Converts BGR frames to RGB and submits them to MediaPipe live-stream detection. |
-| `GestureDecisionPipeline` | Projects hand states back to original frame space, evaluates the domain session, and updates auto-zoom. |
+| `GestureDecisionPipeline` | Projects hand states back from the active detection crop, evaluates the domain session, and updates auto-zoom for the next frame. |
 | `CommandDispatchPipeline` | Applies gesture debounce, starts voice capture for `MIC`, and enqueues TV key commands. |
 | `DisplayPipeline` | Draws detected hand landmarks and renders the OpenCV preview window. |
 | `PipelineMetrics` | Tracks lightweight counters and timings for debug diagnostics. |

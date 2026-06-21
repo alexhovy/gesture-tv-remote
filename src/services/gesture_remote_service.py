@@ -105,7 +105,7 @@ class GestureRemoteService:
                 frame = frame_pipeline.flip_frame(frame)
                 detection_frame = frame_pipeline.detection_frame(
                     frame,
-                    self._config.camera.zoom,
+                    zoom_controller,
                 )
                 hand_states, detected_hands = detection_pipeline.detect_hands(
                     hand_tracker,

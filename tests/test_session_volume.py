@@ -29,10 +29,13 @@ class SessionVolumeTests(unittest.TestCase):
         self._pinch(session, primary, 0.50, now=0.0)
         first_under_threshold = self._pinch(session, primary, 0.52, now=0.1)
         second_under_threshold = self._pinch(session, primary, 0.53, now=0.2)
-        crossed_threshold = self._pinch(session, primary, 0.54, now=0.3)
+        first_crossed_threshold = self._pinch(session, primary, 0.54, now=0.3)
+        crossed_threshold = self._pinch(session, primary, 0.54, now=0.4)
 
         self.assertIsNone(first_under_threshold.command_gesture)
         self.assertIsNone(second_under_threshold.command_gesture)
+        self.assertIsNone(first_crossed_threshold.command_gesture)
+        self.assertIn("blocked=settling_candidate", first_crossed_threshold.debug_message)
         self.assertEqual(crossed_threshold.command_gesture, GESTURE_VOLUME_DOWN)
         self.assertTrue(crossed_threshold.freeze_zoom)
 
@@ -60,12 +63,14 @@ class SessionVolumeTests(unittest.TestCase):
         neutral_move = self._pinch(session, primary, 0.512, now=0.1)
         neutral_settling = self._pinch(session, primary, 0.512, now=0.2)
         neutral_settled = self._pinch(session, primary, 0.512, now=0.3)
-        crossed_from_original_anchor = self._pinch(session, primary, 0.54, now=0.4)
+        first_crossed_from_original_anchor = self._pinch(session, primary, 0.54, now=0.4)
+        crossed_from_original_anchor = self._pinch(session, primary, 0.54, now=0.5)
 
         self.assertIsNone(neutral_move.command_gesture)
         self.assertIn("in_neutral=True", neutral_move.debug_message)
         self.assertIsNone(neutral_settling.command_gesture)
         self.assertIn("phase=armed", neutral_settled.debug_message)
+        self.assertIsNone(first_crossed_from_original_anchor.command_gesture)
         self.assertEqual(crossed_from_original_anchor.command_gesture, GESTURE_VOLUME_DOWN)
         self.assertIn("anchor=0.50", crossed_from_original_anchor.debug_message)
 

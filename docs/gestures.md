@@ -36,14 +36,20 @@ gesture ends.
 
 Point navigation tracks the secondary index fingertip so left/right intent does
 not depend on moving the whole hand. Moving outside the activation distance
-emits the dominant direction. Holding the same direction does not repeat
-commands. Returning inside the release zone around the fixed anchor for a short
-stable settle period re-arms motion. Pointer gestures re-arm after two release
-frames by default. Moving to a different direction before that release return is
-ignored so return strokes do not become accidental opposite commands.
+emits the dominant direction immediately when the movement is decisive. Borderline
+motion must remain in the same direction for another frame before it emits, which
+keeps distant-hand landmark jitter from becoming commands. Holding the same
+direction does not repeat commands. Returning inside the release zone around the
+fixed anchor for a short stable settle period re-arms motion. Pointer gestures
+re-arm after two release frames by default. Moving to a different direction
+before that release return is ignored so return strokes do not become accidental
+opposite commands.
 
-Display auto-zoom first makes a bounded adjustment if the secondary hand is
-near or outside the visible crop, then freezes while the secondary hand is
-present, including brief classification flicker during pointing or pinching.
-This keeps both hands framed before stabilizing the preview for navigation or
-volume changes; auto-zoom resumes when the secondary motion gesture is released.
+Auto-zoom uses the same crop for MediaPipe tracking and the preview. When hands
+are far from the camera, the crop makes them larger in the tracking input before
+landmarks are projected back to original frame space for gesture decisions. The
+crop first makes a bounded adjustment if the secondary hand is near or outside
+the visible crop, then freezes while the secondary hand is present, including
+brief classification flicker during pointing or pinching. This keeps both hands
+framed before stabilizing tracking and visual feedback for navigation or volume
+changes; auto-zoom resumes when the secondary motion gesture is released.

@@ -180,30 +180,32 @@ GESTURE_TV_ADAPTER=samsung GESTURE_TV_HOST=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 p
 Pointer and volume movement thresholds are scaled from the detected secondary
 hand size, then clamped by their min/max distance settings. This keeps gestures
 more consistent when the user moves closer to or farther from the camera. The
-runtime applies activation hysteresis below that scaled distance. The anchor
-stays fixed for the current pointer or volume motion gesture, while a larger
-release zone around that anchor re-arms motion after a return stroke. Holding
-outside the activation distance does not repeat commands; another command
-requires returning inside the release zone long enough to re-arm the motion
-state. Pointer gestures use
+runtime applies activation hysteresis below that scaled distance. Decisive
+movement emits immediately; borderline movement must stay in the same direction
+for another frame before a pointer or volume command emits. The anchor stays
+fixed for the current pointer or volume motion gesture, while a larger release
+zone around that anchor re-arms motion after a return stroke. Holding outside
+the activation distance does not repeat commands; another command requires
+returning inside the release zone long enough to re-arm the motion state.
+Pointer gestures use
 `GESTURE_TV_POINTER_RELEASE_SETTLE_FRAMES` for that release return; increasing
 it makes accidental repeats less likely, while decreasing it makes directional
 navigation more responsive.
 
-`GESTURE_TV_CAMERA_ZOOM` applies digital center-crop zoom before MediaPipe hand
-tracking. Values above `1.0` make hands larger in the tracking input, which can
-help finger landmark reliability when the camera is far away. Start with `1.5`;
-larger values reduce the field of view and can crop out two-hand gestures.
+`GESTURE_TV_CAMERA_ZOOM` is the starting digital center-crop zoom for MediaPipe
+hand tracking and display. Values above `1.0` make hands larger in the tracking
+input, which can help finger landmark reliability when the camera is far away.
+Start with `1.5`; larger values reduce the field of view and can crop out
+two-hand gestures.
 
-Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the displayed crop follow the
-last detected hand area. Auto zoom does not change the MediaPipe tracking input;
-tracking uses the stable `GESTURE_TV_CAMERA_ZOOM` crop. This prevents display
-zoom from cropping hands out of the detector input while it follows movement.
-When the secondary hand appears, the displayed crop may make a bounded
-adjustment if that hand is near or outside the visible crop. After both hands
-are framed, the crop is held steady while the secondary hand is present,
+Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the tracking/display crop follow
+the last detected hand area. Auto zoom changes the MediaPipe input crop and then
+the runtime maps detected landmarks back into original frame coordinates before
+gesture decisions run. When the secondary hand appears, the crop may make a
+bounded adjustment if that hand is near or outside the visible crop. After both
+hands are framed, the crop is held steady while the secondary hand is present,
 including brief secondary-hand classification flicker, so navigation and volume
-gestures have stable visual feedback.
+gestures have stable tracking and visual feedback.
 
 Numeric settings are validated at startup. Zoom values must be at least `1.0`,
 confidence values must be between `0.0` and `1.0`, max values must not be lower

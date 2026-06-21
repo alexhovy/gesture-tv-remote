@@ -58,10 +58,15 @@ class SecondaryGestureInterpreter:
 
 @dataclass
 class MotionJoystickState:
+    EMIT_STABLE_FRAMES = 2
+    IMMEDIATE_EMIT_THRESHOLD_RATIO = 1.5
+
     anchor: float | tuple[float, float] | None = None
     active_gesture: str | None = None
     armed: bool = True
     release_frames: int = 0
+    stable_candidate_frames: int = 0
+    pending_candidate_gesture: str | None = None
     phase: str = "idle"
     last_blocked_reason: str | None = None
     candidate_gesture: str | None = None
@@ -81,13 +86,19 @@ class MotionJoystickState:
         self.anchor = None
         self.position_source = "none"
         self.recent_anchors.clear()
+        self.reset_candidate_stability()
         self.reset_motion_state()
 
     def reset_motion_state(self) -> None:
         self.active_gesture = None
         self.armed = True
         self.release_frames = 0
+        self.reset_candidate_stability()
         self.phase = "armed"
+
+    def reset_candidate_stability(self) -> None:
+        self.stable_candidate_frames = 0
+        self.pending_candidate_gesture = None
 
     def reset_diagnostics(self) -> None:
         self.candidate_gesture = None
@@ -119,6 +130,7 @@ class MotionJoystickState:
         self.recent_anchors.append(current_anchor)
         if decision.in_release:
             self.release_frames += 1
+            self.reset_candidate_stability()
             self.phase = "settling"
             self.last_blocked_reason = "settling_release"
             if self.release_frames >= release_settle_frames:
@@ -128,6 +140,7 @@ class MotionJoystickState:
 
         self.release_frames = 0
         if decision.gesture is None:
+            self.reset_candidate_stability()
             if self.armed:
                 self.phase = "armed"
             else:
@@ -136,11 +149,24 @@ class MotionJoystickState:
             return None
 
         if self.armed:
+            if decision.threshold_ratio < self.IMMEDIATE_EMIT_THRESHOLD_RATIO:
+                if decision.gesture == self.pending_candidate_gesture:
+                    self.stable_candidate_frames += 1
+                else:
+                    self.pending_candidate_gesture = decision.gesture
+                    self.stable_candidate_frames = 1
+                if self.stable_candidate_frames < self.EMIT_STABLE_FRAMES:
+                    self.phase = "arming"
+                    self.last_blocked_reason = "settling_candidate"
+                    return None
+
             self.active_gesture = decision.gesture
             self.armed = False
+            self.reset_candidate_stability()
             self.phase = "triggered"
             return decision.gesture
 
         self.phase = "triggered"
+        self.reset_candidate_stability()
         self.last_blocked_reason = "awaiting_release"
         return None

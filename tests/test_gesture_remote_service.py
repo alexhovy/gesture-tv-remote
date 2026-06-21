@@ -102,10 +102,13 @@ class FakeZoomController:
 
 
 class GestureRemoteServiceTests(unittest.TestCase):
-    def test_detection_frame_uses_fixed_camera_zoom(self) -> None:
+    def test_detection_frame_uses_current_zoom_crop(self) -> None:
         frame = FakeFrame(6, 8)
 
-        detection_frame = FrameCapturePipeline().detection_frame(frame, 2.0)
+        detection_frame = FrameCapturePipeline().detection_frame(
+            frame,
+            FakeZoomController(),
+        )
 
         self.assertEqual(detection_frame.frame.shape, frame.shape)
         self.assertEqual(detection_frame.crop, CropRect(0.25, 1 / 6, 0.5, 0.5))

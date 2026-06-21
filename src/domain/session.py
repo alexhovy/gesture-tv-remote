@@ -24,7 +24,7 @@ from src.shared.config import AppConfig
 
 
 class GestureSession(GestureSessionDebugMixin):
-    MOTION_NEUTRAL_SETTLE_FRAMES = 3
+    VOLUME_RELEASE_SETTLE_FRAMES = 2
     SECONDARY_MOTION_GRACE_SECONDS = 0.6
 
     def __init__(self, config: AppConfig) -> None:
@@ -202,7 +202,6 @@ class GestureSession(GestureSessionDebugMixin):
                 pointer_gesture = self._pointer_joystick_command(
                     pointer_candidate,
                     pointer_position,
-                    now,
                 )
                 command_gesture = pointer_gesture
             elif effective_secondary_gesture != GESTURE_POINT:
@@ -281,20 +280,18 @@ class GestureSession(GestureSessionDebugMixin):
         return self._volume.command(
             decision,
             current_y,
-            self.MOTION_NEUTRAL_SETTLE_FRAMES,
+            self.VOLUME_RELEASE_SETTLE_FRAMES,
         )
 
     def _pointer_joystick_command(
         self,
         decision: JoystickDecision,
         current_position: tuple[float, float],
-        now: float,
     ) -> str | None:
-        del now
         return self._pointer.command(
             decision,
             current_position,
-            self.MOTION_NEUTRAL_SETTLE_FRAMES,
+            self._config.gesture.pointer_release_settle_frames,
         )
 
     def _record_volume_decision(self, decision: JoystickDecision) -> None:

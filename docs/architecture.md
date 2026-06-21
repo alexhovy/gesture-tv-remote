@@ -64,7 +64,7 @@ The session transition model remains:
 3. A valid secondary hand can produce BACK, HOME chord, pointer, volume, or
    microphone gestures.
 4. Pointer and volume gestures arm from an anchor, emit once after crossing the
-   activation threshold, then require a stable neutral return before re-arming.
+   activation threshold, then require a stable release return before re-arming.
 5. Loss of activation clears pending chords and motion anchors.
 
 ### Infrastructure

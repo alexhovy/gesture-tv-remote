@@ -69,5 +69,6 @@ uv run python scripts/analyze_gesture_log.py logs/logs.txt
 ```
 
 The analyzer reports command counts, candidate classifications, blocked reasons,
-neutral-zone frames, and near-threshold misses. Use it when tuning pointer or
-volume motion behavior so threshold changes are based on measured log patterns.
+release frames, neutral/release zones, and near-threshold misses. Use it when
+tuning pointer or volume motion behavior so threshold changes are based on
+measured log patterns.

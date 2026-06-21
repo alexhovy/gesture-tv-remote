@@ -49,9 +49,9 @@ Pointer and volume gestures use joystick-style state:
 - first point/pinch frame establishes an anchor
 - motion must cross a scaled activation distance
 - a command emits once
-- holding outside neutral does not repeat
-- the hand must return to neutral for a stable settle period before re-arming
-- the anchor recenters after neutral settle
+- holding outside the release zone does not repeat
+- the hand must return inside the release zone for a stable settle period before re-arming
+- the anchor recenters only after settling in the smaller neutral zone
 
 Recent motion data is stored in bounded histories so unstable input cannot grow
 memory over time.

@@ -30,6 +30,7 @@ class EnvVar:
     POINTER_MIN_DISTANCE = "GESTURE_TV_POINTER_MIN_DISTANCE"
     POINTER_MAX_DISTANCE = "GESTURE_TV_POINTER_MAX_DISTANCE"
     POINTER_DOMINANCE = "GESTURE_TV_POINTER_DOMINANCE"
+    POINTER_RELEASE_SETTLE_FRAMES = "GESTURE_TV_POINTER_RELEASE_SETTLE_FRAMES"
     VOLUME_DISTANCE_RATIO = "GESTURE_TV_VOLUME_DISTANCE_RATIO"
     VOLUME_MIN_DISTANCE = "GESTURE_TV_VOLUME_MIN_DISTANCE"
     VOLUME_MAX_DISTANCE = "GESTURE_TV_VOLUME_MAX_DISTANCE"
@@ -79,6 +80,7 @@ class GestureConfig:
     pointer_min_distance: float = 0.02
     pointer_max_distance: float = 0.08
     pointer_dominance: float = 1.0
+    pointer_release_settle_frames: int = 2
     volume_distance_ratio: float = 0.25
     volume_min_distance: float = 0.02
     volume_max_distance: float = 0.08
@@ -169,6 +171,7 @@ RELOADABLE_CONFIG_FIELDS = (
     "pointer_min_distance",
     "pointer_max_distance",
     "pointer_dominance",
+    "pointer_release_settle_frames",
     "volume_distance_ratio",
     "volume_min_distance",
     "volume_max_distance",
@@ -297,6 +300,11 @@ def validate_config(config: AppConfig) -> None:
         config.gesture.pointer_min_distance,
     )
     _require_at_least(config.gesture.pointer_dominance, "pointer_dominance", 0.0)
+    _require_at_least(
+        config.gesture.pointer_release_settle_frames,
+        "pointer_release_settle_frames",
+        1,
+    )
     _require_at_least(config.gesture.volume_distance_ratio, "volume_distance_ratio", 0.0)
     _require_at_least(config.gesture.volume_min_distance, "volume_min_distance", 0.0)
     _require_at_least(
@@ -445,6 +453,13 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
     ConfigField("pointer_min_distance", EnvVar.POINTER_MIN_DISTANCE, "gesture", "pointer_min_distance", _float),
     ConfigField("pointer_max_distance", EnvVar.POINTER_MAX_DISTANCE, "gesture", "pointer_max_distance", _float),
     ConfigField("pointer_dominance", EnvVar.POINTER_DOMINANCE, "gesture", "pointer_dominance", _float),
+    ConfigField(
+        "pointer_release_settle_frames",
+        EnvVar.POINTER_RELEASE_SETTLE_FRAMES,
+        "gesture",
+        "pointer_release_settle_frames",
+        _int,
+    ),
     ConfigField(
         "volume_distance_ratio",
         EnvVar.VOLUME_DISTANCE_RATIO,

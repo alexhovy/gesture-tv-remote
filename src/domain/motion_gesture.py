@@ -61,15 +61,17 @@ class MotionJoystickState:
     anchor: float | tuple[float, float] | None = None
     active_gesture: str | None = None
     armed: bool = True
-    neutral_frames: int = 0
+    release_frames: int = 0
     phase: str = "idle"
     last_blocked_reason: str | None = None
     candidate_gesture: str | None = None
     candidate_magnitude: float = 0.0
     activation_distance: float = 0.0
     neutral_distance: float = 0.0
+    release_distance: float = 0.0
     threshold_ratio: float = 0.0
     in_neutral: bool = True
+    in_release: bool = True
     position_source: str = "none"
     recent_anchors: BoundedHistory[float | tuple[float, float]] = field(
         default_factory=lambda: BoundedHistory[float | tuple[float, float]](8)
@@ -84,7 +86,7 @@ class MotionJoystickState:
     def reset_motion_state(self) -> None:
         self.active_gesture = None
         self.armed = True
-        self.neutral_frames = 0
+        self.release_frames = 0
         self.phase = "armed"
 
     def reset_diagnostics(self) -> None:
@@ -92,41 +94,47 @@ class MotionJoystickState:
         self.candidate_magnitude = 0.0
         self.activation_distance = 0.0
         self.neutral_distance = 0.0
+        self.release_distance = 0.0
         self.threshold_ratio = 0.0
         self.in_neutral = True
+        self.in_release = True
 
     def record_decision(self, decision: JoystickDecision) -> None:
         self.candidate_gesture = decision.gesture
         self.candidate_magnitude = decision.magnitude
         self.activation_distance = decision.activation_distance
         self.neutral_distance = decision.neutral_distance
+        self.release_distance = decision.release_distance
         self.threshold_ratio = decision.threshold_ratio
         self.in_neutral = decision.in_neutral
+        self.in_release = decision.in_release
         self.last_blocked_reason = decision.blocked_reason
 
     def command(
         self,
         decision: JoystickDecision,
         current_anchor: float | tuple[float, float],
-        settle_frames: int,
+        release_settle_frames: int,
     ) -> str | None:
         self.recent_anchors.append(current_anchor)
-        if decision.in_neutral:
-            self.neutral_frames += 1
+        if decision.in_release:
+            self.release_frames += 1
             self.phase = "settling"
-            self.last_blocked_reason = "settling_neutral"
-            if self.neutral_frames >= settle_frames:
-                self.anchor = current_anchor
+            self.last_blocked_reason = "settling_release"
+            if self.release_frames >= release_settle_frames:
+                if decision.in_neutral:
+                    self.anchor = current_anchor
                 self.reset_motion_state()
+                self.last_blocked_reason = "rearmed"
             return None
 
-        self.neutral_frames = 0
+        self.release_frames = 0
         if decision.gesture is None:
             if self.armed:
                 self.phase = "armed"
             else:
                 self.phase = "triggered"
-                self.last_blocked_reason = "awaiting_neutral"
+                self.last_blocked_reason = "awaiting_release"
             return None
 
         if self.armed:
@@ -136,5 +144,5 @@ class MotionJoystickState:
             return decision.gesture
 
         self.phase = "triggered"
-        self.last_blocked_reason = "awaiting_neutral"
+        self.last_blocked_reason = "awaiting_release"
         return None

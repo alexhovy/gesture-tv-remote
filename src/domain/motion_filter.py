@@ -11,6 +11,7 @@ from src.domain.constants import (
 
 MOTION_ACTIVATION_RATIO = 0.65
 MOTION_NEUTRAL_RATIO = 0.45
+MOTION_RELEASE_RATIO = 0.90
 MOTION_EPSILON = 1e-9
 
 
@@ -20,8 +21,10 @@ class JoystickDecision:
     magnitude: float
     activation_distance: float
     neutral_distance: float
+    release_distance: float
     threshold_ratio: float
     in_neutral: bool
+    in_release: bool
     blocked_reason: str | None = None
 
 
@@ -33,6 +36,10 @@ def neutral_distance(activation_distance: float) -> float:
     return activation_distance * MOTION_NEUTRAL_RATIO
 
 
+def release_distance(activation_distance: float) -> float:
+    return activation_distance * MOTION_RELEASE_RATIO
+
+
 def classify_pointer_joystick(
     anchor_position: tuple[float, float] | None,
     current_position: tuple[float, float],
@@ -42,8 +49,11 @@ def classify_pointer_joystick(
 ) -> JoystickDecision:
     activation = activation_distance(distance)
     neutral = neutral_distance(activation)
+    release = release_distance(activation)
     if anchor_position is None:
-        return JoystickDecision(None, 0.0, activation, neutral, 0.0, True, "missing_anchor")
+        return JoystickDecision(
+            None, 0.0, activation, neutral, release, 0.0, True, True, "missing_anchor"
+        )
 
     anchor_x, anchor_y = anchor_position
     current_x, current_y = current_position
@@ -60,10 +70,14 @@ def classify_pointer_joystick(
             magnitude,
             activation,
             neutral,
+            release,
             threshold_ratio,
+            True,
             True,
             "neutral",
         )
+
+    in_release = magnitude <= release + MOTION_EPSILON
 
     if abs_dx + MOTION_EPSILON < activation and abs_dy + MOTION_EPSILON < activation:
         return JoystickDecision(
@@ -71,8 +85,10 @@ def classify_pointer_joystick(
             magnitude,
             activation,
             neutral,
+            release,
             threshold_ratio,
             False,
+            in_release,
             "below_threshold",
         )
 
@@ -84,7 +100,9 @@ def classify_pointer_joystick(
             magnitude,
             activation,
             neutral,
+            release,
             _threshold_ratio(magnitude, activation),
+            False,
             False,
         )
 
@@ -96,7 +114,9 @@ def classify_pointer_joystick(
             magnitude,
             activation,
             neutral,
+            release,
             _threshold_ratio(magnitude, activation),
+            False,
             False,
         )
 
@@ -105,8 +125,10 @@ def classify_pointer_joystick(
         magnitude,
         activation,
         neutral,
+        release,
         threshold_ratio,
         False,
+        in_release,
         "axis_ambiguous",
     )
 
@@ -118,8 +140,11 @@ def classify_volume_joystick(
 ) -> JoystickDecision:
     activation = activation_distance(distance)
     neutral = neutral_distance(activation)
+    release = release_distance(activation)
     if anchor_y is None:
-        return JoystickDecision(None, 0.0, activation, neutral, 0.0, True, "missing_anchor")
+        return JoystickDecision(
+            None, 0.0, activation, neutral, release, 0.0, True, True, "missing_anchor"
+        )
 
     dy = current_y - anchor_y
     magnitude = abs(dy)
@@ -131,10 +156,14 @@ def classify_volume_joystick(
             magnitude,
             activation,
             neutral,
+            release,
             threshold_ratio,
+            True,
             True,
             "neutral",
         )
+
+    in_release = magnitude <= release + MOTION_EPSILON
 
     if magnitude + MOTION_EPSILON < activation:
         return JoystickDecision(
@@ -142,8 +171,10 @@ def classify_volume_joystick(
             magnitude,
             activation,
             neutral,
+            release,
             threshold_ratio,
             False,
+            in_release,
             "below_threshold",
         )
 
@@ -153,7 +184,9 @@ def classify_volume_joystick(
         magnitude,
         activation,
         neutral,
+        release,
         threshold_ratio,
+        False,
         False,
     )
 

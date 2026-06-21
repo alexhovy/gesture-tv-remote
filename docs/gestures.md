@@ -35,8 +35,7 @@ pinch away from the starting point does not keep sending commands. Slow movement
 below the command threshold still accumulates from that starting point until it
 crosses the threshold. Moving the pointer or pinch substantially back toward
 center suppresses opposite-direction commands while it is returning. The return
-movement must settle near the new starting point before the same held gesture
-can begin another intentional movement, including movement in a different
-direction. Directly opposite movement after returning requires a larger motion
-than the normal command threshold so returning to center does not send the
-opposite command.
+movement must enter the neutral zone before the same held gesture can begin
+another intentional movement. When neutral is reached, the current hand position
+becomes the new starting point, so pointer and volume commands can move in any
+direction without releasing and remaking the gesture.

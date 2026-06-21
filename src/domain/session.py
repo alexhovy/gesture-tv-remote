@@ -64,14 +64,14 @@ class GestureSession:
         self.volume_active_gesture: str | None = None
         self.volume_peak_distance = 0.0
         self.volume_returning_to_neutral = False
-        self.volume_settling_frames = 0
-        self.volume_returned_gesture: str | None = None
+        self.volume_last_blocked_reason: str | None = None
+        self.volume_rebased = False
         self.pointer_start_position: tuple[float, float] | None = None
         self.pointer_active_gesture: str | None = None
         self.pointer_peak_distance = 0.0
         self.pointer_returning_to_neutral = False
-        self.pointer_settling_frames = 0
-        self.pointer_returned_gesture: str | None = None
+        self.pointer_last_blocked_reason: str | None = None
+        self.pointer_rebased = False
 
     def evaluate(self, hand_states: list[HandState], now: float) -> GestureDecision:
         primary_anchor = self.primary_position
@@ -175,6 +175,10 @@ class GestureSession:
         volume_distance = 0.0
         pointer_distance = 0.0
         pointer_position = None
+        self.pointer_last_blocked_reason = None
+        self.pointer_rebased = False
+        self.volume_last_blocked_reason = None
+        self.volume_rebased = False
 
         both_closed = (
             self.primary_close_time is not None
@@ -333,48 +337,33 @@ class GestureSession:
             return None
 
         magnitude = abs(current_y - start_y)
-        if self.volume_settling_frames > 0:
-            if self._is_motion_neutral(magnitude, distance):
-                self.volume_settling_frames += 1
-                if self.volume_settling_frames >= self._settling_frame_count():
-                    self.volume_settling_frames = 0
-            else:
-                self.volume_start_y = current_y
-                self.volume_settling_frames = 1
-            return None
 
         if gesture is None:
-            if self.volume_active_gesture is not None:
-                if self._is_motion_neutral(magnitude, distance):
-                    self.volume_start_y = current_y
-                    self._reset_volume_motion_state()
-                else:
-                    self.volume_returning_to_neutral = True
+            if self.volume_active_gesture is None:
+                return None
+
+            if self._is_motion_neutral(magnitude, distance):
+                self.volume_start_y = current_y
+                self._reset_volume_motion_state()
+                self.volume_rebased = True
+            else:
+                self.volume_returning_to_neutral = True
+                self.volume_last_blocked_reason = "returning_to_neutral"
             return None
 
         if self.volume_returning_to_neutral:
-            if gesture is not None or self._is_motion_neutral(magnitude, distance):
-                returned_gesture = self.volume_active_gesture
+            if self._is_motion_neutral(magnitude, distance):
                 self.volume_start_y = current_y
                 self._reset_volume_motion_state()
-                self.volume_settling_frames = 1
-                self.volume_returned_gesture = returned_gesture
+                self.volume_rebased = True
+            else:
+                self.volume_last_blocked_reason = "returning_to_neutral"
             return None
 
         if self.volume_active_gesture is not None and gesture != self.volume_active_gesture:
-            returned_gesture = self.volume_active_gesture
-            self.volume_start_y = current_y
-            self._reset_volume_motion_state()
-            self.volume_settling_frames = 1
-            self.volume_returned_gesture = returned_gesture
+            self.volume_returning_to_neutral = True
+            self.volume_last_blocked_reason = "direction_changed_before_neutral"
             return None
-
-        if self._is_direct_opposite_motion(gesture, self.volume_returned_gesture):
-            if magnitude < self._opposite_rearm_distance(distance):
-                return None
-            self.volume_returned_gesture = None
-        elif gesture is not None:
-            self.volume_returned_gesture = None
 
         return self._filtered_motion_gesture(
             gesture,
@@ -383,6 +372,7 @@ class GestureSession:
             active_gesture_attr="volume_active_gesture",
             peak_distance_attr="volume_peak_distance",
             returning_attr="volume_returning_to_neutral",
+            blocked_reason_attr="volume_last_blocked_reason",
         )
 
     def _filtered_pointer_gesture(
@@ -396,49 +386,35 @@ class GestureSession:
             return None
 
         magnitude = math.dist(start_position, current_position)
-        if self.pointer_settling_frames > 0:
-            if self._is_motion_neutral(magnitude, distance):
-                self.pointer_settling_frames += 1
-                if self.pointer_settling_frames >= self._settling_frame_count():
-                    self.pointer_settling_frames = 0
-            else:
-                self.pointer_start_position = current_position
-                self.pointer_settling_frames = 1
-            return None
 
         if gesture is None:
-            if self.pointer_active_gesture is not None:
-                if self._is_motion_neutral(magnitude, distance):
-                    self.pointer_start_position = current_position
-                    self._reset_pointer_motion_state()
-                else:
-                    self.pointer_returning_to_neutral = True
+            if self.pointer_active_gesture is None:
+                return None
+
+            if self._is_motion_neutral(magnitude, distance):
+                self.pointer_start_position = current_position
+                self._reset_pointer_motion_state()
+                self.pointer_rebased = True
+            else:
+                self.pointer_returning_to_neutral = True
+                self.pointer_last_blocked_reason = "returning_to_neutral"
             return None
 
         if self.pointer_returning_to_neutral:
-            if gesture is not None or self._is_motion_neutral(magnitude, distance):
-                returned_gesture = self.pointer_active_gesture
+            if self._is_motion_neutral(magnitude, distance):
                 self.pointer_start_position = current_position
                 self._reset_pointer_motion_state()
-                self.pointer_settling_frames = 1
-                self.pointer_returned_gesture = returned_gesture
+                self.pointer_rebased = True
+            else:
+                self.pointer_last_blocked_reason = "returning_to_neutral"
             return None
 
         if self.pointer_active_gesture is not None and gesture != self.pointer_active_gesture:
-            returned_gesture = self.pointer_active_gesture
-            self.pointer_start_position = current_position
-            self._reset_pointer_motion_state()
-            self.pointer_settling_frames = 1
-            self.pointer_returned_gesture = returned_gesture
+            self.pointer_returning_to_neutral = True
+            self.pointer_last_blocked_reason = "direction_changed_before_neutral"
             return None
 
         magnitude = self._pointer_motion_magnitude(gesture, start_position, current_position)
-        if self._is_direct_opposite_motion(gesture, self.pointer_returned_gesture):
-            if magnitude < self._opposite_rearm_distance(distance):
-                return None
-            self.pointer_returned_gesture = None
-        elif gesture is not None:
-            self.pointer_returned_gesture = None
 
         return self._filtered_motion_gesture(
             gesture,
@@ -447,6 +423,7 @@ class GestureSession:
             active_gesture_attr="pointer_active_gesture",
             peak_distance_attr="pointer_peak_distance",
             returning_attr="pointer_returning_to_neutral",
+            blocked_reason_attr="pointer_last_blocked_reason",
         )
 
     def _filtered_motion_gesture(
@@ -457,13 +434,16 @@ class GestureSession:
         active_gesture_attr: str,
         peak_distance_attr: str,
         returning_attr: str,
+        blocked_reason_attr: str,
     ) -> str | None:
         if getattr(self, returning_attr):
+            setattr(self, blocked_reason_attr, "returning_to_neutral")
             return None
 
         active_gesture = getattr(self, active_gesture_attr)
         if active_gesture is not None and gesture != active_gesture:
             setattr(self, returning_attr, True)
+            setattr(self, blocked_reason_attr, "direction_changed_before_neutral")
             return None
 
         if gesture != active_gesture:
@@ -481,32 +461,13 @@ class GestureSession:
         release_delta = activation_distance * 0.75
         if magnitude <= peak_distance - release_delta:
             setattr(self, returning_attr, True)
+            setattr(self, blocked_reason_attr, "returning_to_neutral")
 
         return None
 
     @staticmethod
     def _is_motion_neutral(magnitude: float, activation_distance: float) -> bool:
-        return magnitude <= activation_distance * 0.45
-
-    @staticmethod
-    def _settling_frame_count() -> int:
-        return 2
-
-    @staticmethod
-    def _opposite_rearm_distance(activation_distance: float) -> float:
-        return activation_distance * 1.5
-
-    @staticmethod
-    def _is_direct_opposite_motion(gesture: str | None, previous_gesture: str | None) -> bool:
-        opposites = {
-            GESTURE_POINT_DOWN: GESTURE_POINT_UP,
-            GESTURE_POINT_UP: GESTURE_POINT_DOWN,
-            GESTURE_POINT_LEFT: GESTURE_POINT_RIGHT,
-            GESTURE_POINT_RIGHT: GESTURE_POINT_LEFT,
-            GESTURE_VOLUME_DOWN: GESTURE_VOLUME_UP,
-            GESTURE_VOLUME_UP: GESTURE_VOLUME_DOWN,
-        }
-        return gesture is not None and previous_gesture is not None and opposites.get(previous_gesture) == gesture
+        return magnitude <= activation_distance
 
     @staticmethod
     def _pointer_motion_magnitude(
@@ -530,8 +491,6 @@ class GestureSession:
         self.volume_active_gesture = None
         self.volume_peak_distance = 0.0
         self.volume_returning_to_neutral = False
-        self.volume_settling_frames = 0
-        self.volume_returned_gesture = None
 
     def _reset_pointer_tracking(self) -> None:
         self.pointer_start_position = None
@@ -541,8 +500,6 @@ class GestureSession:
         self.pointer_active_gesture = None
         self.pointer_peak_distance = 0.0
         self.pointer_returning_to_neutral = False
-        self.pointer_settling_frames = 0
-        self.pointer_returned_gesture = None
 
     def _primary_missing_within_grace(self, now: float) -> bool:
         if self.primary_position is None or self.primary_last_seen_time is None:
@@ -669,8 +626,8 @@ class GestureSession:
             f":current={current}:dx={dx}:dy={dy}"
             f":peak={self.pointer_peak_distance:.2f}"
             f":returning={self.pointer_returning_to_neutral}"
-            f":settling={self.pointer_settling_frames}"
-            f":returned={self.pointer_returned_gesture or DEBUG_NONE}"
+            f":rebased={self.pointer_rebased}"
+            f":blocked={self.pointer_last_blocked_reason or DEBUG_NONE}"
         )
 
     def _debug_volume_state(self) -> str:
@@ -679,8 +636,8 @@ class GestureSession:
             f"start={start}:active={self.volume_active_gesture or DEBUG_NONE}"
             f":peak={self.volume_peak_distance:.2f}"
             f":returning={self.volume_returning_to_neutral}"
-            f":settling={self.volume_settling_frames}"
-            f":returned={self.volume_returned_gesture or DEBUG_NONE}"
+            f":rebased={self.volume_rebased}"
+            f":blocked={self.volume_last_blocked_reason or DEBUG_NONE}"
         )
 
     @staticmethod

@@ -87,9 +87,14 @@ class FakeResizedFrame:
 class FakeZoomController:
     def __init__(self) -> None:
         self.updated_with = None
+        self.conditional_update_with = None
 
     def update(self, landmarks_by_hand, crop):
         self.updated_with = (landmarks_by_hand, crop)
+        return True
+
+    def update_if_current_crop_needs_landmarks(self, landmarks_by_hand, crop):
+        self.conditional_update_with = (landmarks_by_hand, crop)
         return True
 
     def current_crop(self) -> CropRect:
@@ -145,8 +150,9 @@ class GestureRemoteServiceTests(unittest.TestCase):
         self.assertFalse(changed)
         self.assertIsNone(zoom_controller.updated_with)
 
-    def test_update_zoom_holds_crop_when_motion_freezes_zoom(self) -> None:
+    def test_update_zoom_conditionally_frames_hands_when_motion_freezes_zoom(self) -> None:
         zoom_controller = FakeZoomController()
+        landmarks = [_landmark(0.25, 0.50)]
 
         changed = GestureDecisionPipeline(
             FakeDecisionSession(),
@@ -157,12 +163,16 @@ class GestureRemoteServiceTests(unittest.TestCase):
                 activated=True,
                 debug_message="",
                 freeze_zoom=True,
-                zoom_landmarks=[[_landmark(0.25, 0.50)]],
+                zoom_landmarks=[landmarks],
             )
         )
 
-        self.assertFalse(changed)
+        self.assertTrue(changed)
         self.assertIsNone(zoom_controller.updated_with)
+        self.assertEqual(
+            zoom_controller.conditional_update_with,
+            ([landmarks], CropRect(0.0, 0.0, 1.0, 1.0)),
+        )
 
     def test_debug_message_includes_detection_and_display_crops(self) -> None:
         debug_message = DisplayPipeline(FakeLogger()).debug_message(

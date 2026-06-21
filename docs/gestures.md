@@ -43,7 +43,8 @@ motion and recenters the anchor. Moving to a different direction before that
 neutral return is ignored so return strokes do not become accidental opposite
 commands.
 
-Display auto-zoom freezes while the secondary hand is present, including brief
-classification flicker during pointing or pinching. This keeps the preview
-stable while navigating or changing volume; auto-zoom resumes when the
-secondary motion gesture is released.
+Display auto-zoom first makes a bounded adjustment if the secondary hand is
+near or outside the visible crop, then freezes while the secondary hand is
+present, including brief classification flicker during pointing or pinching.
+This keeps both hands framed before stabilizing the preview for navigation or
+volume changes; auto-zoom resumes when the secondary motion gesture is released.

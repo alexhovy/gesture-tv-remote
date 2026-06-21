@@ -88,6 +88,28 @@ class CameraZoomController:
         self._move_toward(target_x, target_y, target_zoom)
         return self._crop_changed(before_crop)
 
+    def update_if_current_crop_needs_landmarks(
+        self,
+        landmarks_by_hand: list[list[Any]],
+        crop: CropRect,
+    ) -> bool:
+        if not self._config.camera.auto_zoom_enabled:
+            return False
+
+        hand_bounds = [
+            landmarks_to_original_bounds(landmarks, crop)
+            for landmarks in landmarks_by_hand
+            if landmarks
+        ]
+        if not _bounds_near_crop_edge(
+            hand_bounds,
+            self.current_crop(),
+            self._config.camera.auto_zoom_position_deadband,
+        ):
+            return False
+
+        return self.update(landmarks_by_hand, crop)
+
     def _target_zoom(self, bounds_width: float, bounds_height: float) -> float:
         padding = max(0.0, self._config.camera.auto_zoom_padding)
         required_width = max(0.01, bounds_width * (1 + padding * 2))

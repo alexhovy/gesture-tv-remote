@@ -38,7 +38,7 @@ class GestureSessionDebugMixin:
         tilt = "inf" if math.isinf(tilt_ratio) else f"{tilt_ratio:.2f}"
         reason = hand_upright_reason(
             hand.landmarks,
-            self._config.hand_upright_max_tilt_ratio,
+            self._config.gesture.hand_upright_max_tilt_ratio,
         )
 
         return (

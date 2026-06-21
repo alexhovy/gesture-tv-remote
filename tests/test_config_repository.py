@@ -7,6 +7,7 @@ from pathlib import Path
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.shared.config import AppConfig
+from tests.config_helpers import app_config
 
 
 class ConfigRepositoryTests(unittest.TestCase):
@@ -20,7 +21,7 @@ class ConfigRepositoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temp_dir:
             db_file = Path(temp_dir) / "nested" / "config.sqlite3"
             repository = _repository(db_file)
-            config = AppConfig(
+            config = app_config(
                 app_name="Local Remote",
                 config_db_file=db_file,
                 tv_adapter="roku",
@@ -39,18 +40,18 @@ class ConfigRepositoryTests(unittest.TestCase):
     def test_save_config_replaces_existing_config(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = _repository(Path(temp_dir) / "config.sqlite3")
-            repository.save_config(AppConfig(tv_host="10.0.0.10"))
+            repository.save_config(app_config(tv_host="10.0.0.10"))
 
-            repository.save_config(AppConfig(tv_host="10.0.0.20"))
+            repository.save_config(app_config(tv_host="10.0.0.20"))
 
             config = repository.get_config()
             self.assertIsNotNone(config)
-            self.assertEqual(config.tv_host, "10.0.0.20")
+            self.assertEqual(config.tv.host, "10.0.0.20")
 
     def test_reset_config_deletes_saved_config(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = _repository(Path(temp_dir) / "config.sqlite3")
-            repository.save_config(AppConfig())
+            repository.save_config(app_config())
 
             repository.reset_config()
 
@@ -61,7 +62,7 @@ class ConfigRepositoryTests(unittest.TestCase):
             db_file = Path(temp_dir) / "config.sqlite3"
             repository = _repository(db_file)
             repository.save_config(
-                AppConfig(
+                app_config(
                     app_name="Local Remote",
                     webcam_index=3,
                     camera_zoom=2.0,
@@ -125,16 +126,16 @@ class ConfigRepositoryTests(unittest.TestCase):
 
         self.assertIsNotNone(config)
         self.assertEqual(config.app_name, "Old Config")
-        self.assertEqual(config.tv_adapter, "roku")
-        self.assertEqual(config.tv_host, "10.0.0.63")
-        self.assertEqual(config.config_web_port, 80)
+        self.assertEqual(config.tv.adapter, "roku")
+        self.assertEqual(config.tv.host, "10.0.0.63")
+        self.assertEqual(config.web.port, 80)
 
     def test_save_config_rejects_invalid_config(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = _repository(Path(temp_dir) / "config.sqlite3")
 
             with self.assertRaisesRegex(ValueError, "tv_host"):
-                repository.save_config(AppConfig(tv_host=" "))
+                repository.save_config(app_config(tv_host=" "))
 
 
 def _repository(db_file: Path) -> ConfigRepository:

@@ -21,19 +21,19 @@ class AndroidTvRemoteClient:
             InvalidAuth,
         )
 
-        self._config.android_cert_file.parent.mkdir(parents=True, exist_ok=True)
+        self._config.tv.android_cert_file.parent.mkdir(parents=True, exist_ok=True)
         remote = AndroidTVRemote(
             self._config.app_name,
-            str(self._config.android_cert_file),
-            str(self._config.android_key_file),
-            self._config.tv_host,
+            str(self._config.tv.android_cert_file),
+            str(self._config.tv.android_key_file),
+            self._config.tv.host,
             enable_voice=True,
         )
 
         if await remote.async_generate_cert_if_missing():
             self._logger.info(
                 "Generated "
-                f"{self._config.android_cert_file} and {self._config.android_key_file}"
+                f"{self._config.tv.android_cert_file} and {self._config.tv.android_key_file}"
             )
 
         try:
@@ -52,12 +52,12 @@ class AndroidTvRemoteClient:
                 return False
         except (CannotConnect, ConnectionClosed) as error:
             self._logger.error(
-                f"Could not connect to Android TV at {self._config.tv_host}: {error}"
+                f"Could not connect to Android TV at {self._config.tv.host}: {error}"
             )
             return False
 
         self._remote = remote
-        self._logger.info(f"Connected to Android TV at {self._config.tv_host}")
+        self._logger.info(f"Connected to Android TV at {self._config.tv.host}")
         return True
 
     async def send_key_command(self, command: str) -> None:

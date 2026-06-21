@@ -7,6 +7,8 @@ from typing import Any
 from src.domain.constants import DISPLAY_COMMAND_SELECT, TV_COMMAND_DPAD_CENTER
 from src.shared.logging import AppLogger
 
+MAX_PENDING_COMMANDS = 8
+
 
 @dataclass(frozen=True)
 class RemoteCommandRequest:
@@ -36,6 +38,16 @@ class RemoteCommandDispatcher:
             self.start()
 
         request = RemoteCommandRequest(gesture=gesture, command=command)
+        # TV adapters can be slow or reconnecting; keep gesture detection independent
+        # by bounding pending remote work and dropping stale oldest commands first.
+        if len(self._commands) >= MAX_PENDING_COMMANDS:
+            if self._commands[-1].command == command:
+                self._commands[-1] = request
+            else:
+                self._commands.popleft()
+                self._commands.append(request)
+            self._has_work.set()
+            return
         self._commands.append(request)
         self._has_work.set()
 

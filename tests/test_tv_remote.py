@@ -33,6 +33,7 @@ from src.infrastructure.tv.tv_remote import (
 from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
 from src.infrastructure.tv.webos_remote import WebOsRemoteClient
 from src.shared.config import AppConfig
+from tests.config_helpers import app_config
 
 
 class TvRemoteTests(unittest.TestCase):
@@ -46,12 +47,12 @@ class TvRemoteTests(unittest.TestCase):
 
         for adapter, expected_type in cases:
             with self.subTest(adapter=adapter):
-                client = create_tv_remote_client(AppConfig(tv_adapter=adapter))
+                client = create_tv_remote_client(app_config(tv_adapter=adapter))
                 self.assertIsInstance(client, expected_type)
 
     def test_factory_rejects_unknown_adapter(self) -> None:
         with self.assertRaises(ValueError):
-            create_tv_remote_client(AppConfig(tv_adapter="unknown"))
+            create_tv_remote_client(app_config(tv_adapter="unknown"))
 
     def test_translation_covers_all_commands_for_each_adapter(self) -> None:
         commands = [
@@ -136,7 +137,7 @@ class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
         fake_remote = _install_fake_samsung()
         with tempfile.TemporaryDirectory() as temp_dir:
             client = SamsungTvRemoteClient(
-                AppConfig(
+                app_config(
                     tv_host="tv.local",
                     samsung_token_file=Path(temp_dir) / "token.txt",
                 )
@@ -158,7 +159,7 @@ class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
         fake_remote = _install_fake_samsung(fail_first_send=True)
         with tempfile.TemporaryDirectory() as temp_dir:
             client = SamsungTvRemoteClient(
-                AppConfig(
+                app_config(
                     tv_host="tv.local",
                     samsung_token_file=Path(temp_dir) / "token.txt",
                 )
@@ -191,7 +192,7 @@ class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_sync_client_calls_stay_on_one_worker_thread(self) -> None:
         fake_remote = _install_fake_roku()
-        client = RokuRemoteClient(AppConfig(tv_host="roku.local"))
+        client = RokuRemoteClient(app_config(tv_host="roku.local"))
 
         self.assertTrue(await client.connect())
         await client.send_key_command(TV_COMMAND_DPAD_UP)
@@ -207,7 +208,7 @@ class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
 
     async def test_command_reconnects_and_retries_after_socket_failure(self) -> None:
         fake_remote = _install_fake_roku(fail_first_send=True)
-        client = RokuRemoteClient(AppConfig(tv_host="roku.local"))
+        client = RokuRemoteClient(app_config(tv_host="roku.local"))
 
         self.assertTrue(await client.connect())
         await client.send_key_command(TV_COMMAND_DPAD_DOWN)

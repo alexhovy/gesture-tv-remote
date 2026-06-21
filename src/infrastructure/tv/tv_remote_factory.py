@@ -14,7 +14,7 @@ from src.shared.config import AppConfig
 
 
 def create_tv_remote_client(config: AppConfig) -> TvRemoteClient:
-    adapter = config.tv_adapter.lower()
+    adapter = config.tv.adapter.lower()
     if adapter == TV_ADAPTER_ANDROIDTV:
         return AndroidTvRemoteClient(config)
     if adapter == TV_ADAPTER_SAMSUNG:
@@ -25,4 +25,4 @@ def create_tv_remote_client(config: AppConfig) -> TvRemoteClient:
         return RokuRemoteClient(config)
 
     supported = ", ".join(sorted(SUPPORTED_TV_ADAPTERS))
-    raise ValueError(f"Unsupported TV adapter {config.tv_adapter!r}. Use one of: {supported}")
+    raise ValueError(f"Unsupported TV adapter {config.tv.adapter!r}. Use one of: {supported}")

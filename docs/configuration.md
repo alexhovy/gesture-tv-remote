@@ -1,8 +1,10 @@
 # Configuration
 
-Runtime defaults live in `src/shared/config.py` as `AppConfig`. The application
-loads those defaults, applies saved configuration from the local config database
-when present, and then applies environment-variable overrides at startup.
+Runtime defaults live in `src/shared/config.py` as `AppConfig`. `AppConfig` is
+grouped into `tv`, `gesture`, `camera`, `model`, `web`, and `debug` sections so
+runtime code reads related settings together. The application loads those
+defaults, applies saved configuration from the local config database when
+present, and then applies environment-variable overrides at startup.
 
 The current defaults preserve the MVP behavior:
 
@@ -64,6 +66,10 @@ Startup config precedence is:
 
 `GESTURE_TV_CONFIG_DB` is read during bootstrap to decide which database file to
 open, so it can point the app at a different saved configuration store.
+
+The config database and config UI still use the flat setting names shown in the
+environment-variable table. Those names are user-facing storage and form fields;
+the grouped `AppConfig` sections are the internal runtime structure.
 
 ## Config UI
 

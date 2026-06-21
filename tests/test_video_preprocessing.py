@@ -16,7 +16,7 @@ from src.infrastructure.camera.video_preprocessing import (
 )
 from src.domain.constants import GESTURE_POINT
 from src.domain.session_types import HandState
-from src.shared.config import AppConfig
+from tests.config_helpers import app_config
 
 
 class FakeFrame:
@@ -136,7 +136,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
     def test_auto_zoom_follows_detected_hand(self) -> None:
         controller = CameraZoomController(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=1.0,
                 auto_zoom_max=2.0,
@@ -153,7 +153,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
     def test_auto_zoom_zooms_out_for_two_hand_bounds(self) -> None:
         controller = CameraZoomController(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=1.0,
                 auto_zoom_max=3.0,
@@ -177,7 +177,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
     def test_auto_zoom_returns_to_center_when_hands_disappear(self) -> None:
         controller = CameraZoomController(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=1.0,
                 auto_zoom_max=2.0,
@@ -195,7 +195,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
     def test_auto_zoom_reset_returns_to_default_crop(self) -> None:
         controller = CameraZoomController(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=1.0,
                 auto_zoom_max=2.0,
@@ -213,7 +213,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
     def test_auto_zoom_ignores_small_target_changes_inside_deadband(self) -> None:
         controller = CameraZoomController(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=1.0,
                 auto_zoom_max=5.0,
@@ -234,7 +234,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
     def test_auto_zoom_still_follows_hand_near_crop_edge(self) -> None:
         controller = CameraZoomController(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=1.0,
                 auto_zoom_max=2.0,
@@ -255,7 +255,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
     def test_auto_zoom_zooms_out_when_hand_reaches_cropped_edge(self) -> None:
         controller = CameraZoomController(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=1.0,
                 auto_zoom_max=4.0,
@@ -281,7 +281,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
     def test_auto_zoom_update_config_recomputes_zoom_bounds(self) -> None:
         controller = CameraZoomController(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=1.0,
                 auto_zoom_max=2.0,
@@ -290,7 +290,7 @@ class VideoPreprocessingTests(unittest.TestCase):
         )
 
         controller.update_config(
-            AppConfig(
+            app_config(
                 auto_zoom_enabled=True,
                 auto_zoom_min=2.0,
                 auto_zoom_max=4.0,

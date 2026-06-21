@@ -20,8 +20,8 @@ ConfigProvider = Callable[[], AppConfig]
 def create_config_server(
     repository: ConfigRepository,
     config_provider: ConfigProvider,
-    host: str = AppConfig.config_web_host,
-    port: int = AppConfig.config_web_port,
+    host: str = AppConfig().web.host,
+    port: int = AppConfig().web.port,
 ) -> ThreadingHTTPServer:
     class ConfigRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:

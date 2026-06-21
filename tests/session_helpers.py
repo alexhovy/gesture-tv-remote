@@ -13,11 +13,11 @@ from src.domain.landmarks import (
 )
 from src.domain.session import GestureSession
 from src.domain.session_types import HandState
-from src.shared.config import AppConfig
+from tests.config_helpers import app_config
 
 
 def evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> str | None:
-    session = GestureSession(AppConfig())
+    session = GestureSession(app_config())
     primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
     session.evaluate(
@@ -47,7 +47,7 @@ def evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> str
 
 
 def evaluate_volume_move(hand_size: float, start_y: float, end_y: float) -> str | None:
-    session = GestureSession(AppConfig())
+    session = GestureSession(app_config())
     primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
     session.evaluate(

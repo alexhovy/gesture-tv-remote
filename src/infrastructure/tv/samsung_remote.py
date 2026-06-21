@@ -17,12 +17,12 @@ class SamsungTvRemoteClient:
             await self._executor.call(self._connect_sync)
         except Exception as error:
             self._logger.error(
-                f"Could not connect to Samsung TV at {self._config.tv_host}: {error}"
+                f"Could not connect to Samsung TV at {self._config.tv.host}: {error}"
             )
             self._remote = None
             return False
 
-        self._logger.info(f"Connected to Samsung TV at {self._config.tv_host}")
+        self._logger.info(f"Connected to Samsung TV at {self._config.tv.host}")
         return True
 
     async def send_key_command(self, command: str) -> None:
@@ -58,11 +58,11 @@ class SamsungTvRemoteClient:
     def _connect_sync(self) -> None:
         from samsungtvws import SamsungTVWS
 
-        self._config.samsung_token_file.parent.mkdir(parents=True, exist_ok=True)
+        self._config.tv.samsung_token_file.parent.mkdir(parents=True, exist_ok=True)
         remote = SamsungTVWS(
-            host=self._config.tv_host,
-            port=self._config.samsung_port,
-            token_file=str(self._config.samsung_token_file),
+            host=self._config.tv.host,
+            port=self._config.tv.samsung_port,
+            token_file=str(self._config.tv.samsung_token_file),
             name=self._config.app_name,
         )
         remote.open()

@@ -17,12 +17,12 @@ class RokuRemoteClient:
             await self._executor.call(self._connect_sync)
         except Exception as error:
             self._logger.error(
-                f"Could not connect to Roku at {self._config.tv_host}: {error}"
+                f"Could not connect to Roku at {self._config.tv.host}: {error}"
             )
             self._remote = None
             return False
 
-        self._logger.info(f"Connected to Roku at {self._config.tv_host}")
+        self._logger.info(f"Connected to Roku at {self._config.tv.host}")
         return True
 
     async def send_key_command(self, command: str) -> None:
@@ -59,8 +59,8 @@ class RokuRemoteClient:
         from rokuecp import Roku
 
         self._remote = Roku(
-            self._config.tv_host,
-            port=self._config.roku_port,
+            self._config.tv.host,
+            port=self._config.tv.roku_port,
         )
 
     def _send_key_sync(self, adapter_command: str) -> None:

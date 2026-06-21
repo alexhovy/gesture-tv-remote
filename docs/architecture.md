@@ -22,9 +22,10 @@ typed config values, while process setup stays in `src/api`.
 ### Services
 
 `src/services` contains use cases and orchestration. `GestureRemoteService`
-coordinates webcam frames, hand tracking, gesture decisions, command dispatch,
-debug logging, and cleanup. `VoiceCaptureService` handles the voice-input use
-case when the selected TV adapter supports it.
+owns application lifecycle and delegates runtime loop details to small
+pipelines for frame preparation, gesture evaluation, display, and command
+handling. `VoiceCaptureService` handles the voice-input use case when the
+selected TV adapter supports it.
 
 ### Domain
 
@@ -38,6 +39,20 @@ case when the selected TV adapter supports it.
 
 Domain code should not import OpenCV, MediaPipe, TV-control libraries, or audio
 libraries.
+
+Gesture sessions are coordinated by `GestureSession`, with focused state holders
+for primary activation and identity matching, secondary motion-grace handling,
+close-chord command decisions, emit debounce, and pointer/volume joystick
+state. The session transition model remains:
+
+1. An upright open palm activates the primary hand.
+2. The primary hand is matched by position and primary-like gestures while
+   brief primary dropouts stay active for the configured grace interval.
+3. A valid secondary hand can produce BACK, HOME chord, pointer, volume, or
+   microphone gestures.
+4. Pointer and volume gestures arm from an anchor, emit once after crossing the
+   activation threshold, then require a stable neutral return before re-arming.
+5. Loss of activation clears pending chords and motion anchors.
 
 ### Infrastructure
 
@@ -59,7 +74,8 @@ configuration remains represented as `AppConfig`.
 
 TV control is adapter-based. `GestureRemoteService` asks the TV remote factory
 for a client selected by configuration, then queues app-level TV commands such as
-`HOME`, `BACK`, `DPAD_UP`, and `VOLUME_UP` through a service command dispatcher.
+`HOME`, `BACK`, `DPAD_UP`, and `VOLUME_UP` through a bounded service command
+dispatcher.
 Each adapter translates those
 commands to the protocol-specific command names for Android TV, Samsung TV,
 webOS, or Roku. Voice capture is an adapter capability; currently only the
@@ -78,11 +94,22 @@ Hand tracking uses MediaPipe live-stream mode. The service submits frames and
 consumes the latest completed result, allowing MediaPipe to skip frames while it
 is busy instead of blocking the display and gesture loop.
 
+The runtime uses explicit producer/consumer boundaries:
+
+- webcam capture runs in a dedicated latest-frame thread
+- MediaPipe live-stream detection returns the latest completed hand result
+- TV commands are sent by one bounded async dispatcher task
+- synchronous Samsung and Roku adapters use one thread-bound executor each
+- voice capture uses a bounded audio queue and drops stale buffered chunks
+- saved config reloads are throttled and read through `asyncio.to_thread`
+
 ### Shared
 
-`src/shared` contains cross-cutting primitives such as configuration. Keep this
-folder small; shared code should not become a dumping ground for unrelated
-helpers.
+`src/shared` contains cross-cutting primitives such as configuration. `AppConfig`
+is grouped into TV, gesture, camera, model, web, and debug sections while
+environment variables and saved config fields remain named for the existing user
+interface. Keep this folder small; shared code should not become a dumping
+ground for unrelated helpers.
 
 ## Design Rules
 

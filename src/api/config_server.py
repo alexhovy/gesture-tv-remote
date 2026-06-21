@@ -13,8 +13,8 @@ def run_config_server(
     bootstrap_config = load_config_from_env()
     repository = ConfigRepository(SqliteStore(bootstrap_config.config_db_file))
     config = _effective_config(repository)
-    bind_host = config.config_web_host if host is None else host
-    bind_port = config.config_web_port if port is None else port
+    bind_host = config.web.host if host is None else host
+    bind_port = config.web.port if port is None else port
     server = create_config_server(
         repository,
         lambda: _effective_config(repository),
@@ -23,8 +23,8 @@ def run_config_server(
     )
     logger = AppLogger()
     mdns_publisher = None
-    if config.config_web_mdns_enabled:
-        mdns_publisher = MdnsPublisher(config.config_web_mdns_name, bind_port, logger)
+    if config.web.mdns_enabled:
+        mdns_publisher = MdnsPublisher(config.web.mdns_name, bind_port, logger)
         mdns_publisher.start()
 
     logger.info(f"Config UI listening on http://{bind_host}:{bind_port}")

@@ -1,7 +1,6 @@
-from dataclasses import fields
 from html import escape
 
-from src.shared.config import AppConfig
+from src.shared.config import CONFIG_FIELDS, AppConfig, get_config_value
 from src.web.config_forms import BOOLEAN_FIELD_MARKER
 
 _READONLY_FIELDS = {"config_db_file"}
@@ -19,9 +18,7 @@ def render_config_page(
     elif status_message:
         status = f'<div class="status">{escape(status_message)}</div>'
 
-    fields_html = "\n".join(
-        _render_field(config, field.name) for field in fields(AppConfig)
-    )
+    fields_html = "\n".join(_render_field(config, field.name) for field in CONFIG_FIELDS)
     return f"""<!doctype html>
 <html lang="en">
 <head>
@@ -150,7 +147,7 @@ def reset_status_message() -> str:
 
 
 def _render_field(config: AppConfig, name: str) -> str:
-    value = getattr(config, name)
+    value = get_config_value(config, name)
     label = escape(name.replace("_", " ").title())
     if isinstance(value, bool):
         checked = " checked" if value else ""

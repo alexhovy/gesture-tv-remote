@@ -4,14 +4,14 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.infrastructure.hand_tracking.hand_model import download_model_if_missing
-from src.shared.config import AppConfig
+from tests.config_helpers import app_config
 
 
 class HandModelDownloadTests(unittest.TestCase):
     def test_download_writes_temp_file_then_replaces_destination(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             model_file = Path(directory) / "hand.task"
-            config = AppConfig(
+            config = app_config(
                 model_file=model_file,
                 model_url="https://example.test/model",
                 model_download_timeout_seconds=1.0,
@@ -34,7 +34,7 @@ class HandModelDownloadTests(unittest.TestCase):
     def test_download_retries_and_removes_partial_temp_file(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             model_file = Path(directory) / "hand.task"
-            config = AppConfig(
+            config = app_config(
                 model_file=model_file,
                 model_url="https://example.test/model",
                 model_download_timeout_seconds=1.0,

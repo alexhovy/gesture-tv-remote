@@ -11,6 +11,7 @@ from urllib.parse import urlencode
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.shared.config import AppConfig, load_config_from_env
+from tests.config_helpers import app_config
 from src.web.config_app import create_config_server
 
 
@@ -24,7 +25,7 @@ class ConfigWebTests(unittest.TestCase):
 
     def test_home_renders_saved_config(self) -> None:
         with _running_config_server(
-            AppConfig(tv_adapter="roku", tv_host="10.0.0.60")
+            app_config(tv_adapter="roku", tv_host="10.0.0.60")
         ) as client:
             response = client.request("GET", "/")
 
@@ -40,7 +41,7 @@ class ConfigWebTests(unittest.TestCase):
 
         self.assertEqual(response.status, 303)
         self.assertIsNotNone(saved_config)
-        self.assertEqual(saved_config.tv_host, "10.0.0.61")
+        self.assertEqual(saved_config.tv.host, "10.0.0.61")
 
     def test_settings_post_rejects_invalid_config(self) -> None:
         with _running_config_server() as client:
@@ -53,7 +54,7 @@ class ConfigWebTests(unittest.TestCase):
         self.assertIn("tv_host must not be empty", response.body)
 
     def test_reset_post_deletes_saved_config(self) -> None:
-        with _running_config_server(AppConfig(tv_host="10.0.0.62")) as client:
+        with _running_config_server(app_config(tv_host="10.0.0.62")) as client:
             response = client.post_form("/reset", {})
 
             saved_config = client.repository.get_config()
@@ -121,7 +122,7 @@ class _running_config_server:
 
     def _effective_config(self) -> AppConfig:
         saved_config = self.repository.get_config()
-        return load_config_from_env(base_config=saved_config or AppConfig())
+        return load_config_from_env(base_config=saved_config or app_config())
 
     def __enter__(self) -> _ConfigWebClient:
         self._env_patch.__enter__()

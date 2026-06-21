@@ -34,7 +34,7 @@ class VoiceCaptureService:
                 return
 
             loop = asyncio.get_running_loop()
-            chunks: asyncio.Queue[bytes] = asyncio.Queue()
+            chunks: asyncio.Queue[bytes] = asyncio.Queue(maxsize=4)
 
             def audio_callback(indata, frames, time_info, status) -> None:
                 if status:
@@ -42,7 +42,7 @@ class VoiceCaptureService:
                         self._logger.debug,
                         f"microphone status={status}",
                     )
-                loop.call_soon_threadsafe(chunks.put_nowait, bytes(indata))
+                loop.call_soon_threadsafe(_put_latest_chunk, chunks, bytes(indata))
 
             self._logger.info("Microphone: listening...")
             with sd.RawInputStream(
@@ -52,7 +52,7 @@ class VoiceCaptureService:
                 blocksize=4096,
                 callback=audio_callback,
             ):
-                deadline = time.monotonic() + self._config.voice_capture_seconds
+                deadline = time.monotonic() + self._config.tv.voice_capture_seconds
                 while time.monotonic() < deadline:
                     timeout = max(0.0, deadline - time.monotonic())
                     try:
@@ -70,3 +70,12 @@ class VoiceCaptureService:
         finally:
             if voice_stream is not None:
                 await call_remote_method(voice_stream.end)
+
+
+def _put_latest_chunk(chunks: asyncio.Queue[bytes], chunk: bytes) -> None:
+    if chunks.full():
+        try:
+            chunks.get_nowait()
+        except asyncio.QueueEmpty:
+            pass
+    chunks.put_nowait(chunk)

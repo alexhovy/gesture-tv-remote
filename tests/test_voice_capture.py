@@ -2,7 +2,7 @@ import asyncio
 import unittest
 
 from src.services.voice_capture import VoiceCaptureService
-from src.shared.config import AppConfig
+from tests.config_helpers import app_config
 
 
 class UnsupportedVoiceRemote:
@@ -26,7 +26,7 @@ class UnsupportedVoiceRemote:
 class VoiceCaptureTests(unittest.TestCase):
     def test_unsupported_voice_returns_without_microphone_dependency(self) -> None:
         remote = UnsupportedVoiceRemote()
-        service = VoiceCaptureService(remote, AppConfig())
+        service = VoiceCaptureService(remote, app_config())
 
         asyncio.run(service.capture())
 

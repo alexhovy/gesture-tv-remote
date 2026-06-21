@@ -18,9 +18,9 @@ class WebOsRemoteClient:
             from aiowebostv import WebOsClient
             from aiowebostv.controls import InputControl, MediaControl
 
-            self._config.webos_client_key_file.parent.mkdir(parents=True, exist_ok=True)
+            self._config.tv.webos_client_key_file.parent.mkdir(parents=True, exist_ok=True)
             client_key = self._read_client_key()
-            client = WebOsClient(self._config.tv_host)
+            client = WebOsClient(self._config.tv.host)
             await client.connect()
 
             registration_key = None
@@ -35,14 +35,14 @@ class WebOsRemoteClient:
             self._media = MediaControl(client)
         except Exception as error:
             self._logger.error(
-                f"Could not connect to webOS TV at {self._config.tv_host}: {error}"
+                f"Could not connect to webOS TV at {self._config.tv.host}: {error}"
             )
             self._client = None
             self._input = None
             self._media = None
             return False
 
-        self._logger.info(f"Connected to webOS TV at {self._config.tv_host}")
+        self._logger.info(f"Connected to webOS TV at {self._config.tv.host}")
         return True
 
     async def send_key_command(self, command: str) -> None:
@@ -65,12 +65,12 @@ class WebOsRemoteClient:
             await call_remote_method(self._client.close)
 
     def _read_client_key(self) -> str | None:
-        if not self._config.webos_client_key_file.exists():
+        if not self._config.tv.webos_client_key_file.exists():
             return None
-        return self._config.webos_client_key_file.read_text(encoding="utf-8").strip()
+        return self._config.tv.webos_client_key_file.read_text(encoding="utf-8").strip()
 
     def _write_client_key(self, client_key: str) -> None:
-        self._config.webos_client_key_file.write_text(client_key, encoding="utf-8")
+        self._config.tv.webos_client_key_file.write_text(client_key, encoding="utf-8")
 
     async def _send(self, adapter_command: str) -> None:
         if adapter_command == "volume_up":

@@ -44,6 +44,7 @@ from src.services.gesture_remote_service import (  # noqa: E402
 )
 from src.services.remote_command_dispatcher import RemoteCommandDispatcher  # noqa: E402
 from src.shared.config import AppConfig  # noqa: E402
+from tests.config_helpers import app_config  # noqa: E402
 
 
 class FakeFrame:
@@ -179,13 +180,13 @@ class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
 
 class GestureRemoteConfigReloadTests(unittest.TestCase):
     def test_reload_config_applies_live_fields_to_runtime_collaborators(self) -> None:
-        initial_config = AppConfig(
+        initial_config = app_config(
             tv_host="10.0.0.10",
             webcam_index=0,
             camera_zoom=1.0,
             debug_log_seconds=0.5,
         )
-        latest_config = AppConfig(
+        latest_config = app_config(
             tv_host="10.0.0.20",
             webcam_index=2,
             camera_zoom=2.0,
@@ -207,10 +208,10 @@ class GestureRemoteConfigReloadTests(unittest.TestCase):
             hand_tracker=hand_tracker,
         )
 
-        self.assertEqual(service._config.tv_host, "10.0.0.10")
-        self.assertEqual(service._config.webcam_index, 0)
-        self.assertEqual(service._config.camera_zoom, 2.0)
-        self.assertEqual(service._config.debug_log_seconds, 0.1)
+        self.assertEqual(service._config.tv.host, "10.0.0.10")
+        self.assertEqual(service._config.camera.webcam_index, 0)
+        self.assertEqual(service._config.camera.zoom, 2.0)
+        self.assertEqual(service._config.debug.log_seconds, 0.1)
         self.assertEqual(service._gesture_session.config, service._config)
         self.assertEqual(service._voice_capture.config, service._config)
         self.assertEqual(zoom_controller.config, service._config)
@@ -219,8 +220,8 @@ class GestureRemoteConfigReloadTests(unittest.TestCase):
 
     def test_reload_config_is_throttled(self) -> None:
         service = GestureRemoteService.__new__(GestureRemoteService)
-        service._config = AppConfig()
-        service._config_provider = ProviderCounter(AppConfig())
+        service._config = app_config()
+        service._config_provider = ProviderCounter(app_config())
         service._last_config_reload_time = 10.0
 
         service._reload_config_if_needed(

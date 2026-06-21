@@ -3,23 +3,23 @@ from pathlib import Path
 
 from src.shared.config import (
     DEFAULT_CONFIG,
-    AppConfig,
     EnvVar,
     apply_reloadable_config,
     load_config_from_env,
 )
+from tests.config_helpers import app_config
 
 
 class ConfigTests(unittest.TestCase):
     def test_load_config_uses_defaults_when_env_is_empty(self) -> None:
         config = load_config_from_env({})
 
-        self.assertEqual(config.tv_adapter, DEFAULT_CONFIG.tv_adapter)
-        self.assertEqual(config.tv_host, DEFAULT_CONFIG.tv_host)
+        self.assertEqual(config.tv.adapter, DEFAULT_CONFIG.tv.adapter)
+        self.assertEqual(config.tv.host, DEFAULT_CONFIG.tv.host)
         self.assertEqual(config.config_db_file, DEFAULT_CONFIG.config_db_file)
-        self.assertEqual(config.webcam_index, DEFAULT_CONFIG.webcam_index)
-        self.assertEqual(config.android_cert_file, DEFAULT_CONFIG.android_cert_file)
-        self.assertEqual(config.model_file, DEFAULT_CONFIG.model_file)
+        self.assertEqual(config.camera.webcam_index, DEFAULT_CONFIG.camera.webcam_index)
+        self.assertEqual(config.tv.android_cert_file, DEFAULT_CONFIG.tv.android_cert_file)
+        self.assertEqual(config.model.file, DEFAULT_CONFIG.model.file)
 
     def test_load_config_applies_env_overrides(self) -> None:
         config = load_config_from_env(
@@ -56,41 +56,41 @@ class ConfigTests(unittest.TestCase):
             }
         )
 
-        self.assertEqual(config.tv_adapter, "samsung")
-        self.assertEqual(config.tv_host, "10.0.0.25")
+        self.assertEqual(config.tv.adapter, "samsung")
+        self.assertEqual(config.tv.host, "10.0.0.25")
         self.assertEqual(config.config_db_file, Path("local/config.sqlite3"))
-        self.assertEqual(config.config_web_host, "127.0.0.1")
-        self.assertEqual(config.config_web_port, 9000)
-        self.assertFalse(config.config_web_mdns_enabled)
-        self.assertEqual(config.config_web_mdns_name, "livingroomremote")
-        self.assertEqual(config.webcam_index, 2)
-        self.assertEqual(config.camera_zoom, 1.5)
-        self.assertTrue(config.auto_zoom_enabled)
-        self.assertEqual(config.auto_zoom_min, 1.1)
-        self.assertEqual(config.auto_zoom_max, 2.4)
-        self.assertEqual(config.auto_zoom_padding, 0.5)
-        self.assertEqual(config.auto_zoom_smoothing, 0.25)
-        self.assertEqual(config.android_cert_file, Path("local/android/cert.pem"))
-        self.assertEqual(config.android_key_file, Path("local/android/key.pem"))
-        self.assertEqual(config.samsung_token_file, Path("local/samsung/token.txt"))
-        self.assertEqual(config.samsung_port, 8001)
+        self.assertEqual(config.web.host, "127.0.0.1")
+        self.assertEqual(config.web.port, 9000)
+        self.assertFalse(config.web.mdns_enabled)
+        self.assertEqual(config.web.mdns_name, "livingroomremote")
+        self.assertEqual(config.camera.webcam_index, 2)
+        self.assertEqual(config.camera.zoom, 1.5)
+        self.assertTrue(config.camera.auto_zoom_enabled)
+        self.assertEqual(config.camera.auto_zoom_min, 1.1)
+        self.assertEqual(config.camera.auto_zoom_max, 2.4)
+        self.assertEqual(config.camera.auto_zoom_padding, 0.5)
+        self.assertEqual(config.camera.auto_zoom_smoothing, 0.25)
+        self.assertEqual(config.tv.android_cert_file, Path("local/android/cert.pem"))
+        self.assertEqual(config.tv.android_key_file, Path("local/android/key.pem"))
+        self.assertEqual(config.tv.samsung_token_file, Path("local/samsung/token.txt"))
+        self.assertEqual(config.tv.samsung_port, 8001)
         self.assertEqual(
-            config.webos_client_key_file,
+            config.tv.webos_client_key_file,
             Path("local/webos/client_key.txt"),
         )
-        self.assertEqual(config.roku_port, 8061)
-        self.assertEqual(config.model_download_timeout_seconds, 3.5)
-        self.assertEqual(config.model_download_retries, 4)
-        self.assertEqual(config.debounce_seconds, 0.25)
-        self.assertEqual(config.pointer_distance_ratio, 0.5)
-        self.assertEqual(config.volume_max_distance, 0.3)
-        self.assertFalse(config.require_upright_hands)
-        self.assertEqual(config.hand_upright_max_tilt_ratio, 0.5)
-        self.assertEqual(config.primary_lost_grace_seconds, 0.45)
-        self.assertEqual(config.primary_match_max_distance, 0.25)
+        self.assertEqual(config.tv.roku_port, 8061)
+        self.assertEqual(config.model.download_timeout_seconds, 3.5)
+        self.assertEqual(config.model.download_retries, 4)
+        self.assertEqual(config.gesture.debounce_seconds, 0.25)
+        self.assertEqual(config.gesture.pointer_distance_ratio, 0.5)
+        self.assertEqual(config.gesture.volume_max_distance, 0.3)
+        self.assertFalse(config.gesture.require_upright_hands)
+        self.assertEqual(config.gesture.hand_upright_max_tilt_ratio, 0.5)
+        self.assertEqual(config.gesture.primary_lost_grace_seconds, 0.45)
+        self.assertEqual(config.gesture.primary_match_max_distance, 0.25)
 
     def test_load_config_applies_env_overrides_to_base_config(self) -> None:
-        base_config = AppConfig(
+        base_config = app_config(
             tv_adapter="roku",
             tv_host="10.0.0.40",
             webcam_index=1,
@@ -105,20 +105,20 @@ class ConfigTests(unittest.TestCase):
             base_config=base_config,
         )
 
-        self.assertEqual(config.tv_adapter, "roku")
-        self.assertEqual(config.tv_host, "10.0.0.41")
-        self.assertEqual(config.webcam_index, 1)
-        self.assertEqual(config.camera_zoom, 2.0)
+        self.assertEqual(config.tv.adapter, "roku")
+        self.assertEqual(config.tv.host, "10.0.0.41")
+        self.assertEqual(config.camera.webcam_index, 1)
+        self.assertEqual(config.camera.zoom, 2.0)
 
     def test_apply_reloadable_config_keeps_restart_required_fields(self) -> None:
-        current = AppConfig(
+        current = app_config(
             tv_adapter="samsung",
             tv_host="10.0.0.10",
             webcam_index=0,
             camera_zoom=1.0,
             debug_log_seconds=0.5,
         )
-        latest = AppConfig(
+        latest = app_config(
             tv_adapter="roku",
             tv_host="10.0.0.20",
             webcam_index=2,
@@ -128,11 +128,11 @@ class ConfigTests(unittest.TestCase):
 
         config = apply_reloadable_config(current, latest)
 
-        self.assertEqual(config.tv_adapter, "samsung")
-        self.assertEqual(config.tv_host, "10.0.0.10")
-        self.assertEqual(config.webcam_index, 0)
-        self.assertEqual(config.camera_zoom, 2.0)
-        self.assertEqual(config.debug_log_seconds, 0.1)
+        self.assertEqual(config.tv.adapter, "samsung")
+        self.assertEqual(config.tv.host, "10.0.0.10")
+        self.assertEqual(config.camera.webcam_index, 0)
+        self.assertEqual(config.camera.zoom, 2.0)
+        self.assertEqual(config.debug.log_seconds, 0.1)
 
     def test_load_config_rejects_invalid_boolean(self) -> None:
         with self.assertRaisesRegex(ValueError, EnvVar.AUTO_ZOOM_ENABLED):

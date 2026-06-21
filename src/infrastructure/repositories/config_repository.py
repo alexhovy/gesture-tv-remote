@@ -1,10 +1,16 @@
-from dataclasses import fields
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from src.infrastructure.data_access.sqlite_store import SqliteStore
-from src.shared.config import AppConfig, validate_config
+from src.shared.config import (
+    CONFIG_FIELDS,
+    AppConfig,
+    config_field_default,
+    get_config_value,
+    replace_config_value,
+    validate_config,
+)
 
 _CONFIG_ROW_ID = 1
 
@@ -24,12 +30,13 @@ class ConfigRepository:
         if row is None:
             return None
 
-        config = AppConfig(
-            **{
-                field.name: _from_db_value(field.default, row[field.name])
-                for field in fields(AppConfig)
-            }
-        )
+        config = AppConfig()
+        for field in CONFIG_FIELDS:
+            config = replace_config_value(
+                config,
+                field.name,
+                _from_db_value(config_field_default(field), row[field.name]),
+            )
         validate_config(config)
         return config
 
@@ -37,14 +44,14 @@ class ConfigRepository:
         validate_config(config)
         self._ensure_schema()
 
-        column_names = [field.name for field in fields(AppConfig)]
+        column_names = [field.name for field in CONFIG_FIELDS]
         quoted_columns = ", ".join(_quote_identifier(name) for name in column_names)
         placeholders = ", ".join("?" for _ in column_names)
         update_assignments = ", ".join(
             f"{_quote_identifier(name)} = excluded.{_quote_identifier(name)}"
             for name in column_names
         )
-        values = [_to_db_value(getattr(config, name)) for name in column_names]
+        values = [_to_db_value(get_config_value(config, name)) for name in column_names]
 
         with self._store.connect() as connection:
             connection.execute(
@@ -89,21 +96,22 @@ class ConfigRepository:
                 row["name"]
                 for row in connection.execute("PRAGMA table_info(app_config)")
             }
-            for field in fields(AppConfig):
+            for field in CONFIG_FIELDS:
                 if field.name in existing_columns:
                     continue
                 connection.execute(
                     f"""
                     ALTER TABLE app_config
-                    ADD COLUMN {_migration_column_definition(field.name, field.default)}
-                    DEFAULT {_sql_literal(_to_db_value(field.default))}
+                    ADD COLUMN {_migration_column_definition(field.name, config_field_default(field))}
+                    DEFAULT {_sql_literal(_to_db_value(config_field_default(field)))}
                     """
                 )
 
 
 def _column_definitions() -> str:
     return ",\n                    ".join(
-        _column_definition(field.name, field.default) for field in fields(AppConfig)
+        _column_definition(field.name, config_field_default(field))
+        for field in CONFIG_FIELDS
     )
 
 

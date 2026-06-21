@@ -6,26 +6,26 @@ from src.shared.logging import AppLogger
 
 
 def download_model_if_missing(config: AppConfig) -> None:
-    if config.model_file.exists():
+    if config.model.file.exists():
         return
 
-    config.model_file.parent.mkdir(parents=True, exist_ok=True)
+    config.model.file.parent.mkdir(parents=True, exist_ok=True)
     logger = AppLogger()
-    logger.info(f"Downloading {config.model_file}...")
+    logger.info(f"Downloading {config.model.file}...")
     _download_with_retries(config, logger)
 
 
 def _download_with_retries(config: AppConfig, logger: AppLogger) -> None:
-    attempts = config.model_download_retries + 1
+    attempts = config.model.download_retries + 1
     last_error: Exception | None = None
 
     for attempt in range(1, attempts + 1):
         try:
-            _download_to_temp_file(config.model_url, config.model_file, config)
+            _download_to_temp_file(config.model.url, config.model.file, config)
             return
         except Exception as error:
             last_error = error
-            _temp_path(config.model_file).unlink(missing_ok=True)
+            _temp_path(config.model.file).unlink(missing_ok=True)
             if attempt < attempts:
                 logger.info(
                     f"Model download failed ({error}); retrying {attempt}/{attempts - 1}."
@@ -38,7 +38,7 @@ def _download_to_temp_file(url: str, destination: Path, config: AppConfig) -> No
     temp_path = _temp_path(destination)
     with urllib.request.urlopen(
         url,
-        timeout=config.model_download_timeout_seconds,
+        timeout=config.model.download_timeout_seconds,
     ) as response:
         with temp_path.open("wb") as model_file:
             while True:

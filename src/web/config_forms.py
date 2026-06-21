@@ -1,8 +1,7 @@
-from dataclasses import fields
 from pathlib import Path
 from typing import Any
 
-from src.shared.config import AppConfig
+from src.shared.config import CONFIG_FIELDS, AppConfig, get_config_value, replace_config_value
 
 BOOLEAN_FIELD_MARKER = "__present_bool"
 
@@ -11,27 +10,24 @@ def config_from_form(
     form: dict[str, list[str]],
     base_config: AppConfig,
 ) -> AppConfig:
-    config_values = {}
+    config = base_config
     present_bool_fields = set(form.get(BOOLEAN_FIELD_MARKER, []))
-    for field in fields(AppConfig):
-        current_value = getattr(base_config, field.name)
+    for field in CONFIG_FIELDS:
+        current_value = get_config_value(config, field.name)
         raw_value = _first_form_value(form, field.name)
         if isinstance(current_value, bool):
             if field.name in present_bool_fields:
-                config_values[field.name] = raw_value is not None
-            else:
-                config_values[field.name] = current_value
+                config = replace_config_value(config, field.name, raw_value is not None)
             continue
         if raw_value is None:
-            config_values[field.name] = current_value
             continue
-        config_values[field.name] = _parse_field_value(
+        config = replace_config_value(
+            config,
             field.name,
-            raw_value,
-            current_value,
+            _parse_field_value(field.name, raw_value, current_value),
         )
 
-    return AppConfig(**config_values)
+    return config
 
 
 def _first_form_value(form: dict[str, list[str]], name: str) -> str | None:

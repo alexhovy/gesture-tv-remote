@@ -28,12 +28,12 @@ class DetectedHand:
 class MediaPipeHandTracker:
     def __init__(self, config: AppConfig) -> None:
         options = HandLandmarkerOptions(
-            base_options=BaseOptions(model_asset_path=str(config.model_file)),
+            base_options=BaseOptions(model_asset_path=str(config.model.file)),
             running_mode=VisionTaskRunningMode.LIVE_STREAM,
-            num_hands=config.max_hands,
-            min_hand_detection_confidence=config.min_hand_detection_confidence,
-            min_hand_presence_confidence=config.min_hand_presence_confidence,
-            min_tracking_confidence=config.min_tracking_confidence,
+            num_hands=config.model.max_hands,
+            min_hand_detection_confidence=config.model.min_hand_detection_confidence,
+            min_hand_presence_confidence=config.model.min_hand_presence_confidence,
+            min_tracking_confidence=config.model.min_tracking_confidence,
             result_callback=self._handle_result,
         )
         self._config = config
@@ -68,10 +68,10 @@ class MediaPipeHandTracker:
             handedness = detected_hand.handedness
             center_x, center_y, hand_size = hand_center(landmarks)
             upright = (
-                not self._config.require_upright_hands
+                not self._config.gesture.require_upright_hands
                 or hand_is_upright(
                     landmarks,
-                    self._config.hand_upright_max_tilt_ratio,
+                    self._config.gesture.hand_upright_max_tilt_ratio,
                 )
             )
             hand_states.append(
@@ -80,9 +80,9 @@ class MediaPipeHandTracker:
                     gesture=detect_gesture(
                         landmarks,
                         handedness,
-                        self._config.pinch_distance_ratio,
-                        self._config.require_upright_hands,
-                        self._config.hand_upright_max_tilt_ratio,
+                        self._config.gesture.pinch_distance_ratio,
+                        self._config.gesture.require_upright_hands,
+                        self._config.gesture.hand_upright_max_tilt_ratio,
                     ),
                     center=(center_x, center_y),
                     size=hand_size,

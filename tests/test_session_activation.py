@@ -8,13 +8,13 @@ from src.domain.constants import (
     GESTURE_TWO_FINGERS,
 )
 from src.domain.session import GestureSession
-from src.shared.config import AppConfig
+from tests.config_helpers import app_config
 from tests.session_helpers import hand_state
 
 
 class SessionActivationTests(unittest.TestCase):
     def test_decision_is_not_activated_before_primary_open_palm(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
 
         decision = session.evaluate(
             [hand_state(GESTURE_POINT, center=(0.20, 0.50), size=0.20)],
@@ -25,7 +25,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertIsNone(decision.command_gesture)
 
     def test_decision_activates_from_primary_open_palm(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
 
         decision = session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
@@ -36,7 +36,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertIsNone(decision.command_gesture)
 
     def test_decision_does_not_activate_from_non_upright_open_palm(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
 
         decision = session.evaluate(
             [
@@ -54,7 +54,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertIsNone(decision.command_gesture)
 
     def test_active_session_deactivates_when_primary_is_not_upright(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
             now=0.0,
@@ -76,7 +76,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertIsNone(decision.command_gesture)
 
     def test_active_session_stays_active_during_brief_primary_dropout(self) -> None:
-        session = GestureSession(AppConfig(primary_lost_grace_seconds=0.35))
+        session = GestureSession(app_config(primary_lost_grace_seconds=0.35))
         session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
             now=0.0,
@@ -90,7 +90,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertIn("primary_temporarily_lost", decision.debug_message)
 
     def test_active_session_deactivates_after_primary_dropout_grace(self) -> None:
-        session = GestureSession(AppConfig(primary_lost_grace_seconds=0.35))
+        session = GestureSession(app_config(primary_lost_grace_seconds=0.35))
         session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
             now=0.0,
@@ -102,7 +102,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertIsNone(decision.command_gesture)
 
     def test_brief_primary_dropout_preserves_previous_gesture(self) -> None:
-        session = GestureSession(AppConfig(primary_lost_grace_seconds=0.35))
+        session = GestureSession(app_config(primary_lost_grace_seconds=0.35))
         session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
             now=0.0,
@@ -121,7 +121,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
 
     def test_decision_reports_activation_alongside_command_gesture(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
 
         decision = session.evaluate(
             [
@@ -153,7 +153,7 @@ class SessionActivationTests(unittest.TestCase):
         )
 
     def test_zoom_landmarks_include_valid_primary_and_secondary_hands(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         secondary = hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.20)
 
@@ -162,7 +162,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertEqual(decision.zoom_landmarks, [primary.landmarks, secondary.landmarks])
 
     def test_secondary_hand_does_not_steal_primary_when_closer_to_anchor(self) -> None:
-        session = GestureSession(AppConfig(primary_match_max_distance=0.35))
+        session = GestureSession(app_config(primary_match_max_distance=0.35))
         session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.30, 0.50), size=0.20)],
             now=0.0,
@@ -178,7 +178,7 @@ class SessionActivationTests(unittest.TestCase):
 
     def test_secondary_gesture_is_not_promoted_to_missing_primary(self) -> None:
         session = GestureSession(
-            AppConfig(
+            app_config(
                 primary_lost_grace_seconds=0.35,
                 primary_match_max_distance=0.35,
             )
@@ -198,7 +198,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertEqual(decision.zoom_landmarks, [])
 
     def test_non_upright_secondary_hand_is_ignored(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         secondary = hand_state(
             GESTURE_TWO_FINGERS,
@@ -220,7 +220,7 @@ class SessionActivationTests(unittest.TestCase):
         )
 
     def test_upside_down_secondary_hand_is_ignored(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         secondary = hand_state(
             GESTURE_TWO_FINGERS,
@@ -242,7 +242,7 @@ class SessionActivationTests(unittest.TestCase):
         )
 
     def test_unknown_secondary_hand_keeps_zoom_stable(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         secondary = hand_state(None, center=(0.70, 0.50), size=0.20)
 

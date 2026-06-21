@@ -10,7 +10,7 @@ from src.domain.constants import (
     GESTURE_POINT_UP,
 )
 from src.domain.session import GestureSession
-from src.shared.config import AppConfig
+from tests.config_helpers import app_config
 from tests.session_helpers import evaluate_pointer_move, hand_state
 
 
@@ -26,7 +26,7 @@ class SessionPointerTests(unittest.TestCase):
         )
 
     def test_pointer_movement_accumulates_from_anchor_until_threshold(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
@@ -40,7 +40,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertTrue(crossed_threshold.freeze_zoom)
 
     def test_pointer_debug_reports_anchor_threshold_and_neutral_state(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
@@ -56,7 +56,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("blocked=below_threshold", near_miss.debug_message)
 
     def test_pointer_neutral_zone_recenters_after_stable_return(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
@@ -75,7 +75,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("anchor=(0.50,0.51)", crossed_from_new_anchor.debug_message)
 
     def test_pointer_hold_does_not_repeat_before_neutral_return(self) -> None:
-        session = GestureSession(AppConfig(debounce_seconds=0.3))
+        session = GestureSession(app_config(debounce_seconds=0.3))
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
@@ -90,7 +90,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("blocked=awaiting_neutral", repeated.debug_message)
 
     def test_pointer_return_to_neutral_stops_repeat_and_allows_new_direction(self) -> None:
-        session = GestureSession(AppConfig(debounce_seconds=0.3))
+        session = GestureSession(app_config(debounce_seconds=0.3))
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
@@ -108,7 +108,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertEqual(first_up.command_gesture, GESTURE_POINT_UP)
 
     def test_pointer_requires_neutral_return_before_horizontal_direction_switch(self) -> None:
-        session = GestureSession(AppConfig(debounce_seconds=0.3))
+        session = GestureSession(app_config(debounce_seconds=0.3))
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
@@ -125,7 +125,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertEqual(rearmed_left.command_gesture, GESTURE_POINT_LEFT)
 
     def test_pointer_uses_index_tip_for_horizontal_movement(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         session.evaluate(
@@ -157,7 +157,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("source=index_tip", left.debug_message)
 
     def test_pointer_survives_brief_unknown_secondary_gesture(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
@@ -179,7 +179,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("secondary=UNKNOWN effective_secondary=POINT", unknown.debug_message)
 
     def test_zoom_freezes_while_secondary_hand_is_unknown(self) -> None:
-        session = GestureSession(AppConfig())
+        session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         decision = session.evaluate(

@@ -1,6 +1,4 @@
 import math
-from dataclasses import dataclass, field
-from typing import Any
 
 from src.domain.constants import (
     DEBUG_NONE,
@@ -22,32 +20,18 @@ from src.domain.constants import (
     GESTURE_VOLUME_UP,
 )
 from src.domain.gestures import detect_direction, detect_volume
-from src.domain.landmarks import (
-    hand_upright_metrics,
-    hand_upright_reason,
+from src.domain.motion_filter import (
+    MotionFilterState,
+    filter_motion_gesture,
+    is_motion_neutral,
+    pointer_motion_magnitude,
 )
+from src.domain.session_debug import GestureSessionDebugMixin
+from src.domain.session_types import GestureDecision, HandState
 from src.shared.config import AppConfig
 
 
-@dataclass(frozen=True)
-class HandState:
-    landmarks: list[Any]
-    gesture: str | None
-    center: tuple[float, float]
-    size: float
-    upright: bool = True
-
-
-@dataclass(frozen=True)
-class GestureDecision:
-    command_gesture: str | None
-    activated: bool
-    debug_message: str
-    primary_temporarily_lost: bool = False
-    zoom_landmarks: list[list[Any]] = field(default_factory=list)
-
-
-class GestureSession:
+class GestureSession(GestureSessionDebugMixin):
     def __init__(self, config: AppConfig) -> None:
         self._config = config
         self.last_command_time = 0.0
@@ -342,7 +326,7 @@ class GestureSession:
             if self.volume_active_gesture is None:
                 return None
 
-            if self._is_motion_neutral(magnitude, distance):
+            if is_motion_neutral(magnitude, distance):
                 self.volume_start_y = current_y
                 self._reset_volume_motion_state()
                 self.volume_rebased = True
@@ -352,7 +336,7 @@ class GestureSession:
             return None
 
         if self.volume_returning_to_neutral:
-            if self._is_motion_neutral(magnitude, distance):
+            if is_motion_neutral(magnitude, distance):
                 self.volume_start_y = current_y
                 self._reset_volume_motion_state()
                 self.volume_rebased = True
@@ -365,15 +349,21 @@ class GestureSession:
             self.volume_last_blocked_reason = "direction_changed_before_neutral"
             return None
 
-        return self._filtered_motion_gesture(
+        result = filter_motion_gesture(
             gesture,
             magnitude,
             distance,
-            active_gesture_attr="volume_active_gesture",
-            peak_distance_attr="volume_peak_distance",
-            returning_attr="volume_returning_to_neutral",
-            blocked_reason_attr="volume_last_blocked_reason",
+            MotionFilterState(
+                active_gesture=self.volume_active_gesture,
+                peak_distance=self.volume_peak_distance,
+                returning_to_neutral=self.volume_returning_to_neutral,
+            ),
         )
+        self.volume_active_gesture = result.active_gesture
+        self.volume_peak_distance = result.peak_distance
+        self.volume_returning_to_neutral = result.returning_to_neutral
+        self.volume_last_blocked_reason = result.blocked_reason
+        return result.command_gesture
 
     def _filtered_pointer_gesture(
         self,
@@ -391,7 +381,7 @@ class GestureSession:
             if self.pointer_active_gesture is None:
                 return None
 
-            if self._is_motion_neutral(magnitude, distance):
+            if is_motion_neutral(magnitude, distance):
                 self.pointer_start_position = current_position
                 self._reset_pointer_motion_state()
                 self.pointer_rebased = True
@@ -401,7 +391,7 @@ class GestureSession:
             return None
 
         if self.pointer_returning_to_neutral:
-            if self._is_motion_neutral(magnitude, distance):
+            if is_motion_neutral(magnitude, distance):
                 self.pointer_start_position = current_position
                 self._reset_pointer_motion_state()
                 self.pointer_rebased = True
@@ -414,74 +404,23 @@ class GestureSession:
             self.pointer_last_blocked_reason = "direction_changed_before_neutral"
             return None
 
-        magnitude = self._pointer_motion_magnitude(gesture, start_position, current_position)
+        magnitude = pointer_motion_magnitude(gesture, start_position, current_position)
 
-        return self._filtered_motion_gesture(
+        result = filter_motion_gesture(
             gesture,
             magnitude,
             distance,
-            active_gesture_attr="pointer_active_gesture",
-            peak_distance_attr="pointer_peak_distance",
-            returning_attr="pointer_returning_to_neutral",
-            blocked_reason_attr="pointer_last_blocked_reason",
+            MotionFilterState(
+                active_gesture=self.pointer_active_gesture,
+                peak_distance=self.pointer_peak_distance,
+                returning_to_neutral=self.pointer_returning_to_neutral,
+            ),
         )
-
-    def _filtered_motion_gesture(
-        self,
-        gesture: str,
-        magnitude: float,
-        activation_distance: float,
-        active_gesture_attr: str,
-        peak_distance_attr: str,
-        returning_attr: str,
-        blocked_reason_attr: str,
-    ) -> str | None:
-        if getattr(self, returning_attr):
-            setattr(self, blocked_reason_attr, "returning_to_neutral")
-            return None
-
-        active_gesture = getattr(self, active_gesture_attr)
-        if active_gesture is not None and gesture != active_gesture:
-            setattr(self, returning_attr, True)
-            setattr(self, blocked_reason_attr, "direction_changed_before_neutral")
-            return None
-
-        if gesture != active_gesture:
-            setattr(self, active_gesture_attr, gesture)
-            setattr(self, peak_distance_attr, magnitude)
-            setattr(self, returning_attr, False)
-            return gesture
-
-        peak_distance = getattr(self, peak_distance_attr)
-        if magnitude >= peak_distance:
-            setattr(self, peak_distance_attr, magnitude)
-            setattr(self, returning_attr, False)
-            return None
-
-        release_delta = activation_distance * 0.75
-        if magnitude <= peak_distance - release_delta:
-            setattr(self, returning_attr, True)
-            setattr(self, blocked_reason_attr, "returning_to_neutral")
-
-        return None
-
-    @staticmethod
-    def _is_motion_neutral(magnitude: float, activation_distance: float) -> bool:
-        return magnitude <= activation_distance
-
-    @staticmethod
-    def _pointer_motion_magnitude(
-        gesture: str,
-        start_position: tuple[float, float],
-        current_position: tuple[float, float],
-    ) -> float:
-        start_x, start_y = start_position
-        current_x, current_y = current_position
-        if gesture in {GESTURE_POINT_LEFT, GESTURE_POINT_RIGHT}:
-            return abs(current_x - start_x)
-        if gesture in {GESTURE_POINT_UP, GESTURE_POINT_DOWN}:
-            return abs(current_y - start_y)
-        return math.dist(start_position, current_position)
+        self.pointer_active_gesture = result.active_gesture
+        self.pointer_peak_distance = result.peak_distance
+        self.pointer_returning_to_neutral = result.returning_to_neutral
+        self.pointer_last_blocked_reason = result.blocked_reason
+        return result.command_gesture
 
     def _reset_volume_tracking(self) -> None:
         self.volume_start_y = None
@@ -569,96 +508,6 @@ class GestureSession:
 
         target_x, target_y = self.primary_position
         return math.hypot(hand.center[0] - target_x, hand.center[1] - target_y)
-
-    def _debug_hands(
-        self,
-        hands: list[HandState],
-        primary_anchor: tuple[float, float] | None,
-    ) -> str:
-        if not hands:
-            return "hand_details=[]"
-
-        details = [
-            self._debug_hand(index, hand, primary_anchor)
-            for index, hand in enumerate(hands)
-        ]
-        return f"hand_details=[{';'.join(details)}]"
-
-    def _debug_hand(
-        self,
-        index: int,
-        hand: HandState,
-        primary_anchor: tuple[float, float] | None,
-    ) -> str:
-        center_x, center_y = hand.center
-        distance = "none"
-        if primary_anchor is not None:
-            distance_value = math.hypot(
-                center_x - primary_anchor[0],
-                center_y - primary_anchor[1],
-            )
-            distance = f"{distance_value:.2f}"
-        dx, dy, tilt_ratio = hand_upright_metrics(hand.landmarks)
-        tilt = "inf" if math.isinf(tilt_ratio) else f"{tilt_ratio:.2f}"
-        reason = hand_upright_reason(
-            hand.landmarks,
-            self._config.hand_upright_max_tilt_ratio,
-        )
-
-        return (
-            f"{index}:gesture={hand.gesture or DEBUG_UNKNOWN}"
-            f":upright={hand.upright}"
-            f":upright_reason={reason}"
-            f":upright_dx={dx:.2f}"
-            f":upright_dy={dy:.2f}"
-            f":upright_tilt={tilt}"
-            f":center=({center_x:.2f},{center_y:.2f})"
-            f":size={hand.size:.2f}"
-            f":primary_dist={distance}"
-        )
-
-    def _debug_pointer_state(self, current_position: tuple[float, float] | None) -> str:
-        start = self._debug_position(self.pointer_start_position)
-        current = self._debug_position(current_position)
-        dx, dy = self._debug_delta(self.pointer_start_position, current_position)
-        return (
-            f"start={start}:active={self.pointer_active_gesture or DEBUG_NONE}"
-            f":current={current}:dx={dx}:dy={dy}"
-            f":peak={self.pointer_peak_distance:.2f}"
-            f":returning={self.pointer_returning_to_neutral}"
-            f":rebased={self.pointer_rebased}"
-            f":blocked={self.pointer_last_blocked_reason or DEBUG_NONE}"
-        )
-
-    def _debug_volume_state(self) -> str:
-        start = DEBUG_NONE if self.volume_start_y is None else f"{self.volume_start_y:.2f}"
-        return (
-            f"start={start}:active={self.volume_active_gesture or DEBUG_NONE}"
-            f":peak={self.volume_peak_distance:.2f}"
-            f":returning={self.volume_returning_to_neutral}"
-            f":rebased={self.volume_rebased}"
-            f":blocked={self.volume_last_blocked_reason or DEBUG_NONE}"
-        )
-
-    @staticmethod
-    def _debug_position(position: tuple[float, float] | None) -> str:
-        if position is None:
-            return DEBUG_NONE
-
-        x, y = position
-        return f"({x:.2f},{y:.2f})"
-
-    @staticmethod
-    def _debug_delta(
-        start_position: tuple[float, float] | None,
-        current_position: tuple[float, float] | None,
-    ) -> tuple[str, str]:
-        if start_position is None or current_position is None:
-            return DEBUG_NONE, DEBUG_NONE
-
-        start_x, start_y = start_position
-        current_x, current_y = current_position
-        return f"{current_x - start_x:.2f}", f"{current_y - start_y:.2f}"
 
     @staticmethod
     def _scaled_distance(

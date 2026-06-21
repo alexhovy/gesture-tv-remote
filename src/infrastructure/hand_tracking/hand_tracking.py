@@ -15,7 +15,7 @@ from mediapipe.tasks.python.vision.hand_landmarker import (
 from src.domain.constants import HANDEDNESS_RIGHT
 from src.domain.gestures import detect_gesture
 from src.domain.landmarks import hand_center, hand_is_upright
-from src.domain.session import HandState
+from src.domain.session_types import HandState
 from src.shared.config import AppConfig
 
 

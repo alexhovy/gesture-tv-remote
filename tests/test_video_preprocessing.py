@@ -15,7 +15,7 @@ from src.infrastructure.camera.video_preprocessing import (
     apply_crop,
 )
 from src.domain.constants import GESTURE_POINT
-from src.domain.session import HandState
+from src.domain.session_types import HandState
 from src.shared.config import AppConfig
 
 

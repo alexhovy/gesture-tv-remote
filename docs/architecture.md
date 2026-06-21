@@ -25,6 +25,7 @@ case when the selected TV adapter supports it.
 - landmark math
 - static gesture detection
 - gesture-session state transitions
+- shared gesture-session value types and motion filtering
 - command mappings and debounce behavior
 
 Domain code should not import OpenCV, MediaPipe, TV-control libraries, or audio
@@ -48,8 +49,9 @@ as SQLite connection handling. This keeps data sources replaceable while typed
 configuration remains represented as `AppConfig`.
 
 TV control is adapter-based. `GestureRemoteService` asks the TV remote factory
-for a client selected by configuration, then sends app-level TV commands such as
-`HOME`, `BACK`, `DPAD_UP`, and `VOLUME_UP`. Each adapter translates those
+for a client selected by configuration, then queues app-level TV commands such as
+`HOME`, `BACK`, `DPAD_UP`, and `VOLUME_UP` through a service command dispatcher.
+Each adapter translates those
 commands to the protocol-specific command names for Android TV, Samsung TV,
 webOS, or Roku. Voice capture is an adapter capability; currently only the
 Android TV adapter exposes the voice stream used by `VoiceCaptureService`.

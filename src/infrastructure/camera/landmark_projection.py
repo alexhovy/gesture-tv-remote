@@ -2,7 +2,7 @@ from types import SimpleNamespace
 from typing import Any
 
 from src.domain.landmarks import hand_center
-from src.domain.session import HandState
+from src.domain.session_types import HandState
 from src.infrastructure.camera.video_preprocessing import CropRect
 
 

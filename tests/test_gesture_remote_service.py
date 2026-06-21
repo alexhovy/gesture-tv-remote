@@ -40,8 +40,8 @@ _install_service_import_stubs()
 
 from src.services.gesture_remote_service import (  # noqa: E402
     GestureRemoteService,
-    RemoteCommandDispatcher,
 )
+from src.services.remote_command_dispatcher import RemoteCommandDispatcher  # noqa: E402
 
 
 class FakeFrame:

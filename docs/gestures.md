@@ -31,17 +31,16 @@ upright open palm to activate controls.
 
 Most commands are emitted once per gesture change. DPAD and volume gestures use
 a joystick-style anchor. When the secondary hand first points or pinches, its
-current position becomes the anchor. A small neutral zone around that anchor
-recenters the anchor when the hand settles near rest.
+current position becomes the anchor and remains fixed until that point or pinch
+gesture ends.
 
 Point navigation tracks the secondary index fingertip so left/right intent does
 not depend on moving the whole hand. Moving outside the activation distance
 emits the dominant direction. Holding the same direction does not repeat
-commands. Returning inside the release zone for a short stable settle period
-re-arms motion even when the fingertip does not land exactly in the smaller
-neutral zone. Pointer gestures re-arm after two release frames by default.
-Moving to a different direction before that release return is ignored so return
-strokes do not become accidental opposite commands.
+commands. Returning inside the release zone around the fixed anchor for a short
+stable settle period re-arms motion. Pointer gestures re-arm after two release
+frames by default. Moving to a different direction before that release return is
+ignored so return strokes do not become accidental opposite commands.
 
 Display auto-zoom first makes a bounded adjustment if the secondary hand is
 near or outside the visible crop, then freezes while the secondary hand is

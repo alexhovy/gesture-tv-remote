@@ -180,12 +180,12 @@ GESTURE_TV_ADAPTER=samsung GESTURE_TV_HOST=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 p
 Pointer and volume movement thresholds are scaled from the detected secondary
 hand size, then clamped by their min/max distance settings. This keeps gestures
 more consistent when the user moves closer to or farther from the camera. The
-runtime applies activation hysteresis below that scaled distance. A small
-internal neutral zone around the current anchor recenters pointer and volume
-motion after the hand has settled near rest, while a larger release zone re-arms
-motion after a return stroke. Holding outside the activation distance does not
-repeat commands; another command requires returning inside the release zone long
-enough to re-arm the motion state. Pointer gestures use
+runtime applies activation hysteresis below that scaled distance. The anchor
+stays fixed for the current pointer or volume motion gesture, while a larger
+release zone around that anchor re-arms motion after a return stroke. Holding
+outside the activation distance does not repeat commands; another command
+requires returning inside the release zone long enough to re-arm the motion
+state. Pointer gestures use
 `GESTURE_TV_POINTER_RELEASE_SETTLE_FRAMES` for that release return; increasing
 it makes accidental repeats less likely, while decreasing it makes directional
 navigation more responsive.

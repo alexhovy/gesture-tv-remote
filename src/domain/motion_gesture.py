@@ -122,8 +122,6 @@ class MotionJoystickState:
             self.phase = "settling"
             self.last_blocked_reason = "settling_release"
             if self.release_frames >= release_settle_frames:
-                if decision.in_neutral:
-                    self.anchor = current_anchor
                 self.reset_motion_state()
                 self.last_blocked_reason = "rearmed"
             return None

@@ -55,24 +55,22 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("in_neutral=False", near_miss.debug_message)
         self.assertIn("blocked=below_threshold", near_miss.debug_message)
 
-    def test_pointer_neutral_zone_recenters_after_stable_return(self) -> None:
+    def test_pointer_neutral_zone_rearms_without_recentering_anchor(self) -> None:
         session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
         neutral_move = self._point(session, primary, (0.50, 0.512), now=0.1)
         neutral_settling = self._point(session, primary, (0.50, 0.512), now=0.2)
-        below_threshold_from_new_anchor = self._point(session, primary, (0.50, 0.54), now=0.3)
-        crossed_from_new_anchor = self._point(session, primary, (0.50, 0.55), now=0.4)
+        crossed_from_original_anchor = self._point(session, primary, (0.50, 0.54), now=0.3)
 
         self.assertIsNone(neutral_move.command_gesture)
         self.assertIn("in_neutral=True", neutral_move.debug_message)
         self.assertIn("phase=armed", neutral_move.debug_message)
         self.assertIn("blocked=rearmed", neutral_move.debug_message)
         self.assertIsNone(neutral_settling.command_gesture)
-        self.assertIsNone(below_threshold_from_new_anchor.command_gesture)
-        self.assertEqual(crossed_from_new_anchor.command_gesture, GESTURE_POINT_DOWN)
-        self.assertIn("anchor=(0.50,0.51)", crossed_from_new_anchor.debug_message)
+        self.assertEqual(crossed_from_original_anchor.command_gesture, GESTURE_POINT_DOWN)
+        self.assertIn("anchor=(0.50,0.50)", crossed_from_original_anchor.debug_message)
 
     def test_pointer_release_settle_frames_are_configurable(self) -> None:
         session = GestureSession(app_config(pointer_release_settle_frames=3))
@@ -168,6 +166,23 @@ class SessionPointerTests(unittest.TestCase):
         self.assertEqual(up.command_gesture, GESTURE_POINT_UP)
         self.assertIn("blocked=rearmed", released.debug_message)
         self.assertEqual(left.command_gesture, GESTURE_POINT_LEFT)
+
+    def test_pointer_left_return_toward_anchor_does_not_emit_right(self) -> None:
+        session = GestureSession(app_config(debounce_seconds=0.3))
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._point(session, primary, (0.50, 0.50), now=0.0)
+        left = self._point(session, primary, (0.44, 0.50), now=0.1)
+        returning = self._point(session, primary, (0.525, 0.50), now=0.2)
+        rearmed = self._point(session, primary, (0.525, 0.50), now=0.3)
+        near_anchor = self._point(session, primary, (0.50, 0.50), now=0.4)
+
+        self.assertEqual(left.command_gesture, GESTURE_POINT_LEFT)
+        self.assertIsNone(returning.command_gesture)
+        self.assertIn("in_release=True", returning.debug_message)
+        self.assertIn("blocked=rearmed", rearmed.debug_message)
+        self.assertIsNone(near_anchor.command_gesture)
+        self.assertIn("anchor=(0.50,0.50)", near_anchor.debug_message)
 
     def test_pointer_uses_index_tip_for_horizontal_movement(self) -> None:
         session = GestureSession(app_config())

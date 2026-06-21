@@ -5,8 +5,9 @@ loads those defaults and applies environment-variable overrides at startup.
 
 The current defaults preserve the MVP behavior:
 
-- TV adapter: `androidtv`
-- TV host: `192.168.0.5`
+- TV adapter: `samsung`
+- TV host: `192.168.8.7`
+- config database file: `data/gesture_tv_remote.sqlite3`
 - webcam index: `0`
 - model file: `models/hand_landmarker.task`
 - Android TV cert file: `certs/android/cert.pem`
@@ -48,11 +49,18 @@ On first run, the app downloads Google's `hand_landmarker.task` model into
 retry count, write to a temporary file first, and atomically replace the final
 model file only after a complete download.
 
+## Config Database
+
+The SQLite configuration database defaults to
+`data/gesture_tv_remote.sqlite3`. The `data/` directory is ignored by git
+because it contains local runtime state.
+
 ## Environment Variables
 
 | Variable | Default |
 | --- | --- |
 | `GESTURE_TV_APP_NAME` | `Gesture TV Remote` |
+| `GESTURE_TV_CONFIG_DB` | `data/gesture_tv_remote.sqlite3` |
 | `GESTURE_TV_ADAPTER` | `samsung` |
 | `GESTURE_TV_HOST` | `192.168.8.7` |
 | `GESTURE_TV_ANDROID_CERT_FILE` | `certs/android/cert.pem` |

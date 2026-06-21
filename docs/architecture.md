@@ -41,6 +41,12 @@ libraries.
 Infrastructure modules may depend on third-party libraries, but domain modules
 should not depend on infrastructure.
 
+Repositories for durable local storage live under `src/infrastructure/repositories`.
+They expose app-facing persistence APIs and own table shape and mapping.
+Reusable stores under `src/infrastructure/data_access` own source mechanics such
+as SQLite connection handling. This keeps data sources replaceable while typed
+configuration remains represented as `AppConfig`.
+
 TV control is adapter-based. `GestureRemoteService` asks the TV remote factory
 for a client selected by configuration, then sends app-level TV commands such as
 `HOME`, `BACK`, `DPAD_UP`, and `VOLUME_UP`. Each adapter translates those

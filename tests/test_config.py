@@ -10,6 +10,7 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(config.tv_adapter, DEFAULT_CONFIG.tv_adapter)
         self.assertEqual(config.tv_host, DEFAULT_CONFIG.tv_host)
+        self.assertEqual(config.config_db_file, DEFAULT_CONFIG.config_db_file)
         self.assertEqual(config.webcam_index, DEFAULT_CONFIG.webcam_index)
         self.assertEqual(config.android_cert_file, DEFAULT_CONFIG.android_cert_file)
         self.assertEqual(config.model_file, DEFAULT_CONFIG.model_file)
@@ -19,6 +20,7 @@ class ConfigTests(unittest.TestCase):
             {
                 EnvVar.TV_ADAPTER: "samsung",
                 EnvVar.TV_HOST: "10.0.0.25",
+                EnvVar.CONFIG_DB_FILE: "local/config.sqlite3",
                 EnvVar.WEBCAM_INDEX: "2",
                 EnvVar.CAMERA_ZOOM: "1.5",
                 EnvVar.AUTO_ZOOM_ENABLED: "true",
@@ -46,6 +48,7 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(config.tv_adapter, "samsung")
         self.assertEqual(config.tv_host, "10.0.0.25")
+        self.assertEqual(config.config_db_file, Path("local/config.sqlite3"))
         self.assertEqual(config.webcam_index, 2)
         self.assertEqual(config.camera_zoom, 1.5)
         self.assertTrue(config.auto_zoom_enabled)

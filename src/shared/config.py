@@ -1,11 +1,12 @@
-from dataclasses import dataclass
 import os
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable
 
 
 class EnvVar:
     APP_NAME = "GESTURE_TV_APP_NAME"
+    CONFIG_DB_FILE = "GESTURE_TV_CONFIG_DB"
     TV_ADAPTER = "GESTURE_TV_ADAPTER"
     TV_HOST = "GESTURE_TV_HOST"
     ANDROID_CERT_FILE = "GESTURE_TV_ANDROID_CERT_FILE"
@@ -53,6 +54,7 @@ class EnvVar:
 @dataclass(frozen=True)
 class AppConfig:
     app_name: str = "Gesture TV Remote"
+    config_db_file: Path = Path("data/gesture_tv_remote.sqlite3")
     tv_adapter: str = "samsung"
     tv_host: str = "192.168.8.7"
     android_cert_file: Path = Path("certs/android/cert.pem")
@@ -116,8 +118,12 @@ def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
         for field_name, env_var, parser in _CONFIG_FIELDS
     }
     config = AppConfig(**config_values)
-    _validate_config(config)
+    validate_config(config)
     return config
+
+
+def validate_config(config: AppConfig) -> None:
+    _validate_config(config)
 
 
 def _str(values: dict[str, str], name: str, default: object) -> str:
@@ -258,6 +264,7 @@ def _require_between(
 
 _CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (
     ("app_name", EnvVar.APP_NAME, _str),
+    ("config_db_file", EnvVar.CONFIG_DB_FILE, _path),
     ("tv_adapter", EnvVar.TV_ADAPTER, _str),
     ("tv_host", EnvVar.TV_HOST, _str),
     ("android_cert_file", EnvVar.ANDROID_CERT_FILE, _path),

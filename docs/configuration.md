@@ -1,7 +1,8 @@
 # Configuration
 
 Runtime defaults live in `src/shared/config.py` as `AppConfig`. The application
-loads those defaults and applies environment-variable overrides at startup.
+loads those defaults, applies saved configuration from the local config database
+when present, and then applies environment-variable overrides at startup.
 
 The current defaults preserve the MVP behavior:
 
@@ -54,6 +55,15 @@ model file only after a complete download.
 The SQLite configuration database defaults to
 `data/gesture_tv_remote.sqlite3`. The `data/` directory is ignored by git
 because it contains local runtime state.
+
+Startup config precedence is:
+
+1. `AppConfig` defaults
+2. saved config from the local database, when present
+3. environment variables
+
+`GESTURE_TV_CONFIG_DB` is read during bootstrap to decide which database file to
+open, so it can point the app at a different saved configuration store.
 
 ## Environment Variables
 

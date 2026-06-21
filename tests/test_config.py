@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from src.shared.config import DEFAULT_CONFIG, EnvVar, load_config_from_env
+from src.shared.config import AppConfig, DEFAULT_CONFIG, EnvVar, load_config_from_env
 
 
 class ConfigTests(unittest.TestCase):
@@ -74,6 +74,27 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.hand_upright_max_tilt_ratio, 0.5)
         self.assertEqual(config.primary_lost_grace_seconds, 0.45)
         self.assertEqual(config.primary_match_max_distance, 0.25)
+
+    def test_load_config_applies_env_overrides_to_base_config(self) -> None:
+        base_config = AppConfig(
+            tv_adapter="roku",
+            tv_host="10.0.0.40",
+            webcam_index=1,
+            camera_zoom=1.5,
+        )
+
+        config = load_config_from_env(
+            {
+                EnvVar.TV_HOST: "10.0.0.41",
+                EnvVar.CAMERA_ZOOM: "2.0",
+            },
+            base_config=base_config,
+        )
+
+        self.assertEqual(config.tv_adapter, "roku")
+        self.assertEqual(config.tv_host, "10.0.0.41")
+        self.assertEqual(config.webcam_index, 1)
+        self.assertEqual(config.camera_zoom, 2.0)
 
     def test_load_config_rejects_invalid_boolean(self) -> None:
         with self.assertRaisesRegex(ValueError, EnvVar.AUTO_ZOOM_ENABLED):

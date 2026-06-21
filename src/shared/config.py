@@ -109,9 +109,12 @@ _SUPPORTED_TV_ADAPTERS = {"androidtv", "samsung", "webos", "roku"}
 ConfigParser = Callable[[dict[str, str], str, object], object]
 
 
-def load_config_from_env(environ: dict[str, str] | None = None) -> AppConfig:
+def load_config_from_env(
+    environ: dict[str, str] | None = None,
+    base_config: AppConfig | None = None,
+) -> AppConfig:
     values = os.environ if environ is None else environ
-    defaults = AppConfig()
+    defaults = AppConfig() if base_config is None else base_config
 
     config_values = {
         field_name: parser(values, env_var, getattr(defaults, field_name))

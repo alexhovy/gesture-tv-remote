@@ -34,7 +34,7 @@ once for each intentional movement away from neutral; holding the pointer or
 pinch away from the starting point does not keep sending commands. Slow movement
 below the command threshold still accumulates from that starting point until it
 crosses the threshold. Moving the pointer or pinch substantially back toward
-center suppresses opposite-direction commands while it is returning. Once a new
-clear movement segment begins, the starting point resets from the current hand
-position so the same held gesture can continue with a new intentional movement,
-including movement in a different direction.
+center suppresses opposite-direction commands while it is returning. The return
+movement must settle near the new starting point before the same held gesture
+can begin another intentional movement, including movement in a different
+direction.

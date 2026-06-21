@@ -62,10 +62,12 @@ class GestureSession:
         self.volume_active_gesture: str | None = None
         self.volume_peak_distance = 0.0
         self.volume_returning_to_neutral = False
+        self.volume_settling_frames = 0
         self.pointer_start_position: tuple[float, float] | None = None
         self.pointer_active_gesture: str | None = None
         self.pointer_peak_distance = 0.0
         self.pointer_returning_to_neutral = False
+        self.pointer_settling_frames = 0
 
     def evaluate(self, hand_states: list[HandState], now: float) -> GestureDecision:
         primary_anchor = self.primary_position
@@ -327,6 +329,16 @@ class GestureSession:
             return None
 
         magnitude = abs(current_y - start_y)
+        if self.volume_settling_frames > 0:
+            if self._is_motion_neutral(magnitude, distance):
+                self.volume_settling_frames += 1
+                if self.volume_settling_frames >= self._settling_frame_count():
+                    self.volume_settling_frames = 0
+            else:
+                self.volume_start_y = current_y
+                self.volume_settling_frames = 1
+            return None
+
         if gesture is None:
             if self.volume_active_gesture is not None:
                 if self._is_motion_neutral(magnitude, distance):
@@ -340,11 +352,13 @@ class GestureSession:
             if gesture is not None or self._is_motion_neutral(magnitude, distance):
                 self.volume_start_y = current_y
                 self._reset_volume_motion_state()
+                self.volume_settling_frames = 1
             return None
 
         if self.volume_active_gesture is not None and gesture != self.volume_active_gesture:
             self.volume_start_y = current_y
             self._reset_volume_motion_state()
+            self.volume_settling_frames = 1
             return None
 
         return self._filtered_motion_gesture(
@@ -367,6 +381,16 @@ class GestureSession:
             return None
 
         magnitude = math.dist(start_position, current_position)
+        if self.pointer_settling_frames > 0:
+            if self._is_motion_neutral(magnitude, distance):
+                self.pointer_settling_frames += 1
+                if self.pointer_settling_frames >= self._settling_frame_count():
+                    self.pointer_settling_frames = 0
+            else:
+                self.pointer_start_position = current_position
+                self.pointer_settling_frames = 1
+            return None
+
         if gesture is None:
             if self.pointer_active_gesture is not None:
                 if self._is_motion_neutral(magnitude, distance):
@@ -380,11 +404,13 @@ class GestureSession:
             if gesture is not None or self._is_motion_neutral(magnitude, distance):
                 self.pointer_start_position = current_position
                 self._reset_pointer_motion_state()
+                self.pointer_settling_frames = 1
             return None
 
         if self.pointer_active_gesture is not None and gesture != self.pointer_active_gesture:
             self.pointer_start_position = current_position
             self._reset_pointer_motion_state()
+            self.pointer_settling_frames = 1
             return None
 
         magnitude = self._pointer_motion_magnitude(gesture, start_position, current_position)
@@ -437,6 +463,10 @@ class GestureSession:
         return magnitude <= activation_distance * 0.45
 
     @staticmethod
+    def _settling_frame_count() -> int:
+        return 2
+
+    @staticmethod
     def _pointer_motion_magnitude(
         gesture: str,
         start_position: tuple[float, float],
@@ -458,6 +488,7 @@ class GestureSession:
         self.volume_active_gesture = None
         self.volume_peak_distance = 0.0
         self.volume_returning_to_neutral = False
+        self.volume_settling_frames = 0
 
     def _reset_pointer_tracking(self) -> None:
         self.pointer_start_position = None
@@ -467,6 +498,7 @@ class GestureSession:
         self.pointer_active_gesture = None
         self.pointer_peak_distance = 0.0
         self.pointer_returning_to_neutral = False
+        self.pointer_settling_frames = 0
 
     def _primary_missing_within_grace(self, now: float) -> bool:
         if self.primary_position is None or self.primary_last_seen_time is None:
@@ -593,6 +625,7 @@ class GestureSession:
             f":current={current}:dx={dx}:dy={dy}"
             f":peak={self.pointer_peak_distance:.2f}"
             f":returning={self.pointer_returning_to_neutral}"
+            f":settling={self.pointer_settling_frames}"
         )
 
     def _debug_volume_state(self) -> str:
@@ -601,6 +634,7 @@ class GestureSession:
             f"start={start}:active={self.volume_active_gesture or DEBUG_NONE}"
             f":peak={self.volume_peak_distance:.2f}"
             f":returning={self.volume_returning_to_neutral}"
+            f":settling={self.volume_settling_frames}"
         )
 
     @staticmethod

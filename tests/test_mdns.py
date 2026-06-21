@@ -29,7 +29,7 @@ class MdnsPublisherTests(unittest.TestCase):
         fake_zeroconf = types.ModuleType("zeroconf")
         fake_zeroconf.ServiceInfo = FakeServiceInfo
         fake_zeroconf.Zeroconf = FakeZeroconf
-        publisher = MdnsPublisher("GestureTvRemote.local", 8765)
+        publisher = MdnsPublisher("GestureTvRemote.local", 80)
 
         with (
             patch.dict(sys.modules, {"zeroconf": fake_zeroconf}),
@@ -41,14 +41,19 @@ class MdnsPublisherTests(unittest.TestCase):
             publisher.start()
             publisher.stop()
 
-        self.assertEqual(publisher.url, "http://gesturetvremote.local:8765")
+        self.assertEqual(publisher.url, "http://gesturetvremote.local")
         self.assertEqual(len(registered_services), 1)
         self.assertEqual(unregistered_services, registered_services)
         service_info = registered_services[0]
         self.assertEqual(service_info.args[0], "_http._tcp.local.")
         self.assertEqual(service_info.args[1], "gesturetvremote._http._tcp.local.")
-        self.assertEqual(service_info.kwargs["port"], 8765)
+        self.assertEqual(service_info.kwargs["port"], 80)
         self.assertEqual(service_info.kwargs["server"], "gesturetvremote.local.")
+
+    def test_url_includes_non_default_port(self) -> None:
+        publisher = MdnsPublisher("GestureTvRemote", 8765)
+
+        self.assertEqual(publisher.url, "http://gesturetvremote.local:8765")
 
     def test_rejects_empty_normalized_name(self) -> None:
         with self.assertRaisesRegex(ValueError, "mDNS name"):

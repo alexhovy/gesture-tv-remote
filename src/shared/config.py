@@ -60,7 +60,7 @@ class AppConfig:
     app_name: str = "Gesture TV Remote"
     config_db_file: Path = Path("data/gesture_tv_remote.sqlite3")
     config_web_host: str = "0.0.0.0"
-    config_web_port: int = 8765
+    config_web_port: int = 80
     config_web_mdns_enabled: bool = True
     config_web_mdns_name: str = "gesturetvremote"
     tv_adapter: str = "samsung"

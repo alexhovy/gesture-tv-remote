@@ -125,7 +125,7 @@ class ConfigRepositoryTests(unittest.TestCase):
         self.assertEqual(config.app_name, "Old Config")
         self.assertEqual(config.tv_adapter, "roku")
         self.assertEqual(config.tv_host, "10.0.0.63")
-        self.assertEqual(config.config_web_port, 8765)
+        self.assertEqual(config.config_web_port, 80)
 
     def test_save_config_rejects_invalid_config(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

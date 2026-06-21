@@ -18,6 +18,8 @@ class MdnsPublisher:
 
     @property
     def url(self) -> str:
+        if self._port == 80:
+            return f"http://{self._name}.local"
         return f"http://{self._name}.local:{self._port}"
 
     def start(self) -> None:

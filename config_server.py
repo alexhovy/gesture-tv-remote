@@ -1,4 +1,4 @@
-from src.api.config_web import run
+from src.api.config_server import run
 
 
 if __name__ == "__main__":

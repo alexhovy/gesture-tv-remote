@@ -9,8 +9,15 @@ testable and keep external libraries from leaking across the codebase.
 ### API
 
 `src/api` contains runnable entry points. The gesture runtime composes the
-gesture service, and the config UI composes the config repository and HTTP
-server. API modules should stay thin and avoid gesture business logic.
+gesture service, and the config server composes the config repository, mDNS
+publisher, and web UI. API modules should stay thin and avoid gesture business
+logic or HTTP request handling.
+
+### Web
+
+`src/web` contains the lightweight config UI: HTTP routes, form parsing, and
+HTML rendering. Web modules should depend on application-facing repositories and
+typed config values, while process setup stays in `src/api`.
 
 ### Services
 

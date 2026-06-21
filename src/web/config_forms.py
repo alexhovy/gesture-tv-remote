@@ -1,0 +1,54 @@
+from dataclasses import fields
+from pathlib import Path
+from typing import Any
+
+from src.shared.config import AppConfig
+
+BOOLEAN_FIELD_MARKER = "__present_bool"
+
+
+def config_from_form(
+    form: dict[str, list[str]],
+    base_config: AppConfig,
+) -> AppConfig:
+    config_values = {}
+    present_bool_fields = set(form.get(BOOLEAN_FIELD_MARKER, []))
+    for field in fields(AppConfig):
+        current_value = getattr(base_config, field.name)
+        raw_value = _first_form_value(form, field.name)
+        if isinstance(current_value, bool):
+            if field.name in present_bool_fields:
+                config_values[field.name] = raw_value is not None
+            else:
+                config_values[field.name] = current_value
+            continue
+        if raw_value is None:
+            config_values[field.name] = current_value
+            continue
+        config_values[field.name] = _parse_field_value(
+            field.name,
+            raw_value,
+            current_value,
+        )
+
+    return AppConfig(**config_values)
+
+
+def _first_form_value(form: dict[str, list[str]], name: str) -> str | None:
+    values = form.get(name)
+    if values is None:
+        return None
+    return values[0]
+
+
+def _parse_field_value(name: str, raw_value: str, current_value: Any) -> Any:
+    try:
+        if isinstance(current_value, int):
+            return int(raw_value)
+        if isinstance(current_value, float):
+            return float(raw_value)
+        if isinstance(current_value, Path):
+            return Path(raw_value)
+        return raw_value
+    except ValueError as error:
+        raise ValueError(f"{name} has an invalid value") from error

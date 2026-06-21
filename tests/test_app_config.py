@@ -5,6 +5,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.api.app import create_config_provider, load_config
+from src.api.config_server import _effective_config
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.shared.config import AppConfig, EnvVar
@@ -81,6 +82,26 @@ class AppConfigTests(unittest.TestCase):
 
         self.assertEqual(first_config.camera_zoom, 1.5)
         self.assertEqual(second_config.camera_zoom, 2.0)
+
+    def test_config_server_effective_config_uses_saved_config(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_file = Path(temp_dir) / "config.sqlite3"
+            repository = ConfigRepository(SqliteStore(db_file))
+            repository.save_config(
+                AppConfig(
+                    config_db_file=db_file,
+                    tv_adapter="roku",
+                    tv_host="10.0.0.52",
+                    webcam_index=2,
+                )
+            )
+
+            with patch.dict(os.environ, {}, clear=True):
+                config = _effective_config(repository)
+
+        self.assertEqual(config.tv_adapter, "roku")
+        self.assertEqual(config.tv_host, "10.0.0.52")
+        self.assertEqual(config.webcam_index, 2)
 
 
 if __name__ == "__main__":

@@ -8,10 +8,10 @@ from pathlib import Path
 from unittest.mock import patch
 from urllib.parse import urlencode
 
-from src.api.config_web import create_config_server
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
-from src.shared.config import AppConfig
+from src.shared.config import AppConfig, load_config_from_env
+from src.web.config_app import create_config_server
 
 
 class ConfigWebTests(unittest.TestCase):
@@ -108,11 +108,20 @@ class _running_config_server:
         self.repository = ConfigRepository(SqliteStore(db_file))
         if saved_config is not None:
             self.repository.save_config(saved_config)
-        self._server = create_config_server(self.repository, "127.0.0.1", 0)
+        self._server = create_config_server(
+            self.repository,
+            self._effective_config,
+            "127.0.0.1",
+            0,
+        )
         self._thread = threading.Thread(
             target=self._server.serve_forever,
             daemon=True,
         )
+
+    def _effective_config(self) -> AppConfig:
+        saved_config = self.repository.get_config()
+        return load_config_from_env(base_config=saved_config or AppConfig())
 
     def __enter__(self) -> _ConfigWebClient:
         self._env_patch.__enter__()

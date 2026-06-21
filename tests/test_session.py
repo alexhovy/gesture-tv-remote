@@ -282,7 +282,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -294,7 +294,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.52),
+                    center=(0.50, 0.52),
                     size=0.20,
                     index_position=(0.50, 0.52),
                 ),
@@ -306,7 +306,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.54),
+                    center=(0.50, 0.54),
                     size=0.20,
                     index_position=(0.50, 0.54),
                 ),
@@ -318,7 +318,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.56),
+                    center=(0.50, 0.56),
                     size=0.20,
                     index_position=(0.50, 0.56),
                 ),
@@ -330,6 +330,37 @@ class GestureSessionTests(unittest.TestCase):
         self.assertIsNone(second_under_threshold.command_gesture)
         self.assertEqual(crossed_threshold.command_gesture, GESTURE_POINT_DOWN)
 
+    def test_pointer_tracks_secondary_hand_center_when_fingertip_is_stable(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.50, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                ),
+            ],
+            now=0.0,
+        )
+        moved_right = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.56, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                ),
+            ],
+            now=0.1,
+        )
+
+        self.assertEqual(moved_right.command_gesture, GESTURE_POINT_RIGHT)
+
     def test_pointer_return_to_center_suppresses_repeat_until_released(self) -> None:
         session = GestureSession(AppConfig())
         primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
@@ -339,7 +370,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -351,7 +382,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.56),
+                    center=(0.50, 0.56),
                     size=0.20,
                     index_position=(0.50, 0.56),
                 ),
@@ -363,7 +394,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.60),
+                    center=(0.50, 0.60),
                     size=0.20,
                     index_position=(0.50, 0.60),
                 ),
@@ -375,7 +406,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.57),
+                    center=(0.50, 0.57),
                     size=0.20,
                     index_position=(0.50, 0.57),
                 ),
@@ -387,7 +418,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.56),
+                    center=(0.50, 0.56),
                     size=0.20,
                     index_position=(0.50, 0.56),
                 ),
@@ -399,7 +430,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.51),
+                    center=(0.50, 0.51),
                     size=0.20,
                     index_position=(0.50, 0.51),
                 ),
@@ -411,7 +442,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_OPEN_PALM,
-                    center=(0.70, 0.51),
+                    center=(0.50, 0.51),
                     size=0.20,
                     index_position=(0.50, 0.51),
                 ),
@@ -423,7 +454,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.51),
+                    center=(0.50, 0.51),
                     size=0.20,
                     index_position=(0.50, 0.51),
                 ),
@@ -435,7 +466,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.57),
+                    center=(0.50, 0.57),
                     size=0.20,
                     index_position=(0.50, 0.57),
                 ),
@@ -461,7 +492,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -473,7 +504,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.44),
+                    center=(0.50, 0.44),
                     size=0.20,
                     index_position=(0.50, 0.44),
                 ),
@@ -485,7 +516,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -497,7 +528,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.52),
+                    center=(0.50, 0.52),
                     size=0.20,
                     index_position=(0.50, 0.52),
                 ),
@@ -518,7 +549,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -530,7 +561,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.56, 0.50),
                     size=0.20,
                     index_position=(0.56, 0.50),
                 ),
@@ -542,7 +573,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -554,7 +585,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.56),
+                    center=(0.50, 0.56),
                     size=0.20,
                     index_position=(0.50, 0.56),
                 ),
@@ -566,7 +597,7 @@ class GestureSessionTests(unittest.TestCase):
         self.assertIsNone(neutral.command_gesture)
         self.assertEqual(second_down.command_gesture, GESTURE_POINT_DOWN)
 
-    def test_pointer_opposite_direction_works_after_gesture_release(self) -> None:
+    def test_pointer_new_direction_rearms_without_exact_neutral_return(self) -> None:
         session = GestureSession(AppConfig())
         primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
@@ -575,7 +606,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -587,7 +618,77 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.80, 0.50),
+                    size=0.20,
+                    index_position=(0.80, 0.50),
+                ),
+            ],
+            now=0.1,
+        )
+        returning = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.62, 0.50),
+                    size=0.20,
+                    index_position=(0.62, 0.50),
+                ),
+            ],
+            now=0.2,
+        )
+        rearmed = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.62, 0.30),
+                    size=0.20,
+                    index_position=(0.62, 0.30),
+                ),
+            ],
+            now=0.3,
+        )
+        second_up = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.62, 0.20),
+                    size=0.20,
+                    index_position=(0.62, 0.20),
+                ),
+            ],
+            now=0.4,
+        )
+
+        self.assertEqual(first_right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIsNone(returning.command_gesture)
+        self.assertIsNone(rearmed.command_gesture)
+        self.assertEqual(second_up.command_gesture, GESTURE_POINT_UP)
+
+    def test_pointer_opposite_direction_works_after_gesture_release(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.50, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                ),
+            ],
+            now=0.0,
+        )
+        first_right = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.56, 0.50),
                     size=0.20,
                     index_position=(0.56, 0.50),
                 ),
@@ -599,7 +700,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_OPEN_PALM,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -611,7 +712,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.50, 0.50),
                     size=0.20,
                     index_position=(0.50, 0.50),
                 ),
@@ -623,7 +724,7 @@ class GestureSessionTests(unittest.TestCase):
                 primary,
                 _hand_state(
                     GESTURE_POINT,
-                    center=(0.70, 0.50),
+                    center=(0.44, 0.50),
                     size=0.20,
                     index_position=(0.44, 0.50),
                 ),
@@ -632,6 +733,65 @@ class GestureSessionTests(unittest.TestCase):
         )
 
         self.assertEqual(first_right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIsNone(second_start.command_gesture)
+        self.assertEqual(second_left.command_gesture, GESTURE_POINT_LEFT)
+
+    def test_pointer_uses_fresh_start_after_secondary_hand_loss(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.50, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                ),
+            ],
+            now=0.0,
+        )
+        first_right = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.56, 0.50),
+                    size=0.20,
+                    index_position=(0.56, 0.50),
+                ),
+            ],
+            now=0.1,
+        )
+        secondary_lost = session.evaluate([primary], now=0.2)
+        second_start = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.80, 0.50),
+                    size=0.20,
+                    index_position=(0.80, 0.50),
+                ),
+            ],
+            now=0.3,
+        )
+        second_left = session.evaluate(
+            [
+                primary,
+                _hand_state(
+                    GESTURE_POINT,
+                    center=(0.74, 0.50),
+                    size=0.20,
+                    index_position=(0.74, 0.50),
+                ),
+            ],
+            now=0.4,
+        )
+
+        self.assertEqual(first_right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIsNone(secondary_lost.command_gesture)
         self.assertIsNone(second_start.command_gesture)
         self.assertEqual(second_left.command_gesture, GESTURE_POINT_LEFT)
 
@@ -880,6 +1040,51 @@ class GestureSessionTests(unittest.TestCase):
         self.assertIsNone(neutral.command_gesture)
         self.assertEqual(second_up.command_gesture, GESTURE_VOLUME_UP)
 
+    def test_volume_new_direction_rearms_without_exact_neutral_return(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.50), size=0.20),
+            ],
+            now=0.0,
+        )
+        first_down = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.80), size=0.20),
+            ],
+            now=0.1,
+        )
+        returning = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.62), size=0.20),
+            ],
+            now=0.2,
+        )
+        rearmed = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.30), size=0.20),
+            ],
+            now=0.3,
+        )
+        second_up = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.20), size=0.20),
+            ],
+            now=0.4,
+        )
+
+        self.assertEqual(first_down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIsNone(returning.command_gesture)
+        self.assertIsNone(rearmed.command_gesture)
+        self.assertEqual(second_up.command_gesture, GESTURE_VOLUME_UP)
+
     def test_volume_opposite_direction_works_after_gesture_release(self) -> None:
         session = GestureSession(AppConfig())
         primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
@@ -924,6 +1129,45 @@ class GestureSessionTests(unittest.TestCase):
         self.assertIsNone(second_start.command_gesture)
         self.assertEqual(second_up.command_gesture, GESTURE_VOLUME_UP)
 
+    def test_volume_uses_fresh_start_after_secondary_hand_loss(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.50), size=0.20),
+            ],
+            now=0.0,
+        )
+        first_down = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.56), size=0.20),
+            ],
+            now=0.1,
+        )
+        secondary_lost = session.evaluate([primary], now=0.2)
+        second_start = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.80), size=0.20),
+            ],
+            now=0.3,
+        )
+        second_up = session.evaluate(
+            [
+                primary,
+                _hand_state(GESTURE_PINCH, center=(0.70, 0.74), size=0.20),
+            ],
+            now=0.4,
+        )
+
+        self.assertEqual(first_down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIsNone(secondary_lost.command_gesture)
+        self.assertIsNone(second_start.command_gesture)
+        self.assertEqual(second_up.command_gesture, GESTURE_VOLUME_UP)
+
     def test_scaled_distance_clamps_to_minimum_and_maximum(self) -> None:
         self.assertEqual(
             GestureSession._scaled_distance(
@@ -954,7 +1198,7 @@ def _evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> st
             primary,
             _hand_state(
                 GESTURE_POINT,
-                center=(0.70, 0.50),
+                center=(start_x, 0.50),
                 size=hand_size,
                 index_position=(start_x, 0.50),
             ),
@@ -966,7 +1210,7 @@ def _evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> st
             primary,
             _hand_state(
                 GESTURE_POINT,
-                center=(0.70, 0.50),
+                center=(end_x, 0.50),
                 size=hand_size,
                 index_position=(end_x, 0.50),
             ),

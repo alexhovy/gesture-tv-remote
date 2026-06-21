@@ -21,10 +21,8 @@ from src.domain.constants import (
 )
 from src.domain.gestures import detect_direction, detect_volume
 from src.domain.landmarks import (
-    LANDMARK_INDEX_TIP,
     hand_upright_metrics,
     hand_upright_reason,
-    landmark_position,
 )
 from src.shared.config import AppConfig
 
@@ -142,7 +140,6 @@ class GestureSession:
         self.primary_last_seen_time = now
         secondary_gesture = secondary_hand.gesture if secondary_hand else None
         secondary_center = secondary_hand.center if secondary_hand else None
-        secondary_landmarks = secondary_hand.landmarks if secondary_hand else None
         secondary_size = secondary_hand.size if secondary_hand else 0.0
         zoom_landmarks = [primary_hand.landmarks]
         if secondary_hand is not None and secondary_gesture is not None:
@@ -171,6 +168,7 @@ class GestureSession:
         mic_gesture = None
         volume_distance = 0.0
         pointer_distance = 0.0
+        pointer_position = None
 
         both_closed = (
             self.primary_close_time is not None
@@ -195,6 +193,9 @@ class GestureSession:
                 command_gesture = GESTURE_BACK
                 self.secondary_back_pending = False
                 self.secondary_close_time = None
+
+        if secondary_hand is None:
+            self.reset_motion_tracking()
 
         if command_gesture is None and secondary_hand is not None:
             if secondary_gesture == GESTURE_PINCH and secondary_center is not None:
@@ -225,12 +226,9 @@ class GestureSession:
             if (
                 command_gesture is None
                 and secondary_gesture == GESTURE_POINT
-                and secondary_landmarks is not None
+                and secondary_center is not None
             ):
-                pointer_position = landmark_position(
-                    secondary_landmarks,
-                    LANDMARK_INDEX_TIP,
-                )
+                pointer_position = secondary_center
                 if self.pointer_start_position is None:
                     self.pointer_start_position = pointer_position
                 pointer_distance = self._scaled_distance(
@@ -280,6 +278,8 @@ class GestureSession:
                 f"pointer_distance={pointer_distance:.2f} "
                 f"volume_distance={volume_distance:.2f} "
                 f"command={command_gesture or DEBUG_NONE} "
+                f"pointer_state={self._debug_pointer_state(pointer_position)} "
+                f"volume_state={self._debug_volume_state()} "
                 f"primary_index={primary_index} "
                 f"secondary_index={secondary_index if secondary_index is not None else DEBUG_NONE} "
                 f"zoom_hands={len(zoom_landmarks)} "
@@ -337,9 +337,14 @@ class GestureSession:
             return None
 
         if self.volume_returning_to_neutral:
-            if self._is_motion_neutral(magnitude, distance):
+            if gesture is not None or self._is_motion_neutral(magnitude, distance):
                 self.volume_start_y = current_y
                 self._reset_volume_motion_state()
+            return None
+
+        if self.volume_active_gesture is not None and gesture != self.volume_active_gesture:
+            self.volume_start_y = current_y
+            self._reset_volume_motion_state()
             return None
 
         return self._filtered_motion_gesture(
@@ -372,9 +377,14 @@ class GestureSession:
             return None
 
         if self.pointer_returning_to_neutral:
-            if self._is_motion_neutral(magnitude, distance):
+            if gesture is not None or self._is_motion_neutral(magnitude, distance):
                 self.pointer_start_position = current_position
                 self._reset_pointer_motion_state()
+            return None
+
+        if self.pointer_active_gesture is not None and gesture != self.pointer_active_gesture:
+            self.pointer_start_position = current_position
+            self._reset_pointer_motion_state()
             return None
 
         magnitude = self._pointer_motion_magnitude(gesture, start_position, current_position)
@@ -573,6 +583,45 @@ class GestureSession:
             f":size={hand.size:.2f}"
             f":primary_dist={distance}"
         )
+
+    def _debug_pointer_state(self, current_position: tuple[float, float] | None) -> str:
+        start = self._debug_position(self.pointer_start_position)
+        current = self._debug_position(current_position)
+        dx, dy = self._debug_delta(self.pointer_start_position, current_position)
+        return (
+            f"start={start}:active={self.pointer_active_gesture or DEBUG_NONE}"
+            f":current={current}:dx={dx}:dy={dy}"
+            f":peak={self.pointer_peak_distance:.2f}"
+            f":returning={self.pointer_returning_to_neutral}"
+        )
+
+    def _debug_volume_state(self) -> str:
+        start = DEBUG_NONE if self.volume_start_y is None else f"{self.volume_start_y:.2f}"
+        return (
+            f"start={start}:active={self.volume_active_gesture or DEBUG_NONE}"
+            f":peak={self.volume_peak_distance:.2f}"
+            f":returning={self.volume_returning_to_neutral}"
+        )
+
+    @staticmethod
+    def _debug_position(position: tuple[float, float] | None) -> str:
+        if position is None:
+            return DEBUG_NONE
+
+        x, y = position
+        return f"({x:.2f},{y:.2f})"
+
+    @staticmethod
+    def _debug_delta(
+        start_position: tuple[float, float] | None,
+        current_position: tuple[float, float] | None,
+    ) -> tuple[str, str]:
+        if start_position is None or current_position is None:
+            return DEBUG_NONE, DEBUG_NONE
+
+        start_x, start_y = start_position
+        current_x, current_y = current_position
+        return f"{current_x - start_x:.2f}", f"{current_y - start_y:.2f}"
 
     @staticmethod
     def _scaled_distance(

@@ -12,10 +12,10 @@ primary hand. The other detected hand becomes the secondary hand.
 | Both hands close from open palm to fists within the chord window | HOME |
 | Secondary pinch moves up | VOLUME_UP |
 | Secondary pinch moves down | VOLUME_DOWN |
-| Secondary index point moves left | DPAD_LEFT |
-| Secondary index point moves right | DPAD_RIGHT |
-| Secondary index point moves up | DPAD_UP |
-| Secondary index point moves down | DPAD_DOWN |
+| Secondary pointing hand moves left | DPAD_LEFT |
+| Secondary pointing hand moves right | DPAD_RIGHT |
+| Secondary pointing hand moves up | DPAD_UP |
+| Secondary pointing hand moves down | DPAD_DOWN |
 | Secondary two-finger gesture | TV voice input |
 
 ## Gesture Ownership
@@ -34,7 +34,7 @@ once for each intentional movement away from neutral; holding the pointer or
 pinch away from the starting point does not keep sending commands. Slow movement
 below the command threshold still accumulates from that starting point until it
 crosses the threshold. Moving the pointer or pinch substantially back toward
-center suppresses opposite-direction commands while it is returning. Once the
-pointer or pinch reaches neutral, the starting point resets and the same held
-gesture can start a new intentional movement, including movement in a different
-direction.
+center suppresses opposite-direction commands while it is returning. Once a new
+clear movement segment begins, the starting point resets from the current hand
+position so the same held gesture can continue with a new intentional movement,
+including movement in a different direction.

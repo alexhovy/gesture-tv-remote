@@ -22,10 +22,10 @@ typed config values, while process setup stays in `src/runtime`.
 ### Services
 
 `src/services` contains use cases and orchestration. `GestureRemoteService`
-owns application lifecycle and delegates runtime loop details to small
-pipelines for frame capture, detection, gesture decision, command dispatch, and
-display. `VoiceCaptureService` handles the voice-input use case when the
-selected TV adapter supports it.
+owns application lifecycle and delegates runtime loop details to
+`src/services/pipelines/` modules for frame capture, detection, gesture
+decision, command dispatch, and display. `VoiceCaptureService` handles the
+voice-input use case when the selected TV adapter supports it.
 
 ### Domain
 
@@ -41,7 +41,8 @@ selected TV adapter supports it.
 Domain code should not import OpenCV, MediaPipe, TV-control libraries, or audio
 libraries.
 
-Gesture sessions are coordinated by `GestureSession`, with focused collaborators:
+Gesture sessions are coordinated by `GestureSession`, with focused state
+collaborators:
 
 - `gesture_preprocessing.py` converts raw detected hands into normalized hand data.
 - `gesture_classification.py` classifies static hand poses.
@@ -50,6 +51,10 @@ Gesture sessions are coordinated by `GestureSession`, with focused collaborators
 - `motion_gesture.py` owns secondary motion grace and pointer/volume joystick state.
 - `command_decision.py` owns close-chord decisions and emit debounce.
 - `commands.py` keeps the gesture-to-TV-command mapping easy to inspect.
+
+`GestureSession` does not expose collaborator state as a public compatibility
+surface. Primary activation state, secondary motion grace, command chord
+timing, emit debounce, and pointer/volume joystick state each have one owner.
 
 The session transition model remains:
 

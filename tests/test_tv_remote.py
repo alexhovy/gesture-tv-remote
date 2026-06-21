@@ -28,6 +28,7 @@ from src.infrastructure.tv.tv_remote import (
     TV_ADAPTER_ROKU,
     TV_ADAPTER_SAMSUNG,
     TV_ADAPTER_WEBOS,
+    CapabilityStatus,
     TvRemoteCommandError,
 )
 from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
@@ -63,11 +64,14 @@ class TvRemoteTests(unittest.TestCase):
                 ).capabilities()
 
                 self.assertTrue(capabilities.connection_type)
-                self.assertTrue(capabilities.supports_directional_navigation)
-                self.assertTrue(capabilities.supports_volume)
+                self.assertEqual(
+                    capabilities.directional_navigation,
+                    CapabilityStatus.IMPLEMENTED,
+                )
+                self.assertEqual(capabilities.volume, CapabilityStatus.IMPLEMENTED)
                 self.assertTrue(capabilities.known_limitations)
 
-    def test_android_tv_is_only_voice_capable_adapter(self) -> None:
+    def test_capability_status_distinguishes_unsupported_from_not_implemented(self) -> None:
         android_capabilities = create_tv_remote_client(
             app_config(tv_adapter=TV_ADAPTER_ANDROIDTV)
         ).capabilities()
@@ -75,8 +79,10 @@ class TvRemoteTests(unittest.TestCase):
             app_config(tv_adapter=TV_ADAPTER_ROKU)
         ).capabilities()
 
-        self.assertTrue(android_capabilities.supports_pairing)
-        self.assertFalse(roku_capabilities.supports_pairing)
+        self.assertEqual(android_capabilities.voice_capture, CapabilityStatus.IMPLEMENTED)
+        self.assertEqual(roku_capabilities.voice_capture, CapabilityStatus.UNSUPPORTED)
+        self.assertEqual(roku_capabilities.power, CapabilityStatus.NOT_IMPLEMENTED)
+        self.assertEqual(roku_capabilities.pairing, CapabilityStatus.UNSUPPORTED)
 
     def test_factory_rejects_unknown_adapter(self) -> None:
         with self.assertRaises(ValueError):

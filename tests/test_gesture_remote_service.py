@@ -12,6 +12,7 @@ from src.domain.constants import (
     TV_COMMAND_VOLUME_DOWN,
     TV_COMMAND_VOLUME_UP,
 )
+from src.domain.session_types import GestureDecision
 from src.infrastructure.camera.video_preprocessing import CropRect
 
 
@@ -42,7 +43,17 @@ from src.services.gesture_remote_service import (  # noqa: E402
     CONFIG_RELOAD_INTERVAL_SECONDS,
     GestureRemoteService,
 )
-from src.services.remote_command_dispatcher import RemoteCommandDispatcher  # noqa: E402
+from src.services.pipeline_metrics import PipelineMetrics  # noqa: E402
+from src.services.pipelines import (  # noqa: E402
+    CommandDispatchPipeline,
+    DisplayPipeline,
+    FrameCapturePipeline,
+    GestureDecisionPipeline,
+)
+from src.services.remote_command_dispatcher import (  # noqa: E402
+    MAX_PENDING_COMMANDS,
+    RemoteCommandDispatcher,
+)
 from src.shared.config import AppConfig  # noqa: E402
 from tests.config_helpers import app_config  # noqa: E402
 
@@ -89,7 +100,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
     def test_detection_frame_uses_fixed_camera_zoom(self) -> None:
         frame = FakeFrame(6, 8)
 
-        detection_frame = GestureRemoteService._detection_frame(frame, 2.0)
+        detection_frame = FrameCapturePipeline().detection_frame(frame, 2.0)
 
         self.assertEqual(detection_frame.frame.shape, frame.shape)
         self.assertEqual(detection_frame.crop, CropRect(0.25, 1 / 6, 0.5, 0.5))
@@ -98,13 +109,16 @@ class GestureRemoteServiceTests(unittest.TestCase):
         zoom_controller = FakeZoomController()
         landmarks = [_landmark(0.25, 0.50), _landmark(0.75, 1.00)]
 
-        changed = GestureRemoteService._update_zoom(
-            GestureRemoteService.__new__(GestureRemoteService),
+        changed = GestureDecisionPipeline(
+            FakeDecisionSession(),
             zoom_controller,
-            [landmarks],
-            activated=True,
-            primary_temporarily_lost=False,
-            freeze_zoom=False,
+        ).update_zoom(
+            GestureDecision(
+                command_gesture=None,
+                activated=True,
+                debug_message="",
+                zoom_landmarks=[landmarks],
+            )
         )
 
         self.assertTrue(changed)
@@ -116,13 +130,16 @@ class GestureRemoteServiceTests(unittest.TestCase):
     def test_update_zoom_holds_crop_during_temporary_primary_loss(self) -> None:
         zoom_controller = FakeZoomController()
 
-        changed = GestureRemoteService._update_zoom(
-            GestureRemoteService.__new__(GestureRemoteService),
+        changed = GestureDecisionPipeline(
+            FakeDecisionSession(),
             zoom_controller,
-            [],
-            activated=True,
-            primary_temporarily_lost=True,
-            freeze_zoom=False,
+        ).update_zoom(
+            GestureDecision(
+                command_gesture=None,
+                activated=True,
+                debug_message="",
+                primary_temporarily_lost=True,
+            )
         )
 
         self.assertFalse(changed)
@@ -131,20 +148,24 @@ class GestureRemoteServiceTests(unittest.TestCase):
     def test_update_zoom_holds_crop_when_motion_freezes_zoom(self) -> None:
         zoom_controller = FakeZoomController()
 
-        changed = GestureRemoteService._update_zoom(
-            GestureRemoteService.__new__(GestureRemoteService),
+        changed = GestureDecisionPipeline(
+            FakeDecisionSession(),
             zoom_controller,
-            [[_landmark(0.25, 0.50)]],
-            activated=True,
-            primary_temporarily_lost=False,
-            freeze_zoom=True,
+        ).update_zoom(
+            GestureDecision(
+                command_gesture=None,
+                activated=True,
+                debug_message="",
+                freeze_zoom=True,
+                zoom_landmarks=[[_landmark(0.25, 0.50)]],
+            )
         )
 
         self.assertFalse(changed)
         self.assertIsNone(zoom_controller.updated_with)
 
     def test_debug_message_includes_detection_and_display_crops(self) -> None:
-        debug_message = GestureRemoteService._debug_message(
+        debug_message = DisplayPipeline(FakeLogger()).debug_message(
             "hands=2 activated=True",
             CropRect(0.0, 0.0, 1.0, 1.0),
             CropRect(0.25, 0.25, 0.5, 0.5),
@@ -164,10 +185,16 @@ class GestureRemoteServiceTests(unittest.TestCase):
 
 class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
     async def test_activated_empty_decision_does_not_clear_last_command(self) -> None:
-        service = GestureRemoteService.__new__(GestureRemoteService)
-        service._gesture_session = FakeGestureSession()
+        gesture_session = FakeGestureSession()
+        pipeline = CommandDispatchPipeline(
+            gesture_session,
+            FakeVoiceCapture(),
+            FakeCommandDispatcher(),
+            None,
+            FakeLogger(),
+        )
 
-        voice_task = await service._handle_decision(
+        voice_task = await pipeline.handle_decision(
             command_gesture=None,
             activated=True,
             now=1.0,
@@ -175,7 +202,23 @@ class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertIsNone(voice_task)
-        self.assertFalse(service._gesture_session.idle_recorded)
+        self.assertFalse(gesture_session.idle_recorded)
+
+
+class PipelineMetricsTests(unittest.TestCase):
+    def test_dispatch_snapshot_includes_dropped_commands(self) -> None:
+        metrics = PipelineMetrics("roku")
+
+        metrics.record_dispatch(
+            queue_depth=3,
+            send_latency_seconds=0.125,
+            dropped_commands=2,
+        )
+
+        snapshot = metrics.snapshot()
+        self.assertEqual(snapshot.dispatch_queue_depth, 3)
+        self.assertEqual(snapshot.command_send_latency_ms, 125.0)
+        self.assertEqual(snapshot.dropped_commands, 2)
 
 
 class GestureRemoteConfigReloadTests(unittest.TestCase):
@@ -313,6 +356,42 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         )
         await dispatcher.close()
 
+    async def test_queue_overflow_drops_oldest_pending_command(self) -> None:
+        remote = BlockingRemote()
+        dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
+        dispatcher.start()
+
+        dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
+        await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
+        for index in range(MAX_PENDING_COMMANDS):
+            dispatcher.enqueue(f"HOME_{index}", TV_COMMAND_HOME)
+
+        dispatcher.enqueue("VOLUME_DOWN", TV_COMMAND_VOLUME_DOWN)
+
+        self.assertEqual(dispatcher.queue_depth, MAX_PENDING_COMMANDS)
+        self.assertEqual(dispatcher.dropped_commands, 1)
+
+        remote.release_first.set()
+        await dispatcher.close()
+
+    async def test_queue_overflow_replaces_newest_duplicate_without_drop_count(self) -> None:
+        remote = BlockingRemote()
+        dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
+        dispatcher.start()
+
+        dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
+        await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
+        for index in range(MAX_PENDING_COMMANDS):
+            dispatcher.enqueue(f"HOME_{index}", TV_COMMAND_HOME)
+
+        dispatcher.enqueue("HOME_NEWER", TV_COMMAND_HOME)
+
+        self.assertEqual(dispatcher.queue_depth, MAX_PENDING_COMMANDS)
+        self.assertEqual(dispatcher.dropped_commands, 0)
+
+        remote.release_first.set()
+        await dispatcher.close()
+
 
 class BlockingRemote:
     def __init__(self) -> None:
@@ -365,6 +444,31 @@ class FakeGestureSession:
 
     def record_idle(self) -> None:
         self.idle_recorded = True
+
+    def should_emit(self, command_gesture, command, now) -> bool:
+        return True
+
+    def record_emit(self, command_gesture, now) -> None:
+        pass
+
+
+class FakeDecisionSession:
+    def evaluate(self, hand_states, now):
+        return GestureDecision(None, False, "")
+
+
+class FakeVoiceCapture:
+    async def capture(self) -> None:
+        pass
+
+
+class FakeCommandDispatcher:
+    queue_depth = 0
+    last_send_latency_seconds = None
+    dropped_commands = 0
+
+    def enqueue(self, gesture, command) -> None:
+        pass
 
 
 def _landmark(x: float, y: float):

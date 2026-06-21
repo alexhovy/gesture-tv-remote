@@ -11,6 +11,7 @@ class PipelineMetricsSnapshot:
     decision_ms: float
     dispatch_queue_depth: int
     command_send_latency_ms: float
+    dropped_commands: int
     dropped_stale_frames: int
     active_tv_adapter: str
     current_gesture_decision: str
@@ -27,6 +28,7 @@ class PipelineMetrics:
         self._decision_ms = 0.0
         self._dispatch_queue_depth = 0
         self._command_send_latency_ms = 0.0
+        self._dropped_commands = 0
         self._current_gesture_decision = "none"
         self._last_log_time = 0.0
 
@@ -46,8 +48,14 @@ class PipelineMetrics:
         self._decision_ms = elapsed_seconds * 1000.0
         self._current_gesture_decision = gesture or "none"
 
-    def record_dispatch(self, queue_depth: int, send_latency_seconds: float | None) -> None:
+    def record_dispatch(
+        self,
+        queue_depth: int,
+        send_latency_seconds: float | None,
+        dropped_commands: int = 0,
+    ) -> None:
         self._dispatch_queue_depth = queue_depth
+        self._dropped_commands = dropped_commands
         if send_latency_seconds is not None:
             self._command_send_latency_ms = send_latency_seconds * 1000.0
 
@@ -59,6 +67,7 @@ class PipelineMetrics:
             decision_ms=self._decision_ms,
             dispatch_queue_depth=self._dispatch_queue_depth,
             command_send_latency_ms=self._command_send_latency_ms,
+            dropped_commands=self._dropped_commands,
             dropped_stale_frames=self._dropped_stale_frames,
             active_tv_adapter=self._adapter,
             current_gesture_decision=self._current_gesture_decision,
@@ -84,6 +93,7 @@ class PipelineMetrics:
             f"decision_ms={snapshot.decision_ms:.1f} "
             f"dispatch_queue_depth={snapshot.dispatch_queue_depth} "
             f"command_send_latency_ms={snapshot.command_send_latency_ms:.1f} "
+            f"dropped_commands={snapshot.dropped_commands} "
             f"dropped_stale_frames={snapshot.dropped_stale_frames} "
             f"active_tv_adapter={snapshot.active_tv_adapter} "
             f"current_gesture_decision={snapshot.current_gesture_decision}"

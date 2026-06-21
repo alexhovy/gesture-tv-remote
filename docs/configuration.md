@@ -216,6 +216,6 @@ the session deactivates normally.
 
 Set `GESTURE_TV_VERBOSE_PIPELINE_DIAGNOSTICS=true` to log camera FPS, detection
 time, gesture decision time, command queue depth, command send latency, dropped
-stale frames, active adapter, and the current gesture decision. The app uses
-simple internal counters and timers. `GESTURE_TV_METRICS_LOG_SECONDS` controls
-how often those metrics are logged.
+command count, dropped stale frames, active adapter, and the current gesture
+decision. The app uses simple internal counters and timers.
+`GESTURE_TV_METRICS_LOG_SECONDS` controls how often those metrics are logged.

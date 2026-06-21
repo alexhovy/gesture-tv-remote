@@ -54,39 +54,43 @@ class GestureSessionDebugMixin:
         )
 
     def _debug_pointer_state(self, current_position: tuple[float, float] | None) -> str:
-        anchor = self._debug_position(self.pointer_anchor_position)
+        pointer = self._pointer
+        anchor_position = pointer.anchor if isinstance(pointer.anchor, tuple) else None
+        anchor = self._debug_position(anchor_position)
         current = self._debug_position(current_position)
-        dx, dy = self._debug_delta(self.pointer_anchor_position, current_position)
+        dx, dy = self._debug_delta(anchor_position, current_position)
         return (
-            f"anchor={anchor}:active={self.pointer_active_gesture or DEBUG_NONE}"
-            f":phase={self.pointer_phase}"
-            f":armed={self.pointer_armed}"
-            f":settle_frames={self.pointer_neutral_frames}"
-            f":source={self.pointer_position_source}"
+            f"anchor={anchor}:active={pointer.active_gesture or DEBUG_NONE}"
+            f":phase={pointer.phase}"
+            f":armed={pointer.armed}"
+            f":settle_frames={pointer.neutral_frames}"
+            f":source={pointer.position_source}"
             f":current={current}:dx={dx}:dy={dy}"
-            f":candidate={self.pointer_candidate_gesture or DEBUG_NONE}"
-            f":magnitude={self.pointer_candidate_magnitude:.3f}"
-            f":activation={self.pointer_activation_distance:.3f}"
-            f":neutral={self.pointer_neutral_distance:.3f}"
-            f":threshold_ratio={self.pointer_threshold_ratio:.2f}"
-            f":in_neutral={self.pointer_in_neutral}"
-            f":blocked={self.pointer_last_blocked_reason or DEBUG_NONE}"
+            f":candidate={pointer.candidate_gesture or DEBUG_NONE}"
+            f":magnitude={pointer.candidate_magnitude:.3f}"
+            f":activation={pointer.activation_distance:.3f}"
+            f":neutral={pointer.neutral_distance:.3f}"
+            f":threshold_ratio={pointer.threshold_ratio:.2f}"
+            f":in_neutral={pointer.in_neutral}"
+            f":blocked={pointer.last_blocked_reason or DEBUG_NONE}"
         )
 
     def _debug_volume_state(self) -> str:
-        anchor = DEBUG_NONE if self.volume_anchor_y is None else f"{self.volume_anchor_y:.2f}"
+        volume = self._volume
+        anchor_y = volume.anchor if isinstance(volume.anchor, float) else None
+        anchor = DEBUG_NONE if anchor_y is None else f"{anchor_y:.2f}"
         return (
-            f"anchor={anchor}:active={self.volume_active_gesture or DEBUG_NONE}"
-            f":phase={self.volume_phase}"
-            f":armed={self.volume_armed}"
-            f":settle_frames={self.volume_neutral_frames}"
-            f":candidate={self.volume_candidate_gesture or DEBUG_NONE}"
-            f":magnitude={self.volume_candidate_magnitude:.3f}"
-            f":activation={self.volume_activation_distance:.3f}"
-            f":neutral={self.volume_neutral_distance:.3f}"
-            f":threshold_ratio={self.volume_threshold_ratio:.2f}"
-            f":in_neutral={self.volume_in_neutral}"
-            f":blocked={self.volume_last_blocked_reason or DEBUG_NONE}"
+            f"anchor={anchor}:active={volume.active_gesture or DEBUG_NONE}"
+            f":phase={volume.phase}"
+            f":armed={volume.armed}"
+            f":settle_frames={volume.neutral_frames}"
+            f":candidate={volume.candidate_gesture or DEBUG_NONE}"
+            f":magnitude={volume.candidate_magnitude:.3f}"
+            f":activation={volume.activation_distance:.3f}"
+            f":neutral={volume.neutral_distance:.3f}"
+            f":threshold_ratio={volume.threshold_ratio:.2f}"
+            f":in_neutral={volume.in_neutral}"
+            f":blocked={volume.last_blocked_reason or DEBUG_NONE}"
         )
 
     @staticmethod

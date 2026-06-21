@@ -6,32 +6,22 @@ from typing import Any
 
 import cv2
 
-from src.domain.commands import GESTURE_TO_COMMAND
-from src.domain.constants import (
-    GESTURE_MIC,
-)
 from src.domain.session import GestureSession
-from src.domain.session_types import GestureDecision, HandState
 from src.infrastructure.camera.camera_zoom import CameraZoomController
 from src.infrastructure.camera.frame_source import LatestFrameSource
 from src.infrastructure.hand_tracking.hand_model import download_model_if_missing
-from src.infrastructure.hand_tracking.hand_tracking import DetectedHand, MediaPipeHandTracker
-from src.infrastructure.camera.landmark_projection import (
-    hand_states_to_original_space,
-    landmarks_to_crop_space,
-    landmarks_to_original_space,
-)
+from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
 from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
-from src.infrastructure.camera.video_preprocessing import (
-    CropRect,
-    CroppedFrame,
-    apply_crop,
-    center_crop_for_zoom,
-)
-from src.infrastructure.camera.video_overlay import draw_simple_landmarks
 from src.services.voice_capture import VoiceCaptureService
 from src.services.remote_command_dispatcher import RemoteCommandDispatcher
 from src.services.pipeline_metrics import PipelineMetrics
+from src.services.pipelines import (
+    CommandDispatchPipeline,
+    DetectionPipeline,
+    DisplayPipeline,
+    FrameCapturePipeline,
+    GestureDecisionPipeline,
+)
 from src.shared.config import AppConfig, apply_reloadable_config
 from src.shared.logging import AppLogger
 
@@ -159,10 +149,7 @@ class GestureRemoteService:
                 if display_pipeline.render(self._config.app_name, display_frame.frame):
                     break
 
-                metrics.record_dispatch(
-                    self._command_dispatcher.queue_depth,
-                    self._command_dispatcher.last_send_latency_seconds,
-                )
+                command_pipeline.record_dispatch_metrics()
                 metrics.log_if_due(
                     self._logger,
                     now,
@@ -172,110 +159,6 @@ class GestureRemoteService:
                 await asyncio.sleep(0)
         finally:
             await self._cleanup(voice_task, hand_tracker, cap, frame_source)
-
-    @staticmethod
-    def _flip_frame(frame: Any) -> Any:
-        return cv2.flip(frame, 1)
-
-    @staticmethod
-    def _detection_frame(frame: Any, camera_zoom: float) -> CroppedFrame:
-        return apply_crop(frame, center_crop_for_zoom(camera_zoom))
-
-    @staticmethod
-    def _display_frame(frame: Any, zoom_controller: CameraZoomController) -> CroppedFrame:
-        return apply_crop(frame, zoom_controller.current_crop())
-
-    @staticmethod
-    def _detect_hands(
-        hand_tracker: MediaPipeHandTracker,
-        frame: Any,
-    ) -> tuple[list[HandState], list[DetectedHand]]:
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        return hand_tracker.detect(rgb_frame, int(time.monotonic() * 1000))
-
-    @staticmethod
-    def _draw_detected_hands(
-        frame: Any,
-        detected_hands: list[DetectedHand],
-        source_crop: CropRect,
-        display_crop: CropRect,
-    ) -> None:
-        for detected_hand in detected_hands:
-            original_landmarks = landmarks_to_original_space(
-                detected_hand.landmarks,
-                source_crop,
-            )
-            draw_simple_landmarks(
-                frame,
-                landmarks_to_crop_space(original_landmarks, display_crop),
-            )
-
-    def _update_zoom(
-        self,
-        zoom_controller: CameraZoomController,
-        zoom_landmarks: list[list[Any]],
-        activated: bool,
-        primary_temporarily_lost: bool,
-        freeze_zoom: bool = False,
-    ) -> bool:
-        if primary_temporarily_lost or freeze_zoom:
-            return False
-
-        full_frame_crop = CropRect(0.0, 0.0, 1.0, 1.0)
-        if not activated:
-            return zoom_controller.update([], full_frame_crop)
-
-        return zoom_controller.update(zoom_landmarks, full_frame_crop)
-
-    @staticmethod
-    def _debug_message(
-        decision_debug_message: str,
-        detection_crop: CropRect,
-        display_crop: CropRect,
-        zoom_frozen: bool = False,
-    ) -> str:
-        return (
-            f"{decision_debug_message} "
-            f"detection_crop={_debug_crop(detection_crop)} "
-            f"display_crop={_debug_crop(display_crop)} "
-            f"zoom_frozen={zoom_frozen}"
-        )
-
-    async def _handle_decision(
-        self,
-        command_gesture: str | None,
-        activated: bool,
-        now: float,
-        voice_task: asyncio.Task | None,
-    ) -> asyncio.Task | None:
-        if not activated:
-            self._gesture_session.record_idle()
-            return voice_task
-        if command_gesture is None:
-            return voice_task
-
-        command = GESTURE_TO_COMMAND.get(command_gesture)
-        if not self._gesture_session.should_emit(command_gesture, command, now):
-            return voice_task
-
-        if command_gesture == GESTURE_MIC:
-            voice_task = self._ensure_voice_task(voice_task)
-        elif command:
-            self._logger.debug(
-                f"sending command_gesture={command_gesture} command={command}"
-            )
-            self._command_dispatcher.enqueue(command_gesture, command)
-
-        self._gesture_session.record_emit(command_gesture, now)
-        return voice_task
-
-    def _ensure_voice_task(self, voice_task: asyncio.Task | None) -> asyncio.Task | None:
-        if voice_task is None or voice_task.done():
-            self._logger.debug("starting microphone capture")
-            return asyncio.create_task(self._voice_capture.capture())
-
-        self._logger.debug("microphone capture already running")
-        return voice_task
 
     def _reload_config_if_needed(
         self,
@@ -399,195 +282,3 @@ class GestureRemoteService:
             method()
         except Exception as error:
             self._logger.error(f"Error while cleaning up {name}: {error}")
-
-
-class FrameCapturePipeline:
-    def __init__(
-        self,
-        frame_source: LatestFrameSource | None = None,
-        metrics: PipelineMetrics | None = None,
-    ) -> None:
-        self._frame_source = frame_source
-        self._metrics = metrics
-
-    def start(self) -> None:
-        if self._frame_source is None:
-            return
-        self._frame_source.start()
-
-    def latest_frame(self) -> Any | None:
-        if self._frame_source is None:
-            return None
-        version, frame = self._frame_source.latest_versioned()
-        if self._metrics is not None and not self._metrics.record_frame_version(version):
-            return None
-        return frame
-
-    def flip_frame(self, frame: Any) -> Any:
-        return cv2.flip(frame, 1)
-
-    def detection_frame(self, frame: Any, camera_zoom: float) -> CroppedFrame:
-        return apply_crop(frame, center_crop_for_zoom(camera_zoom))
-
-    def display_frame(
-        self,
-        frame: Any,
-        zoom_controller: CameraZoomController,
-    ) -> CroppedFrame:
-        return apply_crop(frame, zoom_controller.current_crop())
-
-
-class DetectionPipeline:
-    def __init__(self, metrics: PipelineMetrics | None = None) -> None:
-        self._metrics = metrics
-
-    def detect_hands(
-        self,
-        hand_tracker: MediaPipeHandTracker,
-        frame: Any,
-    ) -> tuple[list[HandState], list[DetectedHand]]:
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        started_at = time.monotonic()
-        result = hand_tracker.detect(rgb_frame, int(time.monotonic() * 1000))
-        if self._metrics is not None:
-            self._metrics.record_detection(time.monotonic() - started_at)
-        return result
-
-
-class GestureDecisionPipeline:
-    def __init__(
-        self,
-        gesture_session: GestureSession,
-        zoom_controller: CameraZoomController,
-        metrics: PipelineMetrics | None = None,
-    ) -> None:
-        self._gesture_session = gesture_session
-        self._zoom_controller = zoom_controller
-        self._metrics = metrics
-
-    def evaluate(
-        self,
-        hand_states: list[HandState],
-        detection_crop: CropRect,
-        now: float,
-    ) -> GestureDecision:
-        started_at = time.monotonic()
-        decision = self._gesture_session.evaluate(
-            hand_states_to_original_space(hand_states, detection_crop),
-            now,
-        )
-        if self._metrics is not None:
-            self._metrics.record_decision(time.monotonic() - started_at, decision.command_gesture)
-        self.update_zoom(decision)
-        return decision
-
-    def update_zoom(self, decision: GestureDecision) -> bool:
-        if decision.primary_temporarily_lost or decision.freeze_zoom:
-            return False
-
-        full_frame_crop = CropRect(0.0, 0.0, 1.0, 1.0)
-        if not decision.activated:
-            return self._zoom_controller.update([], full_frame_crop)
-
-        return self._zoom_controller.update(decision.zoom_landmarks, full_frame_crop)
-
-
-class DisplayPipeline:
-    def __init__(self, logger: AppLogger) -> None:
-        self._logger = logger
-
-    def debug_message(
-        self,
-        decision_debug_message: str,
-        detection_crop: CropRect,
-        display_crop: CropRect,
-        zoom_frozen: bool = False,
-    ) -> str:
-        return GestureRemoteService._debug_message(
-            decision_debug_message,
-            detection_crop,
-            display_crop,
-            zoom_frozen,
-        )
-
-    def draw_detected_hands(
-        self,
-        frame: Any,
-        detected_hands: list[DetectedHand],
-        source_crop: CropRect,
-        display_crop: CropRect,
-    ) -> None:
-        GestureRemoteService._draw_detected_hands(
-            frame,
-            detected_hands,
-            source_crop,
-            display_crop,
-        )
-
-    def render(self, app_name: str, frame: Any) -> bool:
-        cv2.imshow(app_name, frame)
-        return bool(cv2.pollKey() & 0xFF == ord("q"))
-
-
-class CommandDispatchPipeline:
-    def __init__(
-        self,
-        gesture_session: GestureSession,
-        voice_capture: VoiceCaptureService,
-        command_dispatcher: RemoteCommandDispatcher,
-        metrics: PipelineMetrics | None,
-        logger: AppLogger,
-    ) -> None:
-        self._gesture_session = gesture_session
-        self._voice_capture = voice_capture
-        self._command_dispatcher = command_dispatcher
-        self._metrics = metrics
-        self._logger = logger
-
-    async def handle_decision(
-        self,
-        command_gesture: str | None,
-        activated: bool,
-        now: float,
-        voice_task: asyncio.Task | None,
-    ) -> asyncio.Task | None:
-        if not activated:
-            self._gesture_session.record_idle()
-            return voice_task
-        if command_gesture is None:
-            return voice_task
-
-        command = GESTURE_TO_COMMAND.get(command_gesture)
-        if not self._gesture_session.should_emit(command_gesture, command, now):
-            return voice_task
-
-        if command_gesture == GESTURE_MIC:
-            voice_task = self._ensure_voice_task(voice_task)
-        elif command:
-            self._logger.debug(
-                f"sending command_gesture={command_gesture} command={command}"
-            )
-            self._command_dispatcher.enqueue(command_gesture, command)
-            if self._metrics is not None:
-                self._metrics.record_dispatch(
-                    self._command_dispatcher.queue_depth,
-                    self._command_dispatcher.last_send_latency_seconds,
-                )
-
-        self._gesture_session.record_emit(command_gesture, now)
-        return voice_task
-
-    def _ensure_voice_task(self, voice_task: asyncio.Task | None) -> asyncio.Task | None:
-        if voice_task is None or voice_task.done():
-            self._logger.debug("starting microphone capture")
-            return asyncio.create_task(self._voice_capture.capture())
-
-        self._logger.debug("microphone capture already running")
-        return voice_task
-
-
-def _debug_crop(crop: CropRect) -> str:
-    return (
-        f"({crop.x:.2f},{crop.y:.2f},"
-        f"{crop.width:.2f},{crop.height:.2f})"
-    )

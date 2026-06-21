@@ -1,23 +1,13 @@
-import math
-
 from src.domain.constants import (
     DEBUG_NONE,
     DEBUG_UNKNOWN,
-    GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
     GESTURE_MIC,
     GESTURE_OPEN_PALM,
-    GESTURE_OPEN_TO_FIST,
     GESTURE_PINCH,
     GESTURE_POINT,
-    GESTURE_POINT_DOWN,
-    GESTURE_POINT_LEFT,
-    GESTURE_POINT_RIGHT,
-    GESTURE_POINT_UP,
     GESTURE_TWO_FINGERS,
-    GESTURE_VOLUME_DOWN,
-    GESTURE_VOLUME_UP,
 )
 from src.domain.landmarks import LANDMARK_INDEX_TIP, landmark_position
 from src.domain.motion_filter import (
@@ -52,305 +42,9 @@ class GestureSession(GestureSessionDebugMixin):
     def update_config(self, config: AppConfig) -> None:
         self._config = config
 
-    @property
-    def last_command_time(self) -> float:
-        return self._emit.last_command_time
-
-    @last_command_time.setter
-    def last_command_time(self, value: float) -> None:
-        self._emit.last_command_time = value
-
-    @property
-    def last_command_gesture(self) -> str | None:
-        return self._emit.last_command_gesture
-
-    @last_command_gesture.setter
-    def last_command_gesture(self, value: str | None) -> None:
-        self._emit.last_command_gesture = value
-
-    @property
-    def primary_position(self) -> tuple[float, float] | None:
-        return self._activation.position
-
-    @primary_position.setter
-    def primary_position(self, value: tuple[float, float] | None) -> None:
-        self._activation.position = value
-
-    @property
-    def primary_last_seen_time(self) -> float | None:
-        return self._activation.last_seen_time
-
-    @primary_last_seen_time.setter
-    def primary_last_seen_time(self, value: float | None) -> None:
-        self._activation.last_seen_time = value
-
-    @property
-    def primary_previous_gesture(self) -> str | None:
-        return self._activation.previous_gesture
-
-    @primary_previous_gesture.setter
-    def primary_previous_gesture(self, value: str | None) -> None:
-        self._activation.previous_gesture = value
-
-    @property
-    def secondary_last_motion_gesture(self) -> str | None:
-        return self._secondary.last_motion_gesture
-
-    @secondary_last_motion_gesture.setter
-    def secondary_last_motion_gesture(self, value: str | None) -> None:
-        self._secondary.last_motion_gesture = value
-
-    @property
-    def secondary_last_motion_time(self) -> float | None:
-        return self._secondary.last_motion_time
-
-    @secondary_last_motion_time.setter
-    def secondary_last_motion_time(self, value: float | None) -> None:
-        self._secondary.last_motion_time = value
-
-    @property
-    def secondary_last_seen_time(self) -> float | None:
-        return self._secondary.last_seen_time
-
-    @secondary_last_seen_time.setter
-    def secondary_last_seen_time(self, value: float | None) -> None:
-        self._secondary.last_seen_time = value
-
-    @property
-    def primary_close_time(self) -> float | None:
-        return self._command_decision.primary_close_time
-
-    @primary_close_time.setter
-    def primary_close_time(self, value: float | None) -> None:
-        self._command_decision.primary_close_time = value
-
-    @property
-    def secondary_close_time(self) -> float | None:
-        return self._command_decision.secondary_close_time
-
-    @secondary_close_time.setter
-    def secondary_close_time(self, value: float | None) -> None:
-        self._command_decision.secondary_close_time = value
-
-    @property
-    def primary_select_pending(self) -> bool:
-        return self._command_decision.primary_select_pending
-
-    @primary_select_pending.setter
-    def primary_select_pending(self, value: bool) -> None:
-        self._command_decision.primary_select_pending = value
-
-    @property
-    def secondary_back_pending(self) -> bool:
-        return self._command_decision.secondary_back_pending
-
-    @secondary_back_pending.setter
-    def secondary_back_pending(self, value: bool) -> None:
-        self._command_decision.secondary_back_pending = value
-
-    @property
-    def volume_anchor_y(self) -> float | None:
-        return self._volume.anchor if isinstance(self._volume.anchor, float) else None
-
-    @volume_anchor_y.setter
-    def volume_anchor_y(self, value: float | None) -> None:
-        self._volume.anchor = value
-
-    @property
-    def volume_active_gesture(self) -> str | None:
-        return self._volume.active_gesture
-
-    @volume_active_gesture.setter
-    def volume_active_gesture(self, value: str | None) -> None:
-        self._volume.active_gesture = value
-
-    @property
-    def volume_armed(self) -> bool:
-        return self._volume.armed
-
-    @volume_armed.setter
-    def volume_armed(self, value: bool) -> None:
-        self._volume.armed = value
-
-    @property
-    def volume_neutral_frames(self) -> int:
-        return self._volume.neutral_frames
-
-    @volume_neutral_frames.setter
-    def volume_neutral_frames(self, value: int) -> None:
-        self._volume.neutral_frames = value
-
-    @property
-    def volume_phase(self) -> str:
-        return self._volume.phase
-
-    @volume_phase.setter
-    def volume_phase(self, value: str) -> None:
-        self._volume.phase = value
-
-    @property
-    def volume_last_blocked_reason(self) -> str | None:
-        return self._volume.last_blocked_reason
-
-    @volume_last_blocked_reason.setter
-    def volume_last_blocked_reason(self, value: str | None) -> None:
-        self._volume.last_blocked_reason = value
-
-    @property
-    def volume_candidate_gesture(self) -> str | None:
-        return self._volume.candidate_gesture
-
-    @volume_candidate_gesture.setter
-    def volume_candidate_gesture(self, value: str | None) -> None:
-        self._volume.candidate_gesture = value
-
-    @property
-    def volume_candidate_magnitude(self) -> float:
-        return self._volume.candidate_magnitude
-
-    @volume_candidate_magnitude.setter
-    def volume_candidate_magnitude(self, value: float) -> None:
-        self._volume.candidate_magnitude = value
-
-    @property
-    def volume_activation_distance(self) -> float:
-        return self._volume.activation_distance
-
-    @volume_activation_distance.setter
-    def volume_activation_distance(self, value: float) -> None:
-        self._volume.activation_distance = value
-
-    @property
-    def volume_neutral_distance(self) -> float:
-        return self._volume.neutral_distance
-
-    @volume_neutral_distance.setter
-    def volume_neutral_distance(self, value: float) -> None:
-        self._volume.neutral_distance = value
-
-    @property
-    def volume_threshold_ratio(self) -> float:
-        return self._volume.threshold_ratio
-
-    @volume_threshold_ratio.setter
-    def volume_threshold_ratio(self, value: float) -> None:
-        self._volume.threshold_ratio = value
-
-    @property
-    def volume_in_neutral(self) -> bool:
-        return self._volume.in_neutral
-
-    @volume_in_neutral.setter
-    def volume_in_neutral(self, value: bool) -> None:
-        self._volume.in_neutral = value
-
-    @property
-    def pointer_anchor_position(self) -> tuple[float, float] | None:
-        return self._pointer.anchor if isinstance(self._pointer.anchor, tuple) else None
-
-    @pointer_anchor_position.setter
-    def pointer_anchor_position(self, value: tuple[float, float] | None) -> None:
-        self._pointer.anchor = value
-
-    @property
-    def pointer_active_gesture(self) -> str | None:
-        return self._pointer.active_gesture
-
-    @pointer_active_gesture.setter
-    def pointer_active_gesture(self, value: str | None) -> None:
-        self._pointer.active_gesture = value
-
-    @property
-    def pointer_armed(self) -> bool:
-        return self._pointer.armed
-
-    @pointer_armed.setter
-    def pointer_armed(self, value: bool) -> None:
-        self._pointer.armed = value
-
-    @property
-    def pointer_neutral_frames(self) -> int:
-        return self._pointer.neutral_frames
-
-    @pointer_neutral_frames.setter
-    def pointer_neutral_frames(self, value: int) -> None:
-        self._pointer.neutral_frames = value
-
-    @property
-    def pointer_phase(self) -> str:
-        return self._pointer.phase
-
-    @pointer_phase.setter
-    def pointer_phase(self, value: str) -> None:
-        self._pointer.phase = value
-
-    @property
-    def pointer_last_blocked_reason(self) -> str | None:
-        return self._pointer.last_blocked_reason
-
-    @pointer_last_blocked_reason.setter
-    def pointer_last_blocked_reason(self, value: str | None) -> None:
-        self._pointer.last_blocked_reason = value
-
-    @property
-    def pointer_candidate_gesture(self) -> str | None:
-        return self._pointer.candidate_gesture
-
-    @pointer_candidate_gesture.setter
-    def pointer_candidate_gesture(self, value: str | None) -> None:
-        self._pointer.candidate_gesture = value
-
-    @property
-    def pointer_candidate_magnitude(self) -> float:
-        return self._pointer.candidate_magnitude
-
-    @pointer_candidate_magnitude.setter
-    def pointer_candidate_magnitude(self, value: float) -> None:
-        self._pointer.candidate_magnitude = value
-
-    @property
-    def pointer_activation_distance(self) -> float:
-        return self._pointer.activation_distance
-
-    @pointer_activation_distance.setter
-    def pointer_activation_distance(self, value: float) -> None:
-        self._pointer.activation_distance = value
-
-    @property
-    def pointer_neutral_distance(self) -> float:
-        return self._pointer.neutral_distance
-
-    @pointer_neutral_distance.setter
-    def pointer_neutral_distance(self, value: float) -> None:
-        self._pointer.neutral_distance = value
-
-    @property
-    def pointer_threshold_ratio(self) -> float:
-        return self._pointer.threshold_ratio
-
-    @pointer_threshold_ratio.setter
-    def pointer_threshold_ratio(self, value: float) -> None:
-        self._pointer.threshold_ratio = value
-
-    @property
-    def pointer_in_neutral(self) -> bool:
-        return self._pointer.in_neutral
-
-    @pointer_in_neutral.setter
-    def pointer_in_neutral(self, value: bool) -> None:
-        self._pointer.in_neutral = value
-
-    @property
-    def pointer_position_source(self) -> str:
-        return self._pointer.position_source
-
-    @pointer_position_source.setter
-    def pointer_position_source(self, value: str) -> None:
-        self._pointer.position_source = value
-
     def evaluate(self, hand_states: list[HandState], now: float) -> GestureDecision:
-        primary_anchor = self.primary_position
-        if self.primary_position is None:
+        primary_anchor = self._activation.position
+        if self._activation.position is None:
             primary_index = next(
                 (
                     index
@@ -417,15 +111,14 @@ class GestureSession(GestureSessionDebugMixin):
             self.reset_motion_tracking()
 
         primary_gesture = primary_hand.gesture
-        self.primary_position = primary_hand.center
-        self.primary_last_seen_time = now
+        self._activation.update_seen(primary_hand, now)
         secondary_gesture = secondary_hand.gesture if secondary_hand else None
         secondary_center = secondary_hand.center if secondary_hand else None
         secondary_size = secondary_hand.size if secondary_hand else 0.0
         zoom_landmarks = [primary_hand.landmarks]
         if secondary_hand is not None:
             zoom_landmarks.append(secondary_hand.landmarks)
-            self.secondary_last_seen_time = now
+            self._secondary.record_seen(now)
         freeze_zoom = secondary_hand is not None or self._secondary_missing_within_grace(now)
         zoom_freeze_reason = self._zoom_freeze_reason(secondary_hand, now)
         effective_secondary_gesture = self._effective_secondary_motion_gesture(
@@ -440,13 +133,13 @@ class GestureSession(GestureSessionDebugMixin):
         volume_distance = 0.0
         pointer_distance = 0.0
         pointer_position = None
-        self.pointer_last_blocked_reason = None
-        self.volume_last_blocked_reason = None
+        self._pointer.last_blocked_reason = None
+        self._volume.last_blocked_reason = None
         self._reset_pointer_diagnostics()
         self._reset_volume_diagnostics()
 
         command_gesture = self._command_decision.evaluate(
-            self.primary_previous_gesture,
+            self._activation.previous_gesture,
             primary_gesture,
             self.secondary_previous_gesture,
             secondary_gesture,
@@ -462,8 +155,8 @@ class GestureSession(GestureSessionDebugMixin):
         if command_gesture is None and secondary_hand is not None:
             if effective_secondary_gesture == GESTURE_PINCH and secondary_center is not None:
                 self._reset_pointer_tracking()
-                if self.volume_anchor_y is None:
-                    self.volume_anchor_y = secondary_center[1]
+                if not isinstance(self._volume.anchor, float):
+                    self._volume.anchor = secondary_center[1]
                 volume_distance = self._scaled_distance(
                     secondary_size,
                     self._config.gesture.volume_distance_ratio,
@@ -471,7 +164,7 @@ class GestureSession(GestureSessionDebugMixin):
                     self._config.gesture.volume_max_distance,
                 )
                 volume_candidate = classify_volume_joystick(
-                    self.volume_anchor_y,
+                    self._volume.anchor if isinstance(self._volume.anchor, float) else None,
                     secondary_center[1],
                     volume_distance,
                 )
@@ -490,8 +183,8 @@ class GestureSession(GestureSessionDebugMixin):
                 and effective_secondary_gesture == GESTURE_POINT
             ):
                 pointer_position = self._pointer_position(secondary_hand)
-                if self.pointer_anchor_position is None:
-                    self.pointer_anchor_position = pointer_position
+                if not isinstance(self._pointer.anchor, tuple):
+                    self._pointer.anchor = pointer_position
                 pointer_distance = self._scaled_distance(
                     secondary_size,
                     self._config.gesture.pointer_distance_ratio,
@@ -499,7 +192,7 @@ class GestureSession(GestureSessionDebugMixin):
                     self._config.gesture.pointer_max_distance,
                 )
                 pointer_candidate = classify_pointer_joystick(
-                    self.pointer_anchor_position,
+                    self._pointer.anchor if isinstance(self._pointer.anchor, tuple) else None,
                     pointer_position,
                     pointer_distance,
                     self._config.gesture.pointer_dominance,
@@ -521,7 +214,7 @@ class GestureSession(GestureSessionDebugMixin):
             elif secondary_gesture != GESTURE_TWO_FINGERS:
                 mic_gesture = None
 
-        self.primary_previous_gesture = primary_gesture
+        self._activation.previous_gesture = primary_gesture
         self.secondary_previous_gesture = secondary_gesture
 
         return GestureDecision(
@@ -604,54 +297,6 @@ class GestureSession(GestureSessionDebugMixin):
             self.MOTION_NEUTRAL_SETTLE_FRAMES,
         )
 
-    def _motion_command(
-        self,
-        decision: JoystickDecision,
-        active_gesture_attr: str,
-        armed_attr: str,
-        neutral_frames_attr: str,
-        phase_attr: str,
-        blocked_reason_attr: str,
-    ) -> str | None:
-        setattr(self, neutral_frames_attr, 0)
-        if decision.gesture is None:
-            if getattr(self, armed_attr):
-                setattr(self, phase_attr, "armed")
-            else:
-                setattr(self, phase_attr, "triggered")
-                setattr(self, blocked_reason_attr, "awaiting_neutral")
-            return None
-
-        if getattr(self, armed_attr):
-            setattr(self, active_gesture_attr, decision.gesture)
-            setattr(self, armed_attr, False)
-            setattr(self, phase_attr, "triggered")
-            return decision.gesture
-
-        setattr(self, phase_attr, "triggered")
-        setattr(self, blocked_reason_attr, "awaiting_neutral")
-        return None
-
-    def _settle_volume_neutral(self, current_y: float) -> None:
-        self.volume_neutral_frames += 1
-        self.volume_phase = "settling"
-        self.volume_last_blocked_reason = "settling_neutral"
-        if self.volume_neutral_frames < self.MOTION_NEUTRAL_SETTLE_FRAMES:
-            return
-
-        self.volume_anchor_y = current_y
-        self._reset_volume_motion_state()
-
-    def _settle_pointer_neutral(self, current_position: tuple[float, float]) -> None:
-        self.pointer_neutral_frames += 1
-        self.pointer_phase = "settling"
-        self.pointer_last_blocked_reason = "settling_neutral"
-        if self.pointer_neutral_frames < self.MOTION_NEUTRAL_SETTLE_FRAMES:
-            return
-
-        self.pointer_anchor_position = current_position
-        self._reset_pointer_motion_state()
-
     def _record_volume_decision(self, decision: JoystickDecision) -> None:
         self._volume.record_decision(decision)
 
@@ -691,10 +336,10 @@ class GestureSession(GestureSessionDebugMixin):
 
     def _pointer_position(self, secondary_hand: HandState) -> tuple[float, float]:
         if len(secondary_hand.landmarks) > LANDMARK_INDEX_TIP:
-            self.pointer_position_source = "index_tip"
+            self._pointer.position_source = "index_tip"
             return landmark_position(secondary_hand.landmarks, LANDMARK_INDEX_TIP)
 
-        self.pointer_position_source = "center"
+        self._pointer.position_source = "center"
         return secondary_hand.center
 
     def _primary_missing_within_grace(self, now: float) -> bool:

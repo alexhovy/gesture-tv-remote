@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from enum import Enum
 from typing import Protocol
 
 
@@ -15,16 +16,23 @@ SUPPORTED_TV_ADAPTERS = {
 }
 
 
+class CapabilityStatus(str, Enum):
+    IMPLEMENTED = "implemented"
+    NOT_IMPLEMENTED = "not_implemented"
+    UNSUPPORTED = "unsupported"
+
+
 @dataclass(frozen=True)
 class TvAdapterCapabilities:
-    supports_power: bool
-    supports_volume: bool
-    supports_directional_navigation: bool
-    supports_media_controls: bool
-    supports_text_input: bool
-    supports_source_selection: bool
-    supports_wake_on_lan: bool
-    supports_pairing: bool
+    power: CapabilityStatus
+    volume: CapabilityStatus
+    directional_navigation: CapabilityStatus
+    media_controls: CapabilityStatus
+    text_input: CapabilityStatus
+    source_selection: CapabilityStatus
+    wake_on_lan: CapabilityStatus
+    pairing: CapabilityStatus
+    voice_capture: CapabilityStatus
     connection_type: str
     known_limitations: tuple[str, ...] = ()
 

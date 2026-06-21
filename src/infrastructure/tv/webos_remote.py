@@ -1,6 +1,10 @@
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
-from src.infrastructure.tv.tv_remote import TV_ADAPTER_WEBOS, TvAdapterCapabilities
+from src.infrastructure.tv.tv_remote import (
+    TV_ADAPTER_WEBOS,
+    CapabilityStatus,
+    TvAdapterCapabilities,
+)
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -15,14 +19,15 @@ class WebOsRemoteClient:
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
-            supports_power=False,
-            supports_volume=True,
-            supports_directional_navigation=True,
-            supports_media_controls=False,
-            supports_text_input=False,
-            supports_source_selection=False,
-            supports_wake_on_lan=False,
-            supports_pairing=True,
+            power=CapabilityStatus.NOT_IMPLEMENTED,
+            volume=CapabilityStatus.IMPLEMENTED,
+            directional_navigation=CapabilityStatus.IMPLEMENTED,
+            media_controls=CapabilityStatus.NOT_IMPLEMENTED,
+            text_input=CapabilityStatus.NOT_IMPLEMENTED,
+            source_selection=CapabilityStatus.NOT_IMPLEMENTED,
+            wake_on_lan=CapabilityStatus.NOT_IMPLEMENTED,
+            pairing=CapabilityStatus.IMPLEMENTED,
+            voice_capture=CapabilityStatus.UNSUPPORTED,
             connection_type="aiowebostv websocket",
             known_limitations=(
                 "Only input-control navigation and volume commands are implemented.",

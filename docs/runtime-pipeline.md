@@ -17,6 +17,10 @@ runtime collaborators:
 | `DisplayPipeline` | Draws detected hand landmarks and renders the OpenCV preview window. |
 | `PipelineMetrics` | Tracks lightweight counters and timings for debug diagnostics. |
 
+Pipeline implementations live in `src/services/pipelines/`. The service module
+keeps lifecycle, config reload, and cleanup logic in one place while frame,
+detection, gesture, command, and display details stay in focused modules.
+
 ## Concurrency Model
 
 Camera capture runs in one dedicated thread. It continuously reads from OpenCV
@@ -57,6 +61,7 @@ Metrics include:
 - gesture decision time
 - command dispatch queue depth
 - command send latency
+- dropped command count
 - dropped/stale frame count
 - active TV adapter
 - current gesture decision

@@ -25,13 +25,9 @@ from src.domain.motion_filter import (
     classify_pointer_joystick,
     classify_volume_joystick,
 )
-from src.domain.session_components import (
-    ActivationTracker,
-    CommandDecision,
-    EmitDebounce,
-    MotionJoystickState,
-    SecondaryGestureInterpreter,
-)
+from src.domain.activation_tracker import ActivationTracker
+from src.domain.command_decision import CommandDecision, EmitDebounce
+from src.domain.motion_gesture import MotionJoystickState, SecondaryGestureInterpreter
 from src.domain.session_debug import GestureSessionDebugMixin
 from src.domain.session_types import GestureDecision, HandState
 from src.shared.config import AppConfig

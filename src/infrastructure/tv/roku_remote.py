@@ -1,6 +1,6 @@
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
-from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU
+from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU, TvAdapterCapabilities
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -11,6 +11,23 @@ class RokuRemoteClient:
         self._remote = None
         self._logger = AppLogger()
         self._executor = ThreadBoundRemoteExecutor("roku-tv")
+
+    def capabilities(self) -> TvAdapterCapabilities:
+        return TvAdapterCapabilities(
+            supports_power=False,
+            supports_volume=True,
+            supports_directional_navigation=True,
+            supports_media_controls=False,
+            supports_text_input=False,
+            supports_source_selection=False,
+            supports_wake_on_lan=False,
+            supports_pairing=False,
+            connection_type="Roku ECP HTTP",
+            known_limitations=(
+                "Only ECP keypress commands are implemented.",
+                "Voice capture, pairing, text input, source selection, and Wake-on-LAN are not implemented.",
+            ),
+        )
 
     async def connect(self) -> bool:
         try:

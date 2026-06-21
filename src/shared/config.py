@@ -54,6 +54,8 @@ class EnvVar:
     MIN_HAND_DETECTION_CONFIDENCE = "GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE"
     MIN_HAND_PRESENCE_CONFIDENCE = "GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE"
     MIN_TRACKING_CONFIDENCE = "GESTURE_TV_MIN_TRACKING_CONFIDENCE"
+    VERBOSE_PIPELINE_DIAGNOSTICS = "GESTURE_TV_VERBOSE_PIPELINE_DIAGNOSTICS"
+    METRICS_LOG_SECONDS = "GESTURE_TV_METRICS_LOG_SECONDS"
 
 
 @dataclass(frozen=True)
@@ -127,6 +129,12 @@ class WebConfig:
 @dataclass(frozen=True)
 class DebugConfig:
     log_seconds: float = 0.5
+    verbose_pipeline_diagnostics: bool = False
+
+
+@dataclass(frozen=True)
+class PerformanceConfig:
+    metrics_log_seconds: float = 2.0
 
 
 @dataclass(frozen=True)
@@ -139,6 +147,7 @@ class AppConfig:
     model: ModelConfig = ModelConfig()
     web: WebConfig = WebConfig()
     debug: DebugConfig = DebugConfig()
+    performance: PerformanceConfig = PerformanceConfig()
 
 
 @dataclass(frozen=True)
@@ -179,6 +188,8 @@ RELOADABLE_CONFIG_FIELDS = (
     "auto_zoom_position_deadband",
     "auto_zoom_scale_deadband",
     "auto_zoom_crop_reset_threshold",
+    "verbose_pipeline_diagnostics",
+    "metrics_log_seconds",
 )
 
 
@@ -219,6 +230,11 @@ def validate_config(config: AppConfig) -> None:
     )
     _require_at_least(config.model.download_retries, "model_download_retries", 0)
     _require_at_least(config.debug.log_seconds, "debug_log_seconds", 0.0)
+    _require_at_least(
+        config.performance.metrics_log_seconds,
+        "metrics_log_seconds",
+        0.0,
+    )
     _require_at_least(
         config.gesture.primary_lost_grace_seconds,
         "primary_lost_grace_seconds",
@@ -461,6 +477,20 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         _float,
     ),
     ConfigField("debug_log_seconds", EnvVar.DEBUG_LOG_SECONDS, "debug", "log_seconds", _float),
+    ConfigField(
+        "verbose_pipeline_diagnostics",
+        EnvVar.VERBOSE_PIPELINE_DIAGNOSTICS,
+        "debug",
+        "verbose_pipeline_diagnostics",
+        _bool,
+    ),
+    ConfigField(
+        "metrics_log_seconds",
+        EnvVar.METRICS_LOG_SECONDS,
+        "performance",
+        "metrics_log_seconds",
+        _float,
+    ),
     ConfigField(
         "primary_lost_grace_seconds",
         EnvVar.PRIMARY_LOST_GRACE_SECONDS,

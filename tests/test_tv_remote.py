@@ -50,6 +50,34 @@ class TvRemoteTests(unittest.TestCase):
                 client = create_tv_remote_client(app_config(tv_adapter=adapter))
                 self.assertIsInstance(client, expected_type)
 
+    def test_each_adapter_exposes_capabilities(self) -> None:
+        for adapter in [
+            TV_ADAPTER_ANDROIDTV,
+            TV_ADAPTER_SAMSUNG,
+            TV_ADAPTER_WEBOS,
+            TV_ADAPTER_ROKU,
+        ]:
+            with self.subTest(adapter=adapter):
+                capabilities = create_tv_remote_client(
+                    app_config(tv_adapter=adapter)
+                ).capabilities()
+
+                self.assertTrue(capabilities.connection_type)
+                self.assertTrue(capabilities.supports_directional_navigation)
+                self.assertTrue(capabilities.supports_volume)
+                self.assertTrue(capabilities.known_limitations)
+
+    def test_android_tv_is_only_voice_capable_adapter(self) -> None:
+        android_capabilities = create_tv_remote_client(
+            app_config(tv_adapter=TV_ADAPTER_ANDROIDTV)
+        ).capabilities()
+        roku_capabilities = create_tv_remote_client(
+            app_config(tv_adapter=TV_ADAPTER_ROKU)
+        ).capabilities()
+
+        self.assertTrue(android_capabilities.supports_pairing)
+        self.assertFalse(roku_capabilities.supports_pairing)
+
     def test_factory_rejects_unknown_adapter(self) -> None:
         with self.assertRaises(ValueError):
             create_tv_remote_client(app_config(tv_adapter="unknown"))

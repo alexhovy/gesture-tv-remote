@@ -31,6 +31,7 @@ from src.infrastructure.camera.video_preprocessing import (
 from src.infrastructure.camera.video_overlay import draw_simple_landmarks
 from src.services.voice_capture import VoiceCaptureService
 from src.services.remote_command_dispatcher import RemoteCommandDispatcher
+from src.services.pipeline_metrics import PipelineMetrics
 from src.shared.config import AppConfig, apply_reloadable_config
 from src.shared.logging import AppLogger
 
@@ -69,20 +70,31 @@ class GestureRemoteService:
         hand_tracker = None
         voice_task = None
         frame_source = LatestFrameSource(cap)
+        metrics = PipelineMetrics(self._config.tv.adapter)
         last_debug_time = 0.0
         last_debug_message = ""
         zoom_controller = CameraZoomController(self._config)
-        frame_pipeline = FramePipeline()
-        gesture_pipeline = GesturePipeline(self._gesture_session, zoom_controller)
+        frame_pipeline = FrameCapturePipeline(frame_source, metrics)
+        detection_pipeline = DetectionPipeline(metrics)
+        gesture_pipeline = GestureDecisionPipeline(
+            self._gesture_session,
+            zoom_controller,
+            metrics,
+        )
         display_pipeline = DisplayPipeline(self._logger)
-        command_pipeline = CommandPipeline(
+        command_pipeline = CommandDispatchPipeline(
             self._gesture_session,
             self._voice_capture,
             self._command_dispatcher,
+            metrics,
             self._logger,
         )
+        # One bounded async worker sends TV commands so network stalls do not block
+        # camera capture, MediaPipe submission, or display rendering.
         self._command_dispatcher.start()
-        frame_source.start()
+        # One camera thread continuously reads frames and keeps only the newest
+        # frame; the async loop drops stale versions instead of building backlog.
+        frame_pipeline.start()
 
         try:
             await asyncio.to_thread(download_model_if_missing, self._config)
@@ -93,7 +105,7 @@ class GestureRemoteService:
                     self._logger.error("Could not read frame from webcam.")
                     break
 
-                frame = frame_source.latest()
+                frame = frame_pipeline.latest_frame()
                 if frame is None:
                     await asyncio.sleep(0.005)
                     continue
@@ -105,7 +117,7 @@ class GestureRemoteService:
                     frame,
                     self._config.camera.zoom,
                 )
-                hand_states, detected_hands = frame_pipeline.detect_hands(
+                hand_states, detected_hands = detection_pipeline.detect_hands(
                     hand_tracker,
                     detection_frame.frame,
                 )
@@ -147,6 +159,16 @@ class GestureRemoteService:
                 if display_pipeline.render(self._config.app_name, display_frame.frame):
                     break
 
+                metrics.record_dispatch(
+                    self._command_dispatcher.queue_depth,
+                    self._command_dispatcher.last_send_latency_seconds,
+                )
+                metrics.log_if_due(
+                    self._logger,
+                    now,
+                    self._config.debug.verbose_pipeline_diagnostics,
+                    self._config.performance.metrics_log_seconds,
+                )
                 await asyncio.sleep(0)
         finally:
             await self._cleanup(voice_task, hand_tracker, cap, frame_source)
@@ -379,7 +401,28 @@ class GestureRemoteService:
             self._logger.error(f"Error while cleaning up {name}: {error}")
 
 
-class FramePipeline:
+class FrameCapturePipeline:
+    def __init__(
+        self,
+        frame_source: LatestFrameSource | None = None,
+        metrics: PipelineMetrics | None = None,
+    ) -> None:
+        self._frame_source = frame_source
+        self._metrics = metrics
+
+    def start(self) -> None:
+        if self._frame_source is None:
+            return
+        self._frame_source.start()
+
+    def latest_frame(self) -> Any | None:
+        if self._frame_source is None:
+            return None
+        version, frame = self._frame_source.latest_versioned()
+        if self._metrics is not None and not self._metrics.record_frame_version(version):
+            return None
+        return frame
+
     def flip_frame(self, frame: Any) -> Any:
         return cv2.flip(frame, 1)
 
@@ -393,23 +436,34 @@ class FramePipeline:
     ) -> CroppedFrame:
         return apply_crop(frame, zoom_controller.current_crop())
 
+
+class DetectionPipeline:
+    def __init__(self, metrics: PipelineMetrics | None = None) -> None:
+        self._metrics = metrics
+
     def detect_hands(
         self,
         hand_tracker: MediaPipeHandTracker,
         frame: Any,
     ) -> tuple[list[HandState], list[DetectedHand]]:
         rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-        return hand_tracker.detect(rgb_frame, int(time.monotonic() * 1000))
+        started_at = time.monotonic()
+        result = hand_tracker.detect(rgb_frame, int(time.monotonic() * 1000))
+        if self._metrics is not None:
+            self._metrics.record_detection(time.monotonic() - started_at)
+        return result
 
 
-class GesturePipeline:
+class GestureDecisionPipeline:
     def __init__(
         self,
         gesture_session: GestureSession,
         zoom_controller: CameraZoomController,
+        metrics: PipelineMetrics | None = None,
     ) -> None:
         self._gesture_session = gesture_session
         self._zoom_controller = zoom_controller
+        self._metrics = metrics
 
     def evaluate(
         self,
@@ -417,10 +471,13 @@ class GesturePipeline:
         detection_crop: CropRect,
         now: float,
     ) -> GestureDecision:
+        started_at = time.monotonic()
         decision = self._gesture_session.evaluate(
             hand_states_to_original_space(hand_states, detection_crop),
             now,
         )
+        if self._metrics is not None:
+            self._metrics.record_decision(time.monotonic() - started_at, decision.command_gesture)
         self.update_zoom(decision)
         return decision
 
@@ -472,17 +529,19 @@ class DisplayPipeline:
         return bool(cv2.pollKey() & 0xFF == ord("q"))
 
 
-class CommandPipeline:
+class CommandDispatchPipeline:
     def __init__(
         self,
         gesture_session: GestureSession,
         voice_capture: VoiceCaptureService,
         command_dispatcher: RemoteCommandDispatcher,
+        metrics: PipelineMetrics | None,
         logger: AppLogger,
     ) -> None:
         self._gesture_session = gesture_session
         self._voice_capture = voice_capture
         self._command_dispatcher = command_dispatcher
+        self._metrics = metrics
         self._logger = logger
 
     async def handle_decision(
@@ -509,6 +568,11 @@ class CommandPipeline:
                 f"sending command_gesture={command_gesture} command={command}"
             )
             self._command_dispatcher.enqueue(command_gesture, command)
+            if self._metrics is not None:
+                self._metrics.record_dispatch(
+                    self._command_dispatcher.queue_depth,
+                    self._command_dispatcher.last_send_latency_seconds,
+                )
 
         self._gesture_session.record_emit(command_gesture, now)
         return voice_task

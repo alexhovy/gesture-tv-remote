@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from typing import Protocol
 
 
@@ -14,6 +15,20 @@ SUPPORTED_TV_ADAPTERS = {
 }
 
 
+@dataclass(frozen=True)
+class TvAdapterCapabilities:
+    supports_power: bool
+    supports_volume: bool
+    supports_directional_navigation: bool
+    supports_media_controls: bool
+    supports_text_input: bool
+    supports_source_selection: bool
+    supports_wake_on_lan: bool
+    supports_pairing: bool
+    connection_type: str
+    known_limitations: tuple[str, ...] = ()
+
+
 class VoiceStream(Protocol):
     def send_chunk(self, chunk: bytes) -> None:
         ...
@@ -23,6 +38,9 @@ class VoiceStream(Protocol):
 
 
 class TvRemoteClient(Protocol):
+    def capabilities(self) -> TvAdapterCapabilities:
+        ...
+
     async def connect(self) -> bool:
         ...
 

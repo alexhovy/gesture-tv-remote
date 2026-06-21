@@ -53,6 +53,8 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO: "0.5",
                 EnvVar.PRIMARY_LOST_GRACE_SECONDS: "0.45",
                 EnvVar.PRIMARY_MATCH_MAX_DISTANCE: "0.25",
+                EnvVar.VERBOSE_PIPELINE_DIAGNOSTICS: "true",
+                EnvVar.METRICS_LOG_SECONDS: "1.5",
             }
         )
 
@@ -88,6 +90,8 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.gesture.hand_upright_max_tilt_ratio, 0.5)
         self.assertEqual(config.gesture.primary_lost_grace_seconds, 0.45)
         self.assertEqual(config.gesture.primary_match_max_distance, 0.25)
+        self.assertTrue(config.debug.verbose_pipeline_diagnostics)
+        self.assertEqual(config.performance.metrics_log_seconds, 1.5)
 
     def test_load_config_applies_env_overrides_to_base_config(self) -> None:
         base_config = app_config(
@@ -174,6 +178,10 @@ class ConfigTests(unittest.TestCase):
     def test_load_config_rejects_invalid_model_download_settings(self) -> None:
         with self.assertRaisesRegex(ValueError, "model_download_timeout_seconds"):
             load_config_from_env({EnvVar.MODEL_DOWNLOAD_TIMEOUT_SECONDS: "0"})
+
+    def test_load_config_rejects_invalid_metrics_log_seconds(self) -> None:
+        with self.assertRaisesRegex(ValueError, "metrics_log_seconds"):
+            load_config_from_env({EnvVar.METRICS_LOG_SECONDS: "-1"})
 
 
 if __name__ == "__main__":

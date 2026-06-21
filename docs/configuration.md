@@ -1,8 +1,8 @@
 # Configuration
 
 Runtime defaults live in `src/shared/config.py` as `AppConfig`. `AppConfig` is
-grouped into `tv`, `gesture`, `camera`, `model`, `web`, and `debug` sections so
-runtime code reads related settings together. The application loads those
+grouped into `tv`, `gesture`, `camera`, `model`, `web`, `debug`, and
+`performance` sections so runtime code reads related settings together. The application loads those
 defaults, applies saved configuration from the local config database when
 present, and then applies environment-variable overrides at startup.
 
@@ -159,6 +159,8 @@ will not override that environment value.
 | `GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` | `0.75` |
 | `GESTURE_TV_VOICE_CAPTURE_SECONDS` | `5.0` |
 | `GESTURE_TV_DEBUG_LOG_SECONDS` | `0.5` |
+| `GESTURE_TV_VERBOSE_PIPELINE_DIAGNOSTICS` | `False` |
+| `GESTURE_TV_METRICS_LOG_SECONDS` | `2.0` |
 | `GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` | `0.35` |
 | `GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE` | `0.6` |
 | `GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE` | `0.6` |
@@ -207,3 +209,9 @@ through brief primary-hand detection dropouts. This helps when a hand is close
 to a frame or crop edge and MediaPipe occasionally reports zero hands for a
 frame or two. Once the primary hand is missing longer than the grace interval,
 the session deactivates normally.
+
+Set `GESTURE_TV_VERBOSE_PIPELINE_DIAGNOSTICS=true` to log camera FPS, detection
+time, gesture decision time, command queue depth, command send latency, dropped
+stale frames, active adapter, and the current gesture decision. The app uses
+simple internal counters and timers. `GESTURE_TV_METRICS_LOG_SECONDS` controls
+how often those metrics are logged.

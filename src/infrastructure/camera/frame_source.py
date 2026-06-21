@@ -9,6 +9,7 @@ class LatestFrameSource:
         self._stop_event = threading.Event()
         self._thread: threading.Thread | None = None
         self._latest_frame: Any = None
+        self._latest_version = 0
         self._failed = False
 
     def start(self) -> None:
@@ -20,6 +21,10 @@ class LatestFrameSource:
     def latest(self) -> Any | None:
         with self._lock:
             return self._latest_frame
+
+    def latest_versioned(self) -> tuple[int, Any | None]:
+        with self._lock:
+            return self._latest_version, self._latest_frame
 
     def failed(self) -> bool:
         with self._lock:
@@ -37,6 +42,7 @@ class LatestFrameSource:
             with self._lock:
                 if ok:
                     self._latest_frame = frame
+                    self._latest_version += 1
                     self._failed = False
                 else:
                     self._failed = True

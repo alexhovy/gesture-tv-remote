@@ -23,8 +23,8 @@ typed config values, while process setup stays in `src/api`.
 
 `src/services` contains use cases and orchestration. `GestureRemoteService`
 owns application lifecycle and delegates runtime loop details to small
-pipelines for frame preparation, gesture evaluation, display, and command
-handling. `VoiceCaptureService` handles the voice-input use case when the
+pipelines for frame capture, detection, gesture decision, command dispatch, and
+display. `VoiceCaptureService` handles the voice-input use case when the
 selected TV adapter supports it.
 
 ### Domain
@@ -32,18 +32,26 @@ selected TV adapter supports it.
 `src/domain` contains the business rules for gestures and commands:
 
 - landmark math
-- static gesture detection
-- gesture-session state transitions
-- shared gesture-session value types and motion filtering
-- command mappings and debounce behavior
+- raw-to-normalized hand preprocessing
+- static hand-pose classification
+- bounded motion and stability history
+- activation tracking and gesture-session state transitions
+- command mappings, command decisions, and debounce behavior
 
 Domain code should not import OpenCV, MediaPipe, TV-control libraries, or audio
 libraries.
 
-Gesture sessions are coordinated by `GestureSession`, with focused state holders
-for primary activation and identity matching, secondary motion-grace handling,
-close-chord command decisions, emit debounce, and pointer/volume joystick
-state. The session transition model remains:
+Gesture sessions are coordinated by `GestureSession`, with focused collaborators:
+
+- `gesture_preprocessing.py` converts raw detected hands into normalized hand data.
+- `gesture_classification.py` classifies static hand poses.
+- `gesture_history.py` provides bounded history buffers for recent motion state.
+- `activation_tracker.py` owns primary-hand activation and identity matching.
+- `motion_gesture.py` owns secondary motion grace and pointer/volume joystick state.
+- `command_decision.py` owns close-chord decisions and emit debounce.
+- `commands.py` keeps the gesture-to-TV-command mapping easy to inspect.
+
+The session transition model remains:
 
 1. An upright open palm activates the primary hand.
 2. The primary hand is matched by position and primary-like gestures while
@@ -78,8 +86,10 @@ for a client selected by configuration, then queues app-level TV commands such a
 dispatcher.
 Each adapter translates those
 commands to the protocol-specific command names for Android TV, Samsung TV,
-webOS, or Roku. Voice capture is an adapter capability; currently only the
-Android TV adapter exposes the voice stream used by `VoiceCaptureService`.
+webOS, or Roku. Each adapter also exposes explicit capability metadata so
+common commands can stay shared while platform gaps remain visible. Voice
+capture is currently available only when the Android TV adapter returns a voice
+stream.
 Adapters backed by synchronous TV libraries own their own single-worker
 executor so connection objects are opened, used, reconnected, and closed on one
 thread without blocking the gesture loop.
@@ -103,13 +113,15 @@ The runtime uses explicit producer/consumer boundaries:
 - voice capture uses a bounded audio queue and drops stale buffered chunks
 - saved config reloads are throttled and read through `asyncio.to_thread`
 
+See `docs/runtime-pipeline.md` for the runtime pipeline and metrics model.
+
 ### Shared
 
 `src/shared` contains cross-cutting primitives such as configuration. `AppConfig`
-is grouped into TV, gesture, camera, model, web, and debug sections while
-environment variables and saved config fields remain named for the existing user
-interface. Keep this folder small; shared code should not become a dumping
-ground for unrelated helpers.
+is grouped into TV, gesture, camera, model, web, debug, and performance sections
+while environment variables and saved config fields remain named for the config
+UI. Keep this folder small; shared code should not become a dumping ground for
+unrelated helpers.
 
 ## Design Rules
 

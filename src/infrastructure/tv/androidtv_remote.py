@@ -2,7 +2,7 @@ import asyncio
 
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
-from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV
+from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV, TvAdapterCapabilities
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -12,6 +12,23 @@ class AndroidTvRemoteClient:
         self._config = config
         self._remote = None
         self._logger = AppLogger()
+
+    def capabilities(self) -> TvAdapterCapabilities:
+        return TvAdapterCapabilities(
+            supports_power=False,
+            supports_volume=True,
+            supports_directional_navigation=True,
+            supports_media_controls=False,
+            supports_text_input=False,
+            supports_source_selection=False,
+            supports_wake_on_lan=False,
+            supports_pairing=True,
+            connection_type="androidtvremote2 TLS remote protocol",
+            known_limitations=(
+                "Only key commands and voice capture are implemented.",
+                "Power, text input, source selection, and media controls are not mapped.",
+            ),
+        )
 
     async def connect(self) -> bool:
         from androidtvremote2 import (

@@ -103,6 +103,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
             [landmarks],
             activated=True,
             primary_temporarily_lost=False,
+            freeze_zoom=False,
         )
 
         self.assertTrue(changed)
@@ -120,6 +121,22 @@ class GestureRemoteServiceTests(unittest.TestCase):
             [],
             activated=True,
             primary_temporarily_lost=True,
+            freeze_zoom=False,
+        )
+
+        self.assertFalse(changed)
+        self.assertIsNone(zoom_controller.updated_with)
+
+    def test_update_zoom_holds_crop_when_motion_freezes_zoom(self) -> None:
+        zoom_controller = FakeZoomController()
+
+        changed = GestureRemoteService._update_zoom(
+            GestureRemoteService.__new__(GestureRemoteService),
+            zoom_controller,
+            [[_landmark(0.25, 0.50)]],
+            activated=True,
+            primary_temporarily_lost=False,
+            freeze_zoom=True,
         )
 
         self.assertFalse(changed)
@@ -130,6 +147,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
             "hands=2 activated=True",
             CropRect(0.0, 0.0, 1.0, 1.0),
             CropRect(0.25, 0.25, 0.5, 0.5),
+            zoom_frozen=True,
         )
 
         self.assertEqual(
@@ -137,7 +155,8 @@ class GestureRemoteServiceTests(unittest.TestCase):
             (
                 "hands=2 activated=True "
                 "detection_crop=(0.00,0.00,1.00,1.00) "
-                "display_crop=(0.25,0.25,0.50,0.50)"
+                "display_crop=(0.25,0.25,0.50,0.50) "
+                "zoom_frozen=True"
             ),
         )
 

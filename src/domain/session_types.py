@@ -17,4 +17,5 @@ class GestureDecision:
     activated: bool
     debug_message: str
     primary_temporarily_lost: bool = False
+    freeze_zoom: bool = False
     zoom_landmarks: list[list[Any]] = field(default_factory=list)

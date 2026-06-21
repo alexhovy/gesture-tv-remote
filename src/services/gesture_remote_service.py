@@ -108,6 +108,7 @@ class GestureRemoteService:
                     decision.zoom_landmarks,
                     decision.activated,
                     decision.primary_temporarily_lost,
+                    decision.freeze_zoom,
                 )
                 voice_task = await self._handle_decision(
                     decision.command_gesture,
@@ -121,6 +122,7 @@ class GestureRemoteService:
                     decision.debug_message,
                     detection_frame.crop,
                     display_frame.crop,
+                    decision.freeze_zoom,
                 )
                 if (
                     debug_message != last_debug_message
@@ -188,8 +190,9 @@ class GestureRemoteService:
         zoom_landmarks: list[list[Any]],
         activated: bool,
         primary_temporarily_lost: bool,
+        freeze_zoom: bool = False,
     ) -> bool:
-        if primary_temporarily_lost:
+        if primary_temporarily_lost or freeze_zoom:
             return False
 
         full_frame_crop = CropRect(0.0, 0.0, 1.0, 1.0)
@@ -203,11 +206,13 @@ class GestureRemoteService:
         decision_debug_message: str,
         detection_crop: CropRect,
         display_crop: CropRect,
+        zoom_frozen: bool = False,
     ) -> str:
         return (
             f"{decision_debug_message} "
             f"detection_crop={_debug_crop(detection_crop)} "
-            f"display_crop={_debug_crop(display_crop)}"
+            f"display_crop={_debug_crop(display_crop)} "
+            f"zoom_frozen={zoom_frozen}"
         )
 
     async def _handle_decision(

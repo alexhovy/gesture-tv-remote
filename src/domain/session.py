@@ -149,6 +149,7 @@ class GestureSession(GestureSessionDebugMixin):
         zoom_landmarks = [primary_hand.landmarks]
         if secondary_hand is not None and secondary_gesture is not None:
             zoom_landmarks.append(secondary_hand.landmarks)
+        freeze_zoom = secondary_gesture in {GESTURE_PINCH, GESTURE_POINT}
 
         primary_closed = (
             self.primary_previous_gesture == GESTURE_OPEN_PALM
@@ -294,6 +295,7 @@ class GestureSession(GestureSessionDebugMixin):
                 f"zoom_hands={len(zoom_landmarks)} "
                 f"{hand_debug}"
             ),
+            freeze_zoom=freeze_zoom,
             zoom_landmarks=zoom_landmarks,
         )
 

@@ -33,6 +33,7 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertIsNone(first_under_threshold.command_gesture)
         self.assertIsNone(second_under_threshold.command_gesture)
         self.assertEqual(crossed_threshold.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertTrue(crossed_threshold.freeze_zoom)
 
     def test_volume_debug_reports_anchor_threshold_and_neutral_state(self) -> None:
         session = GestureSession(AppConfig())

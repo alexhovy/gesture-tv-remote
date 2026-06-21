@@ -289,12 +289,8 @@ class GestureSession:
         )
 
     def should_emit(self, command_gesture: str, command: str | None, now: float) -> bool:
-        from src.domain.commands import REPEATABLE_COMMANDS
-
-        can_repeat = command in REPEATABLE_COMMANDS if command else False
         gesture_changed = command_gesture != self.last_command_gesture
-        debounce_elapsed = now - self.last_command_time >= self._config.debounce_seconds
-        return gesture_changed or (can_repeat and debounce_elapsed)
+        return gesture_changed
 
     def record_emit(self, command_gesture: str, now: float) -> None:
         self.last_command_time = now
@@ -335,7 +331,7 @@ class GestureSession:
             if self.volume_active_gesture is not None:
                 if self._is_motion_neutral(magnitude, distance):
                     self.volume_start_y = current_y
-                    self._reset_volume_repeat_state()
+                    self._reset_volume_motion_state()
                 else:
                     self.volume_returning_to_neutral = True
             return None
@@ -343,7 +339,7 @@ class GestureSession:
         if self.volume_returning_to_neutral:
             if self._is_motion_neutral(magnitude, distance):
                 self.volume_start_y = current_y
-                self._reset_volume_repeat_state()
+                self._reset_volume_motion_state()
             return None
 
         return self._filtered_motion_gesture(
@@ -370,7 +366,7 @@ class GestureSession:
             if self.pointer_active_gesture is not None:
                 if self._is_motion_neutral(magnitude, distance):
                     self.pointer_start_position = current_position
-                    self._reset_pointer_repeat_state()
+                    self._reset_pointer_motion_state()
                 else:
                     self.pointer_returning_to_neutral = True
             return None
@@ -378,7 +374,7 @@ class GestureSession:
         if self.pointer_returning_to_neutral:
             if self._is_motion_neutral(magnitude, distance):
                 self.pointer_start_position = current_position
-                self._reset_pointer_repeat_state()
+                self._reset_pointer_motion_state()
             return None
 
         magnitude = self._pointer_motion_magnitude(gesture, start_position, current_position)
@@ -418,13 +414,13 @@ class GestureSession:
         if magnitude >= peak_distance:
             setattr(self, peak_distance_attr, magnitude)
             setattr(self, returning_attr, False)
-            return gesture
+            return None
 
         release_delta = activation_distance * 0.75
         if magnitude <= peak_distance - release_delta:
             setattr(self, returning_attr, True)
 
-        return None if getattr(self, returning_attr) else gesture
+        return None
 
     @staticmethod
     def _is_motion_neutral(magnitude: float, activation_distance: float) -> bool:
@@ -446,18 +442,18 @@ class GestureSession:
 
     def _reset_volume_tracking(self) -> None:
         self.volume_start_y = None
-        self._reset_volume_repeat_state()
+        self._reset_volume_motion_state()
 
-    def _reset_volume_repeat_state(self) -> None:
+    def _reset_volume_motion_state(self) -> None:
         self.volume_active_gesture = None
         self.volume_peak_distance = 0.0
         self.volume_returning_to_neutral = False
 
     def _reset_pointer_tracking(self) -> None:
         self.pointer_start_position = None
-        self._reset_pointer_repeat_state()
+        self._reset_pointer_motion_state()
 
-    def _reset_pointer_repeat_state(self) -> None:
+    def _reset_pointer_motion_state(self) -> None:
         self.pointer_active_gesture = None
         self.pointer_peak_distance = 0.0
         self.pointer_returning_to_neutral = False

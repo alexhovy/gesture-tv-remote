@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from src.domain.constants import (
+    TV_COMMAND_DPAD_DOWN,
     TV_COMMAND_HOME,
     TV_COMMAND_VOLUME_DOWN,
     TV_COMMAND_VOLUME_UP,
@@ -139,6 +140,22 @@ class GestureRemoteServiceTests(unittest.TestCase):
         )
 
 
+class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
+    async def test_idle_decision_records_idle_state(self) -> None:
+        service = GestureRemoteService.__new__(GestureRemoteService)
+        service._gesture_session = FakeGestureSession()
+
+        voice_task = await service._handle_decision(
+            command_gesture=None,
+            activated=True,
+            now=1.0,
+            voice_task=None,
+        )
+
+        self.assertIsNone(voice_task)
+        self.assertTrue(service._gesture_session.idle_recorded)
+
+
 class GestureRemoteCleanupTests(unittest.IsolatedAsyncioTestCase):
     async def test_sync_cleanup_timeout_does_not_wait_for_blocked_method(self) -> None:
         service = GestureRemoteService.__new__(GestureRemoteService)
@@ -163,7 +180,7 @@ class GestureRemoteCleanupTests(unittest.IsolatedAsyncioTestCase):
 
 
 class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
-    async def test_repeatable_commands_coalesce_while_remote_is_busy(self) -> None:
+    async def test_commands_queue_while_remote_is_busy(self) -> None:
         remote = BlockingRemote()
         dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
         dispatcher.start()
@@ -171,7 +188,6 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
         await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
 
-        dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
         dispatcher.enqueue("VOLUME_DOWN", TV_COMMAND_VOLUME_DOWN)
 
         self.assertEqual(remote.commands, [TV_COMMAND_VOLUME_UP])
@@ -185,7 +201,7 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         )
         await dispatcher.close()
 
-    async def test_nonrepeatable_command_replaces_stale_repeatable_command(self) -> None:
+    async def test_commands_queue_in_order(self) -> None:
         remote = BlockingRemote()
         dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
         dispatcher.start()
@@ -193,13 +209,31 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
         await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
 
-        dispatcher.enqueue("VOLUME_DOWN", TV_COMMAND_VOLUME_DOWN)
         dispatcher.enqueue("HOME", TV_COMMAND_HOME)
 
         remote.release_first.set()
         await asyncio.wait_for(remote.second_started.wait(), timeout=1.0)
 
         self.assertEqual(remote.commands, [TV_COMMAND_VOLUME_UP, TV_COMMAND_HOME])
+        await dispatcher.close()
+
+    async def test_dpad_commands_queue_in_order(self) -> None:
+        remote = BlockingRemote()
+        dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
+        dispatcher.start()
+
+        dispatcher.enqueue("POINT_DOWN", TV_COMMAND_DPAD_DOWN)
+        await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
+
+        dispatcher.enqueue("POINT_DOWN", TV_COMMAND_DPAD_DOWN)
+
+        remote.release_first.set()
+        await asyncio.wait_for(remote.second_started.wait(), timeout=1.0)
+
+        self.assertEqual(
+            remote.commands,
+            [TV_COMMAND_DPAD_DOWN, TV_COMMAND_DPAD_DOWN],
+        )
         await dispatcher.close()
 
 
@@ -228,6 +262,14 @@ class FakeLogger:
 
     def error(self, message: str) -> None:
         self.messages.append(message)
+
+
+class FakeGestureSession:
+    def __init__(self) -> None:
+        self.idle_recorded = False
+
+    def record_idle(self) -> None:
+        self.idle_recorded = True
 
 
 def _landmark(x: float, y: float):

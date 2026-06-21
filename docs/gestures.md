@@ -29,11 +29,12 @@ upright open palm to activate controls.
 
 ## Debounce
 
-Most commands are emitted once per gesture change. DPAD and volume commands may
-repeat after the configured debounce interval while the gesture is held away
-from its starting point. Slow movement below the command threshold still
-accumulates from that starting point until it crosses the threshold. Small hold
-jitter still repeats. Moving the pointer or pinch substantially back toward
-center suppresses further repeats while it is returning. Once the pointer or
-pinch reaches neutral, the starting point resets and the same held gesture can
-start a new intentional movement, including movement in a different direction.
+Most commands are emitted once per gesture change. DPAD and volume gestures emit
+once for each intentional movement away from neutral; holding the pointer or
+pinch away from the starting point does not keep sending commands. Slow movement
+below the command threshold still accumulates from that starting point until it
+crosses the threshold. Moving the pointer or pinch substantially back toward
+center suppresses opposite-direction commands while it is returning. Once the
+pointer or pinch reaches neutral, the starting point resets and the same held
+gesture can start a new intentional movement, including movement in a different
+direction.

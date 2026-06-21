@@ -8,7 +8,7 @@ from typing import Any
 
 import cv2
 
-from src.domain.commands import GESTURE_TO_COMMAND, REPEATABLE_COMMANDS
+from src.domain.commands import GESTURE_TO_COMMAND
 from src.domain.constants import (
     DISPLAY_COMMAND_SELECT,
     GESTURE_MIC,
@@ -324,10 +324,8 @@ class RemoteCommandDispatcher:
         self._remote = remote
         self._logger = logger
         self._commands: deque[RemoteCommandRequest] = deque()
-        self._latest_repeatable: RemoteCommandRequest | None = None
         self._has_work: asyncio.Event | None = None
         self._worker_task: asyncio.Task | None = None
-        self._sending = False
         self._closed = False
 
     def start(self) -> None:
@@ -343,20 +341,12 @@ class RemoteCommandDispatcher:
             self.start()
 
         request = RemoteCommandRequest(gesture=gesture, command=command)
-        if command in REPEATABLE_COMMANDS and self._is_busy():
-            self._latest_repeatable = request
-            self._has_work.set()
-            return
-
-        if command not in REPEATABLE_COMMANDS:
-            self._latest_repeatable = None
         self._commands.append(request)
         self._has_work.set()
 
     async def close(self) -> None:
         self._closed = True
         self._commands.clear()
-        self._latest_repeatable = None
         if self._worker_task is None:
             return
 
@@ -377,11 +367,7 @@ class RemoteCommandDispatcher:
                     self._has_work.clear()
                     break
 
-                self._sending = True
-                try:
-                    await self._send(request)
-                finally:
-                    self._sending = False
+                await self._send(request)
 
     async def _send(self, request: RemoteCommandRequest) -> None:
         display_command = (
@@ -396,9 +382,4 @@ class RemoteCommandDispatcher:
         if self._commands:
             return self._commands.popleft()
 
-        request = self._latest_repeatable
-        self._latest_repeatable = None
-        return request
-
-    def _is_busy(self) -> bool:
-        return self._sending or bool(self._commands)
+        return None

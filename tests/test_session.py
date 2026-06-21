@@ -444,8 +444,8 @@ class GestureSessionTests(unittest.TestCase):
         )
 
         self.assertEqual(first_down.command_gesture, GESTURE_POINT_DOWN)
-        self.assertEqual(held_down.command_gesture, GESTURE_POINT_DOWN)
-        self.assertEqual(slight_return.command_gesture, GESTURE_POINT_DOWN)
+        self.assertIsNone(held_down.command_gesture)
+        self.assertIsNone(slight_return.command_gesture)
         self.assertIsNone(returning_down.command_gesture)
         self.assertIsNone(released.command_gesture)
         self.assertIsNone(gesture_released.command_gesture)
@@ -635,8 +635,8 @@ class GestureSessionTests(unittest.TestCase):
         self.assertIsNone(second_start.command_gesture)
         self.assertEqual(second_left.command_gesture, GESTURE_POINT_LEFT)
 
-    def test_pointer_hold_remains_repeatable_after_debounce(self) -> None:
-        session = GestureSession(AppConfig(debounce_seconds=0.3))
+    def test_pointer_hold_does_not_emit_again(self) -> None:
+        session = GestureSession(AppConfig())
         primary = _hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         session.evaluate(
@@ -681,10 +681,7 @@ class GestureSessionTests(unittest.TestCase):
             now=0.41,
         )
 
-        self.assertEqual(held_down.command_gesture, GESTURE_POINT_DOWN)
-        self.assertTrue(
-            session.should_emit(held_down.command_gesture, "DPAD_DOWN", now=0.41)
-        )
+        self.assertIsNone(held_down.command_gesture)
 
     def test_volume_distance_scales_with_hand_size(self) -> None:
         self.assertEqual(
@@ -801,8 +798,8 @@ class GestureSessionTests(unittest.TestCase):
         )
 
         self.assertEqual(first_down.command_gesture, GESTURE_VOLUME_DOWN)
-        self.assertEqual(held_down.command_gesture, GESTURE_VOLUME_DOWN)
-        self.assertEqual(slight_return.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIsNone(held_down.command_gesture)
+        self.assertIsNone(slight_return.command_gesture)
         self.assertIsNone(returning_down.command_gesture)
         self.assertIsNone(released.command_gesture)
         self.assertIsNone(gesture_released.command_gesture)

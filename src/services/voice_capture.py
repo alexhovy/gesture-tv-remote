@@ -13,6 +13,9 @@ class VoiceCaptureService:
         self._config = config
         self._logger = AppLogger()
 
+    def update_config(self, config: AppConfig) -> None:
+        self._config = config
+
     async def capture(self) -> None:
         voice_stream = None
         try:

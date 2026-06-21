@@ -79,11 +79,29 @@ available. Set `GESTURE_TV_CONFIG_WEB_HOST`,
 `GESTURE_TV_CONFIG_WEB_PORT`, `GESTURE_TV_CONFIG_WEB_MDNS_ENABLED`, and
 `GESTURE_TV_CONFIG_WEB_MDNS_NAME` to override the bind address, port, mDNS
 publishing, or advertised name. Saved settings are persisted to the config
-database and apply after restarting the gesture runtime.
+database.
 
 If `.local` names do not resolve on a device, use `http://localhost:8765` on the
 machine running the app or `http://<device-ip>:8765` from another device on the
 same network.
+
+## Live Reload
+
+The gesture runtime periodically reloads saved config from the local database.
+Pure gesture, timing, voice-duration, fixed camera zoom, and auto-zoom tuning
+settings apply while the process is running.
+
+Restart the gesture runtime after changing resource or integration settings:
+
+- TV adapter, host, adapter ports, pairing credential paths, or app name
+- webcam index
+- model file, model URL, model download settings, or MediaPipe confidence settings
+- max tracked hands
+- config database path, config UI host/port, or mDNS settings
+
+Environment variables still have the highest precedence. If an environment
+variable is set for a live-reloadable field, changing the saved value in the UI
+will not override that environment value.
 
 ## Environment Variables
 

@@ -57,6 +57,9 @@ class GestureSession(GestureSessionDebugMixin):
         self.pointer_last_blocked_reason: str | None = None
         self.pointer_rebased = False
 
+    def update_config(self, config: AppConfig) -> None:
+        self._config = config
+
     def evaluate(self, hand_states: list[HandState], now: float) -> GestureDecision:
         primary_anchor = self.primary_position
         if self.primary_position is None:

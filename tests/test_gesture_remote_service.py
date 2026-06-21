@@ -39,9 +39,11 @@ def _install_service_import_stubs() -> None:
 _install_service_import_stubs()
 
 from src.services.gesture_remote_service import (  # noqa: E402
+    CONFIG_RELOAD_INTERVAL_SECONDS,
     GestureRemoteService,
 )
 from src.services.remote_command_dispatcher import RemoteCommandDispatcher  # noqa: E402
+from src.shared.config import AppConfig  # noqa: E402
 
 
 class FakeFrame:
@@ -156,6 +158,61 @@ class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(service._gesture_session.idle_recorded)
 
 
+class GestureRemoteConfigReloadTests(unittest.TestCase):
+    def test_reload_config_applies_live_fields_to_runtime_collaborators(self) -> None:
+        initial_config = AppConfig(
+            tv_host="10.0.0.10",
+            webcam_index=0,
+            camera_zoom=1.0,
+            debug_log_seconds=0.5,
+        )
+        latest_config = AppConfig(
+            tv_host="10.0.0.20",
+            webcam_index=2,
+            camera_zoom=2.0,
+            debug_log_seconds=0.1,
+        )
+        service = GestureRemoteService.__new__(GestureRemoteService)
+        service._config = initial_config
+        service._config_provider = lambda: latest_config
+        service._last_config_reload_time = -CONFIG_RELOAD_INTERVAL_SECONDS
+        service._logger = FakeLogger()
+        service._gesture_session = FakeReloadableConfig()
+        service._voice_capture = FakeReloadableConfig()
+        zoom_controller = FakeReloadableConfig()
+        hand_tracker = FakeReloadableConfig()
+
+        service._reload_config_if_needed(
+            now=CONFIG_RELOAD_INTERVAL_SECONDS,
+            zoom_controller=zoom_controller,
+            hand_tracker=hand_tracker,
+        )
+
+        self.assertEqual(service._config.tv_host, "10.0.0.10")
+        self.assertEqual(service._config.webcam_index, 0)
+        self.assertEqual(service._config.camera_zoom, 2.0)
+        self.assertEqual(service._config.debug_log_seconds, 0.1)
+        self.assertEqual(service._gesture_session.config, service._config)
+        self.assertEqual(service._voice_capture.config, service._config)
+        self.assertEqual(zoom_controller.config, service._config)
+        self.assertEqual(hand_tracker.config, service._config)
+        self.assertIn("Reloaded live config settings.", service._logger.messages)
+
+    def test_reload_config_is_throttled(self) -> None:
+        service = GestureRemoteService.__new__(GestureRemoteService)
+        service._config = AppConfig()
+        service._config_provider = ProviderCounter(AppConfig())
+        service._last_config_reload_time = 10.0
+
+        service._reload_config_if_needed(
+            now=10.0 + CONFIG_RELOAD_INTERVAL_SECONDS - 0.01,
+            zoom_controller=FakeReloadableConfig(),
+            hand_tracker=FakeReloadableConfig(),
+        )
+
+        self.assertEqual(service._config_provider.calls, 0)
+
+
 class GestureRemoteCleanupTests(unittest.IsolatedAsyncioTestCase):
     async def test_sync_cleanup_timeout_does_not_wait_for_blocked_method(self) -> None:
         service = GestureRemoteService.__new__(GestureRemoteService)
@@ -262,6 +319,24 @@ class FakeLogger:
 
     def error(self, message: str) -> None:
         self.messages.append(message)
+
+
+class FakeReloadableConfig:
+    def __init__(self) -> None:
+        self.config = None
+
+    def update_config(self, config: AppConfig) -> None:
+        self.config = config
+
+
+class ProviderCounter:
+    def __init__(self, config: AppConfig) -> None:
+        self.config = config
+        self.calls = 0
+
+    def __call__(self) -> AppConfig:
+        self.calls += 1
+        return self.config
 
 
 class FakeGestureSession:

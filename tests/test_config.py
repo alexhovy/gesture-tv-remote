@@ -1,7 +1,13 @@
 import unittest
 from pathlib import Path
 
-from src.shared.config import DEFAULT_CONFIG, AppConfig, EnvVar, load_config_from_env
+from src.shared.config import (
+    DEFAULT_CONFIG,
+    AppConfig,
+    EnvVar,
+    apply_reloadable_config,
+    load_config_from_env,
+)
 
 
 class ConfigTests(unittest.TestCase):
@@ -103,6 +109,30 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.tv_host, "10.0.0.41")
         self.assertEqual(config.webcam_index, 1)
         self.assertEqual(config.camera_zoom, 2.0)
+
+    def test_apply_reloadable_config_keeps_restart_required_fields(self) -> None:
+        current = AppConfig(
+            tv_adapter="samsung",
+            tv_host="10.0.0.10",
+            webcam_index=0,
+            camera_zoom=1.0,
+            debug_log_seconds=0.5,
+        )
+        latest = AppConfig(
+            tv_adapter="roku",
+            tv_host="10.0.0.20",
+            webcam_index=2,
+            camera_zoom=2.0,
+            debug_log_seconds=0.1,
+        )
+
+        config = apply_reloadable_config(current, latest)
+
+        self.assertEqual(config.tv_adapter, "samsung")
+        self.assertEqual(config.tv_host, "10.0.0.10")
+        self.assertEqual(config.webcam_index, 0)
+        self.assertEqual(config.camera_zoom, 2.0)
+        self.assertEqual(config.debug_log_seconds, 0.1)
 
     def test_load_config_rejects_invalid_boolean(self) -> None:
         with self.assertRaisesRegex(ValueError, EnvVar.AUTO_ZOOM_ENABLED):

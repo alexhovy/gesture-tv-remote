@@ -1,6 +1,7 @@
 import asyncio
 import threading
 import time
+from collections.abc import Callable
 from typing import Any
 
 import cv2
@@ -30,16 +31,23 @@ from src.infrastructure.camera.video_preprocessing import (
 from src.infrastructure.camera.video_overlay import draw_simple_landmarks
 from src.services.voice_capture import VoiceCaptureService
 from src.services.remote_command_dispatcher import RemoteCommandDispatcher
-from src.shared.config import AppConfig
+from src.shared.config import AppConfig, apply_reloadable_config
 from src.shared.logging import AppLogger
 
 
 CLEANUP_TIMEOUT_SECONDS = 1.0
+CONFIG_RELOAD_INTERVAL_SECONDS = 1.0
 
 
 class GestureRemoteService:
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        config_provider: Callable[[], AppConfig] | None = None,
+    ) -> None:
         self._config = config
+        self._config_provider = config_provider
+        self._last_config_reload_time = 0.0
         self._remote = create_tv_remote_client(config)
         self._voice_capture = VoiceCaptureService(self._remote, config)
         self._gesture_session = GestureSession(config)
@@ -81,6 +89,8 @@ class GestureRemoteService:
                     await asyncio.sleep(0.005)
                     continue
 
+                now = time.monotonic()
+                self._reload_config_if_needed(now, zoom_controller, hand_tracker)
                 frame = self._flip_frame(frame)
                 detection_frame = self._detection_frame(frame, self._config.camera_zoom)
                 hand_states, detected_hands = self._detect_hands(
@@ -88,7 +98,6 @@ class GestureRemoteService:
                     detection_frame.frame,
                 )
 
-                now = time.monotonic()
                 decision = self._gesture_session.evaluate(
                     hand_states_to_original_space(hand_states, detection_frame.crop),
                     now,
@@ -237,6 +246,36 @@ class GestureRemoteService:
 
         self._logger.debug("microphone capture already running")
         return voice_task
+
+    def _reload_config_if_needed(
+        self,
+        now: float,
+        zoom_controller: CameraZoomController,
+        hand_tracker: MediaPipeHandTracker | None,
+    ) -> None:
+        if self._config_provider is None:
+            return
+        if now - self._last_config_reload_time < CONFIG_RELOAD_INTERVAL_SECONDS:
+            return
+        self._last_config_reload_time = now
+
+        try:
+            latest_config = self._config_provider()
+            config = apply_reloadable_config(self._config, latest_config)
+        except ValueError as error:
+            self._logger.error(f"Config reload skipped: {error}")
+            return
+
+        if config == self._config:
+            return
+
+        self._config = config
+        self._gesture_session.update_config(config)
+        self._voice_capture.update_config(config)
+        zoom_controller.update_config(config)
+        if hand_tracker is not None:
+            hand_tracker.update_config(config)
+        self._logger.info("Reloaded live config settings.")
 
     async def _cleanup(
         self,

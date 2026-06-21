@@ -367,7 +367,13 @@ def _render_option(value: str, selected: bool) -> str:
 def _status_message(query: str) -> str | None:
     params = parse_qs(query)
     if "saved" in params:
-        return "Saved. Restart gesture runtime to apply."
+        return (
+            "Saved. Live settings reload automatically; "
+            "integration changes require restart."
+        )
     if "reset" in params:
-        return "Reset. Restart gesture runtime to apply."
+        return (
+            "Reset. Live settings reload automatically; "
+            "integration changes require restart."
+        )
     return None

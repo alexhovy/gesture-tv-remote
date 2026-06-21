@@ -42,6 +42,9 @@ class MediaPipeHandTracker:
         self._last_timestamp_ms = -1
         self._hands = HandLandmarker.create_from_options(options)
 
+    def update_config(self, config: AppConfig) -> None:
+        self._config = config
+
     def detect(
         self,
         rgb_frame: Any,

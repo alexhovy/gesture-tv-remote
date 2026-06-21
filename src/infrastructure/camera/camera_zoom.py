@@ -14,6 +14,22 @@ class CameraZoomController:
         self._max_zoom = max(self._min_zoom, config.auto_zoom_max)
         self.reset()
 
+    def update_config(self, config: AppConfig) -> None:
+        previous_min_zoom = self._min_zoom
+        previous_max_zoom = self._max_zoom
+        previous_auto_zoom_enabled = self._config.auto_zoom_enabled
+        previous_camera_zoom = self._config.camera_zoom
+        self._config = config
+        self._min_zoom = max(1.0, min(config.auto_zoom_min, config.auto_zoom_max))
+        self._max_zoom = max(self._min_zoom, config.auto_zoom_max)
+        if (
+            self._min_zoom != previous_min_zoom
+            or self._max_zoom != previous_max_zoom
+            or config.auto_zoom_enabled != previous_auto_zoom_enabled
+            or config.camera_zoom != previous_camera_zoom
+        ):
+            self.reset()
+
     def current_crop(self) -> CropRect:
         if not self._config.auto_zoom_enabled:
             return center_crop_for_zoom(self._config.camera_zoom)

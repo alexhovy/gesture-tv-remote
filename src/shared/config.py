@@ -1,5 +1,5 @@
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Callable
 
@@ -113,6 +113,33 @@ class AppConfig:
 DEFAULT_CONFIG = AppConfig()
 
 _SUPPORTED_TV_ADAPTERS = {"androidtv", "samsung", "webos", "roku"}
+RELOADABLE_CONFIG_FIELDS = (
+    "debounce_seconds",
+    "home_chord_seconds",
+    "pointer_distance_ratio",
+    "pointer_min_distance",
+    "pointer_max_distance",
+    "pointer_dominance",
+    "volume_distance_ratio",
+    "volume_min_distance",
+    "volume_max_distance",
+    "pinch_distance_ratio",
+    "require_upright_hands",
+    "hand_upright_max_tilt_ratio",
+    "voice_capture_seconds",
+    "debug_log_seconds",
+    "primary_lost_grace_seconds",
+    "primary_match_max_distance",
+    "camera_zoom",
+    "auto_zoom_enabled",
+    "auto_zoom_min",
+    "auto_zoom_max",
+    "auto_zoom_padding",
+    "auto_zoom_smoothing",
+    "auto_zoom_position_deadband",
+    "auto_zoom_scale_deadband",
+    "auto_zoom_crop_reset_threshold",
+)
 
 ConfigParser = Callable[[dict[str, str], str, object], object]
 
@@ -135,6 +162,16 @@ def load_config_from_env(
 
 def validate_config(config: AppConfig) -> None:
     _validate_config(config)
+
+
+def apply_reloadable_config(current: AppConfig, latest: AppConfig) -> AppConfig:
+    values = {
+        field_name: getattr(latest, field_name)
+        for field_name in RELOADABLE_CONFIG_FIELDS
+    }
+    config = replace(current, **values)
+    validate_config(config)
+    return config
 
 
 def _str(values: dict[str, str], name: str, default: object) -> str:

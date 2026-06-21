@@ -6,7 +6,6 @@ from typing import Any
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.shared.config import AppConfig, validate_config
 
-
 _CONFIG_ROW_ID = 1
 
 
@@ -86,6 +85,20 @@ class ConfigRepository:
                 )
                 """
             )
+            existing_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(app_config)")
+            }
+            for field in fields(AppConfig):
+                if field.name in existing_columns:
+                    continue
+                connection.execute(
+                    f"""
+                    ALTER TABLE app_config
+                    ADD COLUMN {_migration_column_definition(field.name, field.default)}
+                    DEFAULT {_sql_literal(_to_db_value(field.default))}
+                    """
+                )
 
 
 def _column_definitions() -> str:
@@ -108,8 +121,26 @@ def _column_definition(name: str, default: Any) -> str:
     raise TypeError(f"Unsupported AppConfig field type for {name}")
 
 
+def _migration_column_definition(name: str, default: Any) -> str:
+    column_name = _quote_identifier(name)
+    if isinstance(default, bool | int):
+        return f"{column_name} INTEGER"
+    if isinstance(default, float):
+        return f"{column_name} REAL"
+    if isinstance(default, Path | str):
+        return f"{column_name} TEXT"
+
+    raise TypeError(f"Unsupported AppConfig field type for {name}")
+
+
 def _quote_identifier(name: str) -> str:
     return f'"{name}"'
+
+
+def _sql_literal(value: str | int | float) -> str:
+    if isinstance(value, str):
+        return "'" + value.replace("'", "''") + "'"
+    return str(value)
 
 
 def _to_db_value(value: Any) -> str | int | float:

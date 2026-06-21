@@ -73,10 +73,17 @@ Run the lightweight config UI with:
 uv run python config_server.py
 ```
 
-It listens on `http://localhost:8765` by default. Set
-`GESTURE_TV_CONFIG_WEB_HOST` and `GESTURE_TV_CONFIG_WEB_PORT` to override the
-bind address or port. Saved settings are persisted to the config database and
-apply after restarting the gesture runtime.
+It listens on `http://localhost:8765` by default and advertises
+`http://gesturetvremote.local:8765` with mDNS when local network discovery is
+available. Set `GESTURE_TV_CONFIG_WEB_HOST`,
+`GESTURE_TV_CONFIG_WEB_PORT`, `GESTURE_TV_CONFIG_WEB_MDNS_ENABLED`, and
+`GESTURE_TV_CONFIG_WEB_MDNS_NAME` to override the bind address, port, mDNS
+publishing, or advertised name. Saved settings are persisted to the config
+database and apply after restarting the gesture runtime.
+
+If `.local` names do not resolve on a device, use `http://localhost:8765` on the
+machine running the app or `http://<device-ip>:8765` from another device on the
+same network.
 
 ## Environment Variables
 
@@ -84,6 +91,10 @@ apply after restarting the gesture runtime.
 | --- | --- |
 | `GESTURE_TV_APP_NAME` | `Gesture TV Remote` |
 | `GESTURE_TV_CONFIG_DB` | `data/gesture_tv_remote.sqlite3` |
+| `GESTURE_TV_CONFIG_WEB_HOST` | `0.0.0.0` |
+| `GESTURE_TV_CONFIG_WEB_PORT` | `8765` |
+| `GESTURE_TV_CONFIG_WEB_MDNS_ENABLED` | `True` |
+| `GESTURE_TV_CONFIG_WEB_MDNS_NAME` | `gesturetvremote` |
 | `GESTURE_TV_ADAPTER` | `samsung` |
 | `GESTURE_TV_HOST` | `192.168.8.7` |
 | `GESTURE_TV_ANDROID_CERT_FILE` | `certs/android/cert.pem` |

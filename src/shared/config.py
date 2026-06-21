@@ -7,6 +7,10 @@ from typing import Callable
 class EnvVar:
     APP_NAME = "GESTURE_TV_APP_NAME"
     CONFIG_DB_FILE = "GESTURE_TV_CONFIG_DB"
+    CONFIG_WEB_HOST = "GESTURE_TV_CONFIG_WEB_HOST"
+    CONFIG_WEB_PORT = "GESTURE_TV_CONFIG_WEB_PORT"
+    CONFIG_WEB_MDNS_ENABLED = "GESTURE_TV_CONFIG_WEB_MDNS_ENABLED"
+    CONFIG_WEB_MDNS_NAME = "GESTURE_TV_CONFIG_WEB_MDNS_NAME"
     TV_ADAPTER = "GESTURE_TV_ADAPTER"
     TV_HOST = "GESTURE_TV_HOST"
     ANDROID_CERT_FILE = "GESTURE_TV_ANDROID_CERT_FILE"
@@ -55,6 +59,10 @@ class EnvVar:
 class AppConfig:
     app_name: str = "Gesture TV Remote"
     config_db_file: Path = Path("data/gesture_tv_remote.sqlite3")
+    config_web_host: str = "0.0.0.0"
+    config_web_port: int = 8765
+    config_web_mdns_enabled: bool = True
+    config_web_mdns_name: str = "gesturetvremote"
     tv_adapter: str = "samsung"
     tv_host: str = "192.168.8.7"
     android_cert_file: Path = Path("certs/android/cert.pem")
@@ -167,6 +175,11 @@ def _validate_config(config: AppConfig) -> None:
     if config.tv_adapter.lower() not in _SUPPORTED_TV_ADAPTERS:
         supported = ", ".join(sorted(_SUPPORTED_TV_ADAPTERS))
         raise ValueError(f"tv_adapter must be one of: {supported}")
+    if not config.config_web_host.strip():
+        raise ValueError("config_web_host must not be empty")
+    _require_between(config.config_web_port, "config_web_port", 1, 65535)
+    if not config.config_web_mdns_name.strip():
+        raise ValueError("config_web_mdns_name must not be empty")
     if not config.tv_host.strip():
         raise ValueError("tv_host must not be empty")
     _require_between(config.samsung_port, "samsung_port", 1, 65535)
@@ -268,6 +281,10 @@ def _require_between(
 _CONFIG_FIELDS: tuple[tuple[str, str, ConfigParser], ...] = (
     ("app_name", EnvVar.APP_NAME, _str),
     ("config_db_file", EnvVar.CONFIG_DB_FILE, _path),
+    ("config_web_host", EnvVar.CONFIG_WEB_HOST, _str),
+    ("config_web_port", EnvVar.CONFIG_WEB_PORT, _int),
+    ("config_web_mdns_enabled", EnvVar.CONFIG_WEB_MDNS_ENABLED, _bool),
+    ("config_web_mdns_name", EnvVar.CONFIG_WEB_MDNS_NAME, _str),
     ("tv_adapter", EnvVar.TV_ADAPTER, _str),
     ("tv_host", EnvVar.TV_HOST, _str),
     ("android_cert_file", EnvVar.ANDROID_CERT_FILE, _path),

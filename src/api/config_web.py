@@ -1,5 +1,4 @@
 import json
-import os
 from dataclasses import fields
 from html import escape
 from http import HTTPStatus
@@ -9,13 +8,10 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from src.infrastructure.data_access.sqlite_store import SqliteStore
+from src.infrastructure.network.mdns import MdnsPublisher
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.shared.config import AppConfig, load_config_from_env
 from src.shared.logging import AppLogger
-
-
-DEFAULT_CONFIG_WEB_HOST = "0.0.0.0"
-DEFAULT_CONFIG_WEB_PORT = 8765
 
 _BOOLEAN_FIELD_MARKER = "__present_bool"
 _READONLY_FIELDS = {"config_db_file"}
@@ -24,8 +20,8 @@ _TV_ADAPTERS = ("androidtv", "samsung", "webos", "roku")
 
 def create_config_server(
     repository: ConfigRepository,
-    host: str = DEFAULT_CONFIG_WEB_HOST,
-    port: int = DEFAULT_CONFIG_WEB_PORT,
+    host: str = AppConfig.config_web_host,
+    port: int = AppConfig.config_web_port,
 ) -> ThreadingHTTPServer:
     class ConfigRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
@@ -110,25 +106,37 @@ def create_config_server(
 
 
 def run_config_server(
-    host: str = DEFAULT_CONFIG_WEB_HOST,
-    port: int = DEFAULT_CONFIG_WEB_PORT,
+    host: str | None = None,
+    port: int | None = None,
 ) -> None:
     bootstrap_config = load_config_from_env()
     repository = ConfigRepository(SqliteStore(bootstrap_config.config_db_file))
-    server = create_config_server(repository, host, port)
-    AppLogger().info(f"Config UI listening on http://{host}:{port}")
+    config = _effective_config(repository)
+    bind_host = config.config_web_host if host is None else host
+    bind_port = config.config_web_port if port is None else port
+    server = create_config_server(repository, bind_host, bind_port)
+    logger = AppLogger()
+    mdns_publisher = None
+    if config.config_web_mdns_enabled:
+        mdns_publisher = MdnsPublisher(config.config_web_mdns_name, bind_port, logger)
+        mdns_publisher.start()
+
+    logger.info(f"Config UI listening on http://{bind_host}:{bind_port}")
     try:
         server.serve_forever()
     except KeyboardInterrupt:
-        AppLogger().info("Config UI stopped.")
+        logger.info("Config UI stopped.")
     finally:
+        if mdns_publisher is not None:
+            try:
+                mdns_publisher.stop()
+            except KeyboardInterrupt:
+                logger.info("mDNS cleanup interrupted.")
         server.server_close()
 
 
 def run() -> None:
-    host = os.environ.get("GESTURE_TV_CONFIG_WEB_HOST", DEFAULT_CONFIG_WEB_HOST)
-    port = int(os.environ.get("GESTURE_TV_CONFIG_WEB_PORT", DEFAULT_CONFIG_WEB_PORT))
-    run_config_server(host, port)
+    run_config_server()
 
 
 def _effective_config(repository: ConfigRepository) -> AppConfig:

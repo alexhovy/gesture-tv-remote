@@ -12,6 +12,7 @@ dependencies = [
     "rokuecp",
     "samsungtvws",
     "sounddevice",
+    "zeroconf",
 ]
 
 [dependency-groups]

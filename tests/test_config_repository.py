@@ -91,6 +91,42 @@ class ConfigRepositoryTests(unittest.TestCase):
             self.assertEqual(column_types["auto_zoom_enabled"], "INTEGER")
             self.assertEqual(stored_types, ("text", "integer", "real", "integer"))
 
+    def test_get_config_adds_missing_columns_to_existing_table(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_file = Path(temp_dir) / "config.sqlite3"
+            with sqlite3.connect(db_file) as connection:
+                connection.execute(
+                    """
+                    CREATE TABLE app_config (
+                        id INTEGER PRIMARY KEY,
+                        app_name TEXT NOT NULL,
+                        tv_adapter TEXT NOT NULL,
+                        tv_host TEXT NOT NULL,
+                        updated_at TEXT NOT NULL
+                    )
+                    """
+                )
+                connection.execute(
+                    """
+                    INSERT INTO app_config (
+                        id,
+                        app_name,
+                        tv_adapter,
+                        tv_host,
+                        updated_at
+                    )
+                    VALUES (1, 'Old Config', 'roku', '10.0.0.63', 'now')
+                    """
+                )
+
+            config = _repository(db_file).get_config()
+
+        self.assertIsNotNone(config)
+        self.assertEqual(config.app_name, "Old Config")
+        self.assertEqual(config.tv_adapter, "roku")
+        self.assertEqual(config.tv_host, "10.0.0.63")
+        self.assertEqual(config.config_web_port, 8765)
+
     def test_save_config_rejects_invalid_config(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = _repository(Path(temp_dir) / "config.sqlite3")

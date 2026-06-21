@@ -36,8 +36,10 @@ Press `q` to quit the webcam window.
 uv run python config_server.py
 ```
 
-Open `http://localhost:8765`. Saved settings are written to the local config
-database and apply the next time the gesture runtime starts.
+Open `http://localhost:8765`. When mDNS is available on the local network, the
+UI is also advertised as `http://gesturetvremote.local:8765`. Saved settings are
+written to the local config database and apply the next time the gesture runtime
+starts.
 
 ## Test
 

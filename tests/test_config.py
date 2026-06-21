@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 
-from src.shared.config import AppConfig, DEFAULT_CONFIG, EnvVar, load_config_from_env
+from src.shared.config import DEFAULT_CONFIG, AppConfig, EnvVar, load_config_from_env
 
 
 class ConfigTests(unittest.TestCase):
@@ -21,6 +21,10 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.TV_ADAPTER: "samsung",
                 EnvVar.TV_HOST: "10.0.0.25",
                 EnvVar.CONFIG_DB_FILE: "local/config.sqlite3",
+                EnvVar.CONFIG_WEB_HOST: "127.0.0.1",
+                EnvVar.CONFIG_WEB_PORT: "9000",
+                EnvVar.CONFIG_WEB_MDNS_ENABLED: "false",
+                EnvVar.CONFIG_WEB_MDNS_NAME: "livingroomremote",
                 EnvVar.WEBCAM_INDEX: "2",
                 EnvVar.CAMERA_ZOOM: "1.5",
                 EnvVar.AUTO_ZOOM_ENABLED: "true",
@@ -49,6 +53,10 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.tv_adapter, "samsung")
         self.assertEqual(config.tv_host, "10.0.0.25")
         self.assertEqual(config.config_db_file, Path("local/config.sqlite3"))
+        self.assertEqual(config.config_web_host, "127.0.0.1")
+        self.assertEqual(config.config_web_port, 9000)
+        self.assertFalse(config.config_web_mdns_enabled)
+        self.assertEqual(config.config_web_mdns_name, "livingroomremote")
         self.assertEqual(config.webcam_index, 2)
         self.assertEqual(config.camera_zoom, 1.5)
         self.assertTrue(config.auto_zoom_enabled)
@@ -111,6 +119,10 @@ class ConfigTests(unittest.TestCase):
     def test_load_config_rejects_invalid_adapter_port(self) -> None:
         with self.assertRaisesRegex(ValueError, "roku_port"):
             load_config_from_env({EnvVar.ROKU_PORT: "0"})
+
+    def test_load_config_rejects_invalid_config_web_port(self) -> None:
+        with self.assertRaisesRegex(ValueError, "config_web_port"):
+            load_config_from_env({EnvVar.CONFIG_WEB_PORT: "0"})
 
     def test_load_config_rejects_camera_zoom_below_one(self) -> None:
         with self.assertRaisesRegex(ValueError, "camera_zoom"):

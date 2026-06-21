@@ -42,6 +42,8 @@ uv run python config_server.py
 ```
 
 Open `http://localhost:8765`.
+When mDNS is available on your network, the same UI is advertised as
+`http://gesturetvremote.local:8765`.
 
 On first run, the app downloads Google's `hand_landmarker.task` model file into
 `models/`. Pairing certificates are stored under `certs/`. Both are

@@ -39,6 +39,7 @@ libraries.
 - `tv`: TV remote pairing, command transport, and adapter command translation
 - `hand_tracking`: MediaPipe hand tracking and model-file download
 - `camera`: OpenCV frame preprocessing, crop geometry, projection, zoom, and overlays
+- `network`: local network discovery such as mDNS publishing for the config UI
 
 Infrastructure modules may depend on third-party libraries, but domain modules
 should not depend on infrastructure.

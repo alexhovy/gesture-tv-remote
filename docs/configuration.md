@@ -87,6 +87,10 @@ available. Set `GESTURE_TV_CONFIG_WEB_HOST`,
 publishing, or advertised name. Saved settings are persisted to the config
 database.
 
+The page groups settings by responsibility and marks whether each saved value
+applies live or requires restarting the gesture runtime. Environment variables
+still override saved values shown in the UI.
+
 If `.local` names do not resolve on a device, use `http://localhost` on the
 machine running the app or `http://<device-ip>` from another device on the
 same network.

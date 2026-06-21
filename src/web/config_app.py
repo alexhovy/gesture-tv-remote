@@ -13,6 +13,7 @@ from src.web.config_templates import (
     reset_status_message,
     saved_status_message,
 )
+from src.web.static_files import read_config_css
 
 ConfigProvider = Callable[[], AppConfig]
 
@@ -37,6 +38,9 @@ def create_config_server(
                 return
             if path == "/health":
                 self._send_json({"status": "ok"})
+                return
+            if path == "/static/config.css":
+                self._send_css(read_config_css())
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -92,6 +96,14 @@ def create_config_server(
             body = json.dumps(payload).encode("utf-8")
             self.send_response(HTTPStatus.OK)
             self.send_header("Content-Type", "application/json")
+            self.send_header("Content-Length", str(len(body)))
+            self.end_headers()
+            self.wfile.write(body)
+
+        def _send_css(self, css: str) -> None:
+            body = css.encode("utf-8")
+            self.send_response(HTTPStatus.OK)
+            self.send_header("Content-Type", "text/css; charset=utf-8")
             self.send_header("Content-Length", str(len(body)))
             self.end_headers()
             self.wfile.write(body)

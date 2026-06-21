@@ -30,8 +30,22 @@ class ConfigWebTests(unittest.TestCase):
             response = client.request("GET", "/")
 
         self.assertEqual(response.status, 200)
+        self.assertIn('<link rel="stylesheet" href="/static/config.css">', response.body)
+        self.assertIn("TV Connection", response.body)
+        self.assertIn("Camera", response.body)
+        self.assertIn("Gestures", response.body)
+        self.assertIn("Applies live", response.body)
+        self.assertIn("Requires restart", response.body)
         self.assertIn('option value="roku" selected', response.body)
         self.assertIn('value="10.0.0.60"', response.body)
+
+    def test_config_css_is_served(self) -> None:
+        with _running_config_server() as client:
+            response = client.request("GET", "/static/config.css")
+
+        self.assertEqual(response.status, 200)
+        self.assertIn(".field-grid", response.body)
+        self.assertIn(".badge.live", response.body)
 
     def test_settings_post_saves_config(self) -> None:
         with _running_config_server() as client:

@@ -1,10 +1,20 @@
 from html import escape
+from pathlib import Path
+from string import Template
 
-from src.shared.config import CONFIG_FIELDS, AppConfig, get_config_value
+from src.shared.config import AppConfig, get_config_value
 from src.web.config_forms import BOOLEAN_FIELD_MARKER
+from src.web.config_view import (
+    SECTIONS,
+    TV_ADAPTERS,
+    ConfigSection,
+    field_applies_live,
+    field_help,
+    field_readonly,
+    input_constraints,
+)
 
-_READONLY_FIELDS = {"config_db_file"}
-_TV_ADAPTERS = ("androidtv", "samsung", "webos", "roku")
+_TEMPLATE_FILE = Path(__file__).with_name("templates") / "config_page.html"
 
 
 def render_config_page(
@@ -18,120 +28,13 @@ def render_config_page(
     elif status_message:
         status = f'<div class="status">{escape(status_message)}</div>'
 
-    fields_html = "\n".join(
-        _render_field(config, field.name) for field in CONFIG_FIELDS
+    sections_html = "\n".join(_render_section(config, section) for section in SECTIONS)
+    return _load_page_template().substitute(
+        page_title="Gesture TV Remote Config",
+        heading="Gesture TV Remote Config",
+        status=status,
+        sections=sections_html,
     )
-    return f"""<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Gesture TV Remote Config</title>
-  <style>
-    :root {{
-      color-scheme: light;
-      --bg: #f6f7f9;
-      --panel: #ffffff;
-      --ink: #17202a;
-      --muted: #667085;
-      --line: #d7dce2;
-      --accent: #14745f;
-      --danger: #b42318;
-      font-family: Arial, sans-serif;
-    }}
-    * {{ box-sizing: border-box; }}
-    body {{ margin: 0; background: var(--bg); color: var(--ink); }}
-    main {{ max-width: 1120px; margin: 0 auto; padding: 24px; }}
-    header {{
-      display: flex;
-      justify-content: space-between;
-      gap: 16px;
-      align-items: center;
-      margin-bottom: 18px;
-    }}
-    h1 {{ font-size: 28px; line-height: 1.2; margin: 0; }}
-    .status {{
-      border: 1px solid var(--line);
-      background: var(--panel);
-      border-radius: 6px;
-      padding: 10px 12px;
-      margin-bottom: 14px;
-      color: var(--muted);
-    }}
-    .error {{ border-color: #f3b0aa; color: var(--danger); }}
-    form {{
-      background: var(--panel);
-      border: 1px solid var(--line);
-      border-radius: 8px;
-    }}
-    .grid {{
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-      gap: 16px;
-      padding: 18px;
-    }}
-    label {{ display: grid; gap: 7px; font-size: 13px; color: var(--muted); }}
-    input, select {{
-      width: 100%;
-      min-height: 38px;
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 8px 10px;
-      font: inherit;
-      color: var(--ink);
-      background: #fff;
-    }}
-    input[readonly] {{ background: #eef1f4; color: var(--muted); }}
-    .check {{ display: flex; align-items: center; gap: 10px; min-height: 38px; }}
-    .check input {{ width: 18px; min-height: 18px; }}
-    .actions {{
-      display: flex;
-      justify-content: flex-end;
-      gap: 10px;
-      border-top: 1px solid var(--line);
-      padding: 14px 18px;
-    }}
-    button {{
-      border: 1px solid var(--line);
-      border-radius: 6px;
-      padding: 9px 14px;
-      font: inherit;
-      background: #fff;
-      color: var(--ink);
-      cursor: pointer;
-    }}
-    button.primary {{
-      background: var(--accent);
-      border-color: var(--accent);
-      color: #fff;
-    }}
-    button.danger {{ color: var(--danger); }}
-    @media (max-width: 640px) {{
-      main {{ padding: 14px; }}
-      header, .actions {{ align-items: stretch; flex-direction: column; }}
-      button {{ width: 100%; }}
-    }}
-  </style>
-</head>
-<body>
-  <main>
-    <header>
-      <h1>Gesture TV Remote Config</h1>
-    </header>
-    {status}
-    <form method="post" action="/settings">
-      <div class="grid">
-        {fields_html}
-      </div>
-      <div class="actions">
-        <button class="primary" type="submit">Save</button>
-        <button class="danger" type="submit" formaction="/reset">Reset</button>
-      </div>
-    </form>
-  </main>
-</body>
-</html>
-"""
 
 
 def saved_status_message() -> str:
@@ -148,41 +51,86 @@ def reset_status_message() -> str:
     )
 
 
+def _load_page_template() -> Template:
+    return Template(_TEMPLATE_FILE.read_text(encoding="utf-8"))
+
+
+def _render_section(config: AppConfig, section: ConfigSection) -> str:
+    fields_html = "\n".join(_render_field(config, name) for name in section.fields)
+    return f"""
+      <section class="section" aria-labelledby="{_section_id(section.title)}">
+        <div class="section-header">
+          <div>
+            <h2 id="{_section_id(section.title)}">{escape(section.title)}</h2>
+            <p class="section-description">{escape(section.description)}</p>
+          </div>
+        </div>
+        <div class="field-grid">
+          {fields_html}
+        </div>
+      </section>"""
+
+
 def _render_field(config: AppConfig, name: str) -> str:
     value = get_config_value(config, name)
     label = escape(name.replace("_", " ").title())
+    field_id = f"field-{name}"
+    help_id = f"{field_id}-help"
+    help_text = field_help(name)
+    help_html = (
+        f'<p class="field-help" id="{help_id}">{escape(help_text)}</p>'
+        if help_text
+        else ""
+    )
+    described_by = f' aria-describedby="{help_id}"' if help_text else ""
+    badge = _render_reload_badge(name)
+    field_top = f"""
+          <div class="field-top">
+            <label for="{field_id}">{label}</label>
+            {badge}
+          </div>"""
     if isinstance(value, bool):
         checked = " checked" if value else ""
         return f"""
-        <label>
-          {label}
+        <div class="field">
+          {field_top}
           <input type="hidden" name="{BOOLEAN_FIELD_MARKER}" value="{escape(name)}">
           <span class="check">
-            <input type="checkbox" name="{escape(name)}"{checked}>
+            <input
+              id="{field_id}"
+              type="checkbox"
+              name="{escape(name)}"{checked}{described_by}
+            >
+            <span>{_boolean_status(value)}</span>
           </span>
-        </label>"""
+          {help_html}
+        </div>"""
     if name == "tv_adapter":
         options = "\n".join(
-            _render_option(adapter, adapter == value) for adapter in _TV_ADAPTERS
+            _render_option(adapter, adapter == value) for adapter in TV_ADAPTERS
         )
         return f"""
-        <label>
-          {label}
-          <select name="{escape(name)}">{options}</select>
-        </label>"""
+        <div class="field">
+          {field_top}
+          <select id="{field_id}" name="{escape(name)}"{described_by}>{options}</select>
+          {help_html}
+        </div>"""
 
     input_type = "number" if isinstance(value, int | float) else "text"
     step = ' step="any"' if isinstance(value, float) else ""
-    readonly = " readonly" if name in _READONLY_FIELDS else ""
+    readonly = " readonly" if field_readonly(name) else ""
+    constraints = input_constraints(name)
     return f"""
-        <label>
-          {label}
+        <div class="field">
+          {field_top}
           <input
+            id="{field_id}"
             type="{input_type}"
             name="{escape(name)}"
-            value="{escape(str(value))}"{step}{readonly}
+            value="{escape(str(value))}"{step}{constraints}{readonly}{described_by}
           >
-        </label>"""
+          {help_html}
+        </div>"""
 
 
 def _render_option(value: str, selected: bool) -> str:
@@ -191,3 +139,17 @@ def _render_option(value: str, selected: bool) -> str:
         f'<option value="{escape(value)}"{selected_attribute}>'
         f"{escape(value)}</option>"
     )
+
+
+def _render_reload_badge(name: str) -> str:
+    if field_applies_live(name):
+        return '<span class="badge live">Applies live</span>'
+    return '<span class="badge restart">Requires restart</span>'
+
+
+def _boolean_status(value: bool) -> str:
+    return "Enabled" if value else "Disabled"
+
+
+def _section_id(title: str) -> str:
+    return "section-" + title.lower().replace(" ", "-")

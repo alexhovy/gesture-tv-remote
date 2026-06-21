@@ -35,6 +35,14 @@ python -m uv run python main.py
 
 Press `q` to quit the webcam window.
 
+To edit saved settings in a browser:
+
+```bash
+uv run python config_server.py
+```
+
+Open `http://localhost:8765`.
+
 On first run, the app downloads Google's `hand_landmarker.task` model file into
 `models/`. Pairing certificates are stored under `certs/`. Both are
 ignored by git.

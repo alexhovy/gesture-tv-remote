@@ -8,8 +8,9 @@ testable and keep external libraries from leaking across the codebase.
 
 ### API
 
-`src/api` contains the runnable application entry point. It should stay thin and
-only compose application services.
+`src/api` contains runnable entry points. The gesture runtime composes the
+gesture service, and the config UI composes the config repository and HTTP
+server. API modules should stay thin and avoid gesture business logic.
 
 ### Services
 

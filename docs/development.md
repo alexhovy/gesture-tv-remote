@@ -30,6 +30,15 @@ uv run python main.py
 
 Press `q` to quit the webcam window.
 
+## Config UI
+
+```bash
+uv run python config_server.py
+```
+
+Open `http://localhost:8765`. Saved settings are written to the local config
+database and apply the next time the gesture runtime starts.
+
 ## Test
 
 ```bash

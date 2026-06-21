@@ -65,6 +65,19 @@ Startup config precedence is:
 `GESTURE_TV_CONFIG_DB` is read during bootstrap to decide which database file to
 open, so it can point the app at a different saved configuration store.
 
+## Config UI
+
+Run the lightweight config UI with:
+
+```bash
+uv run python config_server.py
+```
+
+It listens on `http://localhost:8765` by default. Set
+`GESTURE_TV_CONFIG_WEB_HOST` and `GESTURE_TV_CONFIG_WEB_PORT` to override the
+bind address or port. Saved settings are persisted to the config database and
+apply after restarting the gesture runtime.
+
 ## Environment Variables
 
 | Variable | Default |

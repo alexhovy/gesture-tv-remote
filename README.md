@@ -35,10 +35,12 @@ python -m uv run python main.py
 
 Press `q` to quit the webcam window.
 
-To edit saved settings in a browser:
+`main.py` starts the gesture runtime and config UI by default. To run only one
+runtime:
 
 ```bash
-uv run python config_server.py
+uv run python main.py gesture
+uv run python main.py config
 ```
 
 Open `http://localhost`.

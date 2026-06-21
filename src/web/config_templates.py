@@ -18,7 +18,9 @@ def render_config_page(
     elif status_message:
         status = f'<div class="status">{escape(status_message)}</div>'
 
-    fields_html = "\n".join(_render_field(config, field.name) for field in CONFIG_FIELDS)
+    fields_html = "\n".join(
+        _render_field(config, field.name) for field in CONFIG_FIELDS
+    )
     return f"""<!doctype html>
 <html lang="en">
 <head>

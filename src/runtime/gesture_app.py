@@ -30,8 +30,9 @@ def create_config_provider() -> Callable[[], AppConfig]:
     return provide_config
 
 
-def run() -> None:
-    configure_app_logging()
+def run(configure_logging: bool = True) -> None:
+    if configure_logging:
+        configure_app_logging()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:

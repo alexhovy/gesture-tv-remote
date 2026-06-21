@@ -1,5 +1,4 @@
-from src.api.app import run
-
+from src.runtime.cli import main
 
 if __name__ == "__main__":
-    run()
+    main()

@@ -28,7 +28,15 @@ python -m uv sync
 uv run python main.py
 ```
 
-Press `q` to quit the webcam window.
+`main.py` starts both the gesture runtime and config UI by default. Press `q` to
+quit the webcam window.
+
+Run only one runtime with:
+
+```bash
+uv run python main.py gesture
+uv run python main.py config
+```
 
 ## Config UI
 

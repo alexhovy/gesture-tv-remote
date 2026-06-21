@@ -1,7 +1,12 @@
 from pathlib import Path
 from typing import Any
 
-from src.shared.config import CONFIG_FIELDS, AppConfig, get_config_value, replace_config_value
+from src.shared.config import (
+    CONFIG_FIELDS,
+    AppConfig,
+    get_config_value,
+    replace_config_value,
+)
 
 BOOLEAN_FIELD_MARKER = "__present_bool"
 

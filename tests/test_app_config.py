@@ -4,11 +4,11 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.api.app import create_config_provider, load_config
-from src.api.config_server import _effective_config
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
-from src.shared.config import AppConfig, EnvVar
+from src.runtime.config_server import _effective_config
+from src.runtime.gesture_app import create_config_provider, load_config
+from src.shared.config import EnvVar
 from tests.config_helpers import app_config
 
 

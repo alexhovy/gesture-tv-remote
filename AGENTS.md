@@ -22,7 +22,8 @@ Before making changes, agents must:
 
 ## Repository Structure
 - `main.py`: Thin executable entry point.
-- `src/api/`: Runnable application composition.
+- `src/runtime/`: Runnable process composition and CLI runtime selection.
+- `src/web/`: Lightweight config UI request handling, forms, and rendering.
 - `src/services/`: Use cases and orchestration.
 - `src/domain/`: Gesture rules, command mappings, landmark math, and session state.
 - `src/infrastructure/`: External integrations such as OpenCV, MediaPipe, Android TV remote, camera preprocessing, model download, and overlays.
@@ -36,7 +37,7 @@ Before making changes, agents must:
 - Follow the existing architecture documented in `docs/architecture.md`.
 - Prefer deterministic domain functions for gesture semantics.
 - Keep I/O, hardware, network, MediaPipe, OpenCV, Android TV, and audio dependencies behind infrastructure or service boundaries.
-- Keep `main.py` and `src/api/` free of business logic.
+- Keep `main.py` and `src/runtime/` free of business logic.
 - Keep shared code small and purposeful; do not turn `src/shared/` into a general utility bucket.
 - Avoid new dependencies unless they are clearly necessary and fit the project size.
 - Prefer small, reviewable changes over broad rewrites.

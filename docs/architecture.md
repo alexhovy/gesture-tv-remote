@@ -6,18 +6,18 @@ testable and keep external libraries from leaking across the codebase.
 
 ## Layers
 
-### API
+### Runtime
 
-`src/api` contains runnable entry points. The gesture runtime composes the
-gesture service, and the config server composes the config repository, mDNS
-publisher, and web UI. API modules should stay thin and avoid gesture business
+`src/runtime` contains runnable process composition. The CLI selects whether to
+start the gesture runtime, config UI, or both. Runtime modules compose services,
+repositories, mDNS publishing, and web servers while avoiding gesture business
 logic or HTTP request handling.
 
 ### Web
 
 `src/web` contains the lightweight config UI: HTTP routes, form parsing, and
 HTML rendering. Web modules should depend on application-facing repositories and
-typed config values, while process setup stays in `src/api`.
+typed config values, while process setup stays in `src/runtime`.
 
 ### Services
 
@@ -128,5 +128,5 @@ unrelated helpers.
 - Prefer domain functions for deterministic gesture rules.
 - Keep I/O and third-party libraries behind infrastructure adapters.
 - Add orchestration in services only when it represents an application workflow.
-- Keep `main.py` and `src/api` free of business logic.
+- Keep `main.py` and `src/runtime` free of business logic.
 - Add tests around domain behavior before changing gesture semantics.

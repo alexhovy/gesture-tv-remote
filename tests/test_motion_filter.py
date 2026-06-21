@@ -26,7 +26,7 @@ class MotionFilterTests(unittest.TestCase):
         )
 
         self.assertEqual(decision.gesture, GESTURE_POINT_DOWN)
-        self.assertAlmostEqual(decision.activation_distance, 0.036)
+        self.assertAlmostEqual(decision.activation_distance, 0.05 * MOTION_ACTIVATION_RATIO)
         self.assertAlmostEqual(decision.threshold_ratio, 1.0)
         self.assertFalse(decision.in_neutral)
         self.assertIsNone(decision.blocked_reason)
@@ -48,7 +48,7 @@ class MotionFilterTests(unittest.TestCase):
     def test_pointer_reports_below_threshold_near_miss(self) -> None:
         decision = classify_pointer_joystick(
             anchor_position=(0.50, 0.50),
-            current_position=(0.50, 0.535),
+            current_position=(0.50, 0.531),
             distance=0.05,
             dominance=1.0,
             prefix=GESTURE_POINT,
@@ -80,7 +80,7 @@ class MotionFilterTests(unittest.TestCase):
         )
 
         self.assertEqual(decision.gesture, GESTURE_VOLUME_UP)
-        self.assertAlmostEqual(decision.activation_distance, 0.036)
+        self.assertAlmostEqual(decision.activation_distance, 0.05 * MOTION_ACTIVATION_RATIO)
         self.assertAlmostEqual(decision.threshold_ratio, 1.0)
 
     def test_neutral_distance_is_smaller_than_activation_threshold(self) -> None:

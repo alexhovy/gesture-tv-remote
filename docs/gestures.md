@@ -35,12 +35,15 @@ current position becomes the anchor. A small neutral zone around that anchor doe
 not emit commands; while the hand stays in that neutral zone, the anchor follows
 the hand so the user can settle naturally without needing to hit an exact point.
 
-Moving outside the activation distance emits the dominant direction. Holding the
-same direction does not repeat commands. Returning to the neutral zone for a
-short stable settle period re-arms motion and recenters the anchor. Moving to a
-different direction before that neutral return is ignored so return strokes do
-not become accidental opposite commands.
+Point navigation tracks the secondary index fingertip so left/right intent does
+not depend on moving the whole hand. Moving outside the activation distance
+emits the dominant direction. Holding the same direction does not repeat
+commands. Returning to the neutral zone for a short stable settle period re-arms
+motion and recenters the anchor. Moving to a different direction before that
+neutral return is ignored so return strokes do not become accidental opposite
+commands.
 
-Display auto-zoom freezes while the secondary hand is pointing or pinching. This
-keeps the preview stable while navigating or changing volume; auto-zoom resumes
-when the secondary motion gesture is released.
+Display auto-zoom freezes while the secondary hand is present, including brief
+classification flicker during pointing or pinching. This keeps the preview
+stable while navigating or changing volume; auto-zoom resumes when the
+secondary motion gesture is released.

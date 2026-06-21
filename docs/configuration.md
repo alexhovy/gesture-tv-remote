@@ -182,8 +182,9 @@ Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the displayed crop follow the
 last detected hand area. Auto zoom does not change the MediaPipe tracking input;
 tracking uses the stable `GESTURE_TV_CAMERA_ZOOM` crop. This prevents display
 zoom from cropping hands out of the detector input while it follows movement.
-The displayed crop is held steady while the secondary hand is pointing or
-pinching so navigation and volume gestures have stable visual feedback.
+The displayed crop is held steady while the secondary hand is present, including
+brief secondary-hand classification flicker, so navigation and volume gestures
+have stable visual feedback.
 
 Numeric settings are validated at startup. Zoom values must be at least `1.0`,
 confidence values must be between `0.0` and `1.0`, max values must not be lower

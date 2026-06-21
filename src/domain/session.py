@@ -19,6 +19,7 @@ from src.domain.constants import (
     GESTURE_VOLUME_DOWN,
     GESTURE_VOLUME_UP,
 )
+from src.domain.landmarks import LANDMARK_INDEX_TIP, landmark_position
 from src.domain.motion_filter import (
     JoystickDecision,
     classify_pointer_joystick,
@@ -31,6 +32,7 @@ from src.shared.config import AppConfig
 
 class GestureSession(GestureSessionDebugMixin):
     MOTION_NEUTRAL_SETTLE_FRAMES = 3
+    SECONDARY_MOTION_GRACE_SECONDS = 0.6
 
     def __init__(self, config: AppConfig) -> None:
         self._config = config
@@ -40,6 +42,9 @@ class GestureSession(GestureSessionDebugMixin):
         self.primary_last_seen_time: float | None = None
         self.primary_previous_gesture: str | None = None
         self.secondary_previous_gesture: str | None = None
+        self.secondary_last_motion_gesture: str | None = None
+        self.secondary_last_motion_time: float | None = None
+        self.secondary_last_seen_time: float | None = None
         self.primary_close_time: float | None = None
         self.secondary_close_time: float | None = None
         self.primary_select_pending = False
@@ -68,6 +73,7 @@ class GestureSession(GestureSessionDebugMixin):
         self.pointer_neutral_distance = 0.0
         self.pointer_threshold_ratio = 0.0
         self.pointer_in_neutral = True
+        self.pointer_position_source = "none"
 
     def update_config(self, config: AppConfig) -> None:
         self._config = config
@@ -147,9 +153,15 @@ class GestureSession(GestureSessionDebugMixin):
         secondary_center = secondary_hand.center if secondary_hand else None
         secondary_size = secondary_hand.size if secondary_hand else 0.0
         zoom_landmarks = [primary_hand.landmarks]
-        if secondary_hand is not None and secondary_gesture is not None:
+        if secondary_hand is not None:
             zoom_landmarks.append(secondary_hand.landmarks)
-        freeze_zoom = secondary_gesture in {GESTURE_PINCH, GESTURE_POINT}
+            self.secondary_last_seen_time = now
+        freeze_zoom = secondary_hand is not None or self._secondary_missing_within_grace(now)
+        zoom_freeze_reason = self._zoom_freeze_reason(secondary_hand, now)
+        effective_secondary_gesture = self._effective_secondary_motion_gesture(
+            secondary_gesture,
+            now,
+        )
 
         primary_closed = (
             self.primary_previous_gesture == GESTURE_OPEN_PALM
@@ -204,11 +216,11 @@ class GestureSession(GestureSessionDebugMixin):
                 self.secondary_back_pending = False
                 self.secondary_close_time = None
 
-        if secondary_hand is None:
+        if secondary_hand is None and not self._secondary_missing_within_grace(now):
             self.reset_motion_tracking()
 
         if command_gesture is None and secondary_hand is not None:
-            if secondary_gesture == GESTURE_PINCH and secondary_center is not None:
+            if effective_secondary_gesture == GESTURE_PINCH and secondary_center is not None:
                 self._reset_pointer_tracking()
                 if self.volume_anchor_y is None:
                     self.volume_anchor_y = secondary_center[1]
@@ -230,15 +242,14 @@ class GestureSession(GestureSessionDebugMixin):
                     now,
                 )
                 command_gesture = volume_gesture
-            else:
+            elif effective_secondary_gesture != GESTURE_PINCH:
                 self._reset_volume_tracking()
 
             if (
                 command_gesture is None
-                and secondary_gesture == GESTURE_POINT
-                and secondary_center is not None
+                and effective_secondary_gesture == GESTURE_POINT
             ):
-                pointer_position = secondary_center
+                pointer_position = self._pointer_position(secondary_hand)
                 if self.pointer_anchor_position is None:
                     self.pointer_anchor_position = pointer_position
                 pointer_distance = self._scaled_distance(
@@ -261,7 +272,7 @@ class GestureSession(GestureSessionDebugMixin):
                     now,
                 )
                 command_gesture = pointer_gesture
-            elif secondary_gesture != GESTURE_POINT:
+            elif effective_secondary_gesture != GESTURE_POINT:
                 self._reset_pointer_tracking()
 
             if command_gesture is None and secondary_gesture == GESTURE_TWO_FINGERS:
@@ -281,6 +292,7 @@ class GestureSession(GestureSessionDebugMixin):
                 f"gestures={debug_gestures} "
                 f"primary={primary_gesture or DEBUG_UNKNOWN} "
                 f"secondary={secondary_gesture or DEBUG_NONE} "
+                f"effective_secondary={effective_secondary_gesture or DEBUG_NONE} "
                 f"volume={volume_gesture or DEBUG_NONE} "
                 f"pointer={pointer_gesture or DEBUG_NONE} "
                 f"mic={mic_gesture or DEBUG_NONE} "
@@ -293,6 +305,7 @@ class GestureSession(GestureSessionDebugMixin):
                 f"primary_index={primary_index} "
                 f"secondary_index={secondary_index if secondary_index is not None else DEBUG_NONE} "
                 f"zoom_hands={len(zoom_landmarks)} "
+                f"zoom_freeze_reason={zoom_freeze_reason} "
                 f"{hand_debug}"
             ),
             freeze_zoom=freeze_zoom,
@@ -322,6 +335,9 @@ class GestureSession(GestureSessionDebugMixin):
         self.primary_last_seen_time = None
         self.primary_previous_gesture = None
         self.secondary_previous_gesture = None
+        self.secondary_last_motion_gesture = None
+        self.secondary_last_motion_time = None
+        self.secondary_last_seen_time = None
         self.last_command_gesture = None
         self.primary_close_time = None
         self.secondary_close_time = None
@@ -454,6 +470,7 @@ class GestureSession(GestureSessionDebugMixin):
 
     def _reset_pointer_tracking(self) -> None:
         self.pointer_anchor_position = None
+        self.pointer_position_source = "none"
         self._reset_pointer_motion_state()
 
     def _reset_pointer_motion_state(self) -> None:
@@ -469,6 +486,49 @@ class GestureSession(GestureSessionDebugMixin):
         self.pointer_neutral_distance = 0.0
         self.pointer_threshold_ratio = 0.0
         self.pointer_in_neutral = True
+
+    def _effective_secondary_motion_gesture(
+        self,
+        secondary_gesture: str | None,
+        now: float,
+    ) -> str | None:
+        if secondary_gesture in {GESTURE_PINCH, GESTURE_POINT}:
+            self.secondary_last_motion_gesture = secondary_gesture
+            self.secondary_last_motion_time = now
+            return secondary_gesture
+
+        if (
+            secondary_gesture == DEBUG_UNKNOWN
+            and self.secondary_last_motion_gesture is not None
+            and self.secondary_last_motion_time is not None
+            and now - self.secondary_last_motion_time <= self.SECONDARY_MOTION_GRACE_SECONDS
+        ):
+            return self.secondary_last_motion_gesture
+
+        return None
+
+    def _secondary_missing_within_grace(self, now: float) -> bool:
+        if self.secondary_last_seen_time is None:
+            return False
+
+        return now - self.secondary_last_seen_time <= self.SECONDARY_MOTION_GRACE_SECONDS
+
+    def _zoom_freeze_reason(self, secondary_hand: HandState | None, now: float) -> str:
+        if secondary_hand is not None:
+            return "secondary_present"
+
+        if self._secondary_missing_within_grace(now):
+            return "secondary_grace"
+
+        return "none"
+
+    def _pointer_position(self, secondary_hand: HandState) -> tuple[float, float]:
+        if len(secondary_hand.landmarks) > LANDMARK_INDEX_TIP:
+            self.pointer_position_source = "index_tip"
+            return landmark_position(secondary_hand.landmarks, LANDMARK_INDEX_TIP)
+
+        self.pointer_position_source = "center"
+        return secondary_hand.center
 
     def _primary_missing_within_grace(self, now: float) -> bool:
         if self.primary_position is None or self.primary_last_seen_time is None:

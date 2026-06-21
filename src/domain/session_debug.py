@@ -62,6 +62,7 @@ class GestureSessionDebugMixin:
             f":phase={self.pointer_phase}"
             f":armed={self.pointer_armed}"
             f":settle_frames={self.pointer_neutral_frames}"
+            f":source={self.pointer_position_source}"
             f":current={current}:dx={dx}:dy={dy}"
             f":candidate={self.pointer_candidate_gesture or DEBUG_NONE}"
             f":magnitude={self.pointer_candidate_magnitude:.3f}"

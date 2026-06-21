@@ -1,6 +1,7 @@
 import unittest
 
 from src.domain.constants import (
+    DEBUG_UNKNOWN,
     GESTURE_OPEN_PALM,
     GESTURE_PINCH,
     GESTURE_VOLUME_DOWN,
@@ -27,8 +28,8 @@ class SessionVolumeTests(unittest.TestCase):
 
         self._pinch(session, primary, 0.50, now=0.0)
         first_under_threshold = self._pinch(session, primary, 0.52, now=0.1)
-        second_under_threshold = self._pinch(session, primary, 0.535, now=0.2)
-        crossed_threshold = self._pinch(session, primary, 0.56, now=0.3)
+        second_under_threshold = self._pinch(session, primary, 0.53, now=0.2)
+        crossed_threshold = self._pinch(session, primary, 0.54, now=0.3)
 
         self.assertIsNone(first_under_threshold.command_gesture)
         self.assertIsNone(second_under_threshold.command_gesture)
@@ -40,14 +41,14 @@ class SessionVolumeTests(unittest.TestCase):
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._pinch(session, primary, 0.50, now=0.0)
-        near_miss = self._pinch(session, primary, 0.535, now=0.1)
+        near_miss = self._pinch(session, primary, 0.53, now=0.1)
 
         self.assertIsNone(near_miss.command_gesture)
         self.assertIn("anchor=0.50", near_miss.debug_message)
         self.assertIn("candidate=none", near_miss.debug_message)
-        self.assertIn("magnitude=0.035", near_miss.debug_message)
-        self.assertIn("activation=0.036", near_miss.debug_message)
-        self.assertIn("threshold_ratio=0.97", near_miss.debug_message)
+        self.assertIn("magnitude=0.030", near_miss.debug_message)
+        self.assertIn("activation=0.033", near_miss.debug_message)
+        self.assertIn("threshold_ratio=0.92", near_miss.debug_message)
         self.assertIn("in_neutral=False", near_miss.debug_message)
         self.assertIn("blocked=below_threshold", near_miss.debug_message)
 
@@ -56,11 +57,11 @@ class SessionVolumeTests(unittest.TestCase):
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._pinch(session, primary, 0.50, now=0.0)
-        neutral_move = self._pinch(session, primary, 0.515, now=0.1)
-        neutral_settling = self._pinch(session, primary, 0.515, now=0.2)
-        neutral_settled = self._pinch(session, primary, 0.515, now=0.3)
+        neutral_move = self._pinch(session, primary, 0.512, now=0.1)
+        neutral_settling = self._pinch(session, primary, 0.512, now=0.2)
+        neutral_settled = self._pinch(session, primary, 0.512, now=0.3)
         below_threshold_from_new_anchor = self._pinch(session, primary, 0.54, now=0.4)
-        crossed_from_new_anchor = self._pinch(session, primary, 0.56, now=0.5)
+        crossed_from_new_anchor = self._pinch(session, primary, 0.55, now=0.5)
 
         self.assertIsNone(neutral_move.command_gesture)
         self.assertIn("in_neutral=True", neutral_move.debug_message)
@@ -68,7 +69,7 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertIn("phase=armed", neutral_settled.debug_message)
         self.assertIsNone(below_threshold_from_new_anchor.command_gesture)
         self.assertEqual(crossed_from_new_anchor.command_gesture, GESTURE_VOLUME_DOWN)
-        self.assertIn("anchor=0.52", crossed_from_new_anchor.debug_message)
+        self.assertIn("anchor=0.51", crossed_from_new_anchor.debug_message)
 
     def test_volume_hold_does_not_repeat_before_neutral_return(self) -> None:
         session = GestureSession(AppConfig(debounce_seconds=0.3))
@@ -102,6 +103,23 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertIn("phase=settling", neutral_settling.debug_message)
         self.assertIn("phase=armed", neutral_settled.debug_message)
         self.assertEqual(first_up.command_gesture, GESTURE_VOLUME_UP)
+
+    def test_volume_survives_brief_unknown_secondary_gesture(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._pinch(session, primary, 0.50, now=0.0)
+        unknown = session.evaluate(
+            [
+                primary,
+                hand_state(DEBUG_UNKNOWN, center=(0.70, 0.56), size=0.20),
+            ],
+            now=0.2,
+        )
+
+        self.assertEqual(unknown.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertTrue(unknown.freeze_zoom)
+        self.assertIn("secondary=UNKNOWN effective_secondary=PINCH", unknown.debug_message)
 
     def _pinch(
         self,

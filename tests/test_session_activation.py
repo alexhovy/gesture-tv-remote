@@ -241,7 +241,7 @@ class SessionActivationTests(unittest.TestCase):
             decision.debug_message,
         )
 
-    def test_unknown_secondary_hand_is_ignored_for_zoom(self) -> None:
+    def test_unknown_secondary_hand_keeps_zoom_stable(self) -> None:
         session = GestureSession(AppConfig())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         secondary = hand_state(None, center=(0.70, 0.50), size=0.20)
@@ -249,7 +249,9 @@ class SessionActivationTests(unittest.TestCase):
         decision = session.evaluate([primary, secondary], now=0.0)
 
         self.assertTrue(decision.activated)
-        self.assertEqual(decision.zoom_landmarks, [primary.landmarks])
+        self.assertEqual(decision.zoom_landmarks, [primary.landmarks, secondary.landmarks])
+        self.assertTrue(decision.freeze_zoom)
+        self.assertIn("zoom_freeze_reason=secondary_present", decision.debug_message)
 
 
 if __name__ == "__main__":

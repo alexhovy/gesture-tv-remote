@@ -1,6 +1,7 @@
 import unittest
 
 from src.domain.constants import (
+    DEBUG_UNKNOWN,
     GESTURE_OPEN_PALM,
     GESTURE_POINT,
     GESTURE_POINT_DOWN,
@@ -30,8 +31,8 @@ class SessionPointerTests(unittest.TestCase):
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
         first_under_threshold = self._point(session, primary, (0.50, 0.52), now=0.1)
-        second_under_threshold = self._point(session, primary, (0.50, 0.535), now=0.2)
-        crossed_threshold = self._point(session, primary, (0.50, 0.56), now=0.3)
+        second_under_threshold = self._point(session, primary, (0.50, 0.53), now=0.2)
+        crossed_threshold = self._point(session, primary, (0.50, 0.54), now=0.3)
 
         self.assertIsNone(first_under_threshold.command_gesture)
         self.assertIsNone(second_under_threshold.command_gesture)
@@ -43,14 +44,14 @@ class SessionPointerTests(unittest.TestCase):
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
-        near_miss = self._point(session, primary, (0.50, 0.535), now=0.1)
+        near_miss = self._point(session, primary, (0.50, 0.53), now=0.1)
 
         self.assertIsNone(near_miss.command_gesture)
         self.assertIn("anchor=(0.50,0.50)", near_miss.debug_message)
         self.assertIn("candidate=none", near_miss.debug_message)
-        self.assertIn("magnitude=0.035", near_miss.debug_message)
-        self.assertIn("activation=0.036", near_miss.debug_message)
-        self.assertIn("threshold_ratio=0.97", near_miss.debug_message)
+        self.assertIn("magnitude=0.030", near_miss.debug_message)
+        self.assertIn("activation=0.033", near_miss.debug_message)
+        self.assertIn("threshold_ratio=0.92", near_miss.debug_message)
         self.assertIn("in_neutral=False", near_miss.debug_message)
         self.assertIn("blocked=below_threshold", near_miss.debug_message)
 
@@ -59,11 +60,11 @@ class SessionPointerTests(unittest.TestCase):
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
         self._point(session, primary, (0.50, 0.50), now=0.0)
-        neutral_move = self._point(session, primary, (0.50, 0.515), now=0.1)
-        neutral_settling = self._point(session, primary, (0.50, 0.515), now=0.2)
-        neutral_settled = self._point(session, primary, (0.50, 0.515), now=0.3)
+        neutral_move = self._point(session, primary, (0.50, 0.512), now=0.1)
+        neutral_settling = self._point(session, primary, (0.50, 0.512), now=0.2)
+        neutral_settled = self._point(session, primary, (0.50, 0.512), now=0.3)
         below_threshold_from_new_anchor = self._point(session, primary, (0.50, 0.54), now=0.4)
-        crossed_from_new_anchor = self._point(session, primary, (0.50, 0.56), now=0.5)
+        crossed_from_new_anchor = self._point(session, primary, (0.50, 0.55), now=0.5)
 
         self.assertIsNone(neutral_move.command_gesture)
         self.assertIn("in_neutral=True", neutral_move.debug_message)
@@ -71,7 +72,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("phase=armed", neutral_settled.debug_message)
         self.assertIsNone(below_threshold_from_new_anchor.command_gesture)
         self.assertEqual(crossed_from_new_anchor.command_gesture, GESTURE_POINT_DOWN)
-        self.assertIn("anchor=(0.50,0.52)", crossed_from_new_anchor.debug_message)
+        self.assertIn("anchor=(0.50,0.51)", crossed_from_new_anchor.debug_message)
 
     def test_pointer_hold_does_not_repeat_before_neutral_return(self) -> None:
         session = GestureSession(AppConfig(debounce_seconds=0.3))
@@ -122,6 +123,75 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIsNone(left.command_gesture)
         self.assertIn("blocked=awaiting_neutral", left.debug_message)
         self.assertEqual(rearmed_left.command_gesture, GESTURE_POINT_LEFT)
+
+    def test_pointer_uses_index_tip_for_horizontal_movement(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate(
+            [
+                primary,
+                hand_state(
+                    GESTURE_POINT,
+                    center=(0.50, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                ),
+            ],
+            now=0.0,
+        )
+        left = session.evaluate(
+            [
+                primary,
+                hand_state(
+                    GESTURE_POINT,
+                    center=(0.49, 0.50),
+                    size=0.20,
+                    index_position=(0.45, 0.50),
+                ),
+            ],
+            now=0.1,
+        )
+
+        self.assertEqual(left.command_gesture, GESTURE_POINT_LEFT)
+        self.assertIn("source=index_tip", left.debug_message)
+
+    def test_pointer_survives_brief_unknown_secondary_gesture(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._point(session, primary, (0.50, 0.50), now=0.0)
+        unknown = session.evaluate(
+            [
+                primary,
+                hand_state(
+                    DEBUG_UNKNOWN,
+                    center=(0.49, 0.50),
+                    size=0.20,
+                    index_position=(0.45, 0.50),
+                ),
+            ],
+            now=0.2,
+        )
+
+        self.assertEqual(unknown.command_gesture, GESTURE_POINT_LEFT)
+        self.assertTrue(unknown.freeze_zoom)
+        self.assertIn("secondary=UNKNOWN effective_secondary=POINT", unknown.debug_message)
+
+    def test_zoom_freezes_while_secondary_hand_is_unknown(self) -> None:
+        session = GestureSession(AppConfig())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        decision = session.evaluate(
+            [
+                primary,
+                hand_state(DEBUG_UNKNOWN, center=(0.50, 0.50), size=0.20),
+            ],
+            now=0.0,
+        )
+
+        self.assertTrue(decision.freeze_zoom)
+        self.assertIn("zoom_freeze_reason=secondary_present", decision.debug_message)
 
     def _point(
         self,

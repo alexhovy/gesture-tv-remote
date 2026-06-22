@@ -192,11 +192,14 @@ input, which can help finger landmark reliability when the camera is far away.
 Start with `1.5`; larger values reduce the field of view and can crop out the
 active hand during large movements.
 
-Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the tracking/display crop follow
-the last detected hand area. Auto zoom changes the MediaPipe input crop and then
-the runtime maps detected landmarks back into original frame coordinates before
-gesture decisions run. Detection and display use the same crop so navigation
-and volume gestures have stable distance math and visual feedback.
+Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the display crop follow the last
+detected hand area. Auto zoom uses a wider, slower MediaPipe detection crop and
+maps detected landmarks back into original frame coordinates before gesture
+decisions run. Navigation and volume distances use the displayed crop for visual
+feedback. Auto-zoom targets the active hand's normalized center and size so
+clipped or stretched edge landmarks do not prevent zooming to a far-away hand.
+When a detected hand reaches the display crop edge, the detection crop stays
+wider so MediaPipe can keep tracking while the display remains zoomed in.
 
 Numeric settings are validated at startup. Zoom values must be at least `1.0`,
 confidence values must be between `0.0` and `1.0`, max values must not be lower
@@ -212,8 +215,11 @@ misclassified as command gestures.
 `GESTURE_TV_ACTIVE_HAND_LOST_GRACE_SECONDS` keeps an active gesture session
 alive through brief active-hand detection dropouts. This helps when a hand is
 close to a frame or crop edge and MediaPipe occasionally reports zero hands for
-a frame or two. Once the active hand is missing longer than the grace interval,
-the session deactivates normally.
+a frame or two. During plain active-hand loss, auto-zoom widens back toward the
+full frame so the camera can reacquire a hand at the crop edge. Pointer and
+volume motion anchors still hold the crop while the session is in dropout grace
+so their visual neutral zones stay fixed. Once the active hand is missing longer
+than the grace interval, the session deactivates normally.
 
 Set `GESTURE_TV_VERBOSE_PIPELINE_DIAGNOSTICS=true` to log camera FPS, detection
 time, gesture decision time, command queue depth, command send latency, dropped

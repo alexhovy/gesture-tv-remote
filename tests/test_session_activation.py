@@ -173,9 +173,19 @@ class SessionActivationTests(unittest.TestCase):
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
-        self.assertEqual(decision.zoom_landmarks, [active.landmarks])
+        self._assert_zoom_bounds(decision.zoom_landmarks[0], (0.20, 0.40), (0.40, 0.60))
         self.assertIn("active_index=0", decision.debug_message)
         self.assertIn("zoom_hands=1", decision.debug_message)
+
+    def test_zoom_uses_active_hand_center_and_size_near_frame_edge(self) -> None:
+        session = GestureSession(app_config())
+
+        decision = session.evaluate(
+            [hand_state(GESTURE_OPEN_PALM, center=(0.63, 0.84), size=0.13)],
+            now=0.0,
+        )
+
+        self._assert_zoom_bounds(decision.zoom_landmarks[0], (0.565, 0.775), (0.695, 0.905))
 
     def test_active_hand_is_matched_by_position_after_other_hand_enters_first(self) -> None:
         session = GestureSession(app_config(active_hand_match_max_distance=0.35))
@@ -187,8 +197,20 @@ class SessionActivationTests(unittest.TestCase):
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
-        self.assertEqual(decision.zoom_landmarks, [active.landmarks])
+        self._assert_zoom_bounds(decision.zoom_landmarks[0], (0.20, 0.40), (0.40, 0.60))
         self.assertIn("active_index=1", decision.debug_message)
+
+    def _assert_zoom_bounds(
+        self,
+        landmarks,
+        expected_min: tuple[float, float],
+        expected_max: tuple[float, float],
+    ) -> None:
+        self.assertEqual(len(landmarks), 2)
+        self.assertAlmostEqual(landmarks[0].x, expected_min[0])
+        self.assertAlmostEqual(landmarks[0].y, expected_min[1])
+        self.assertAlmostEqual(landmarks[1].x, expected_max[0])
+        self.assertAlmostEqual(landmarks[1].y, expected_max[1])
 
 
 if __name__ == "__main__":

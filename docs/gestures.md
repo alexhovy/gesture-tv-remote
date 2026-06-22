@@ -63,9 +63,11 @@ attempting the next direction.
 While a pointer or volume anchor exists, the preview crop is locked so the
 neutral center does not move on screen during motion or grace.
 
-Auto-zoom uses the same crop for MediaPipe detection and display. Brief
-dropouts and unclassified active-hand frames keep existing pointer or volume
-anchors during motion grace. A clear non-motion pose, such as an open palm,
-clears the motion anchor after grace because the user has stopped pointer or
-volume control. Otherwise the current anchor remains fixed until its matching
-point or pinch returns, the active hand deactivates, or the session resets.
+Auto-zoom uses separate crops for MediaPipe detection and display. The display
+crop follows the active hand, while the detection crop stays wider and catches
+up only when the hand is safely inside view. Brief dropouts and unclassified
+active-hand frames keep existing pointer or volume anchors during motion grace.
+A clear non-motion pose, such as an open palm, clears the motion anchor after
+grace because the user has stopped pointer or volume control. Otherwise the
+current anchor remains fixed until its matching point or pinch returns, the
+active hand deactivates, or the session resets.

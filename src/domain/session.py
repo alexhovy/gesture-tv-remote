@@ -35,6 +35,16 @@ MOTION_COMMAND_GESTURES = {
 }
 
 
+class ZoomLandmark:
+    def __init__(self, x: float, y: float) -> None:
+        self.x = x
+        self.y = y
+
+
+def _clamp(value: float, minimum: float, maximum: float) -> float:
+    return max(minimum, min(maximum, value))
+
+
 class GestureSession(GestureSessionDebugMixin):
     MOTION_GRACE_SECONDS = 0.6
 
@@ -125,7 +135,7 @@ class GestureSession(GestureSessionDebugMixin):
         active_gesture = active_hand.gesture
         self._active.update_seen(active_hand, now)
         self._motion.record_seen(now)
-        zoom_landmarks = [active_hand.landmarks]
+        zoom_landmarks = [self._zoom_landmarks_for_hand(active_hand)]
         active_size = active_hand.size
         active_center = active_hand.center
 
@@ -339,6 +349,20 @@ class GestureSession(GestureSessionDebugMixin):
 
     def _record_volume_decision(self, decision: JoystickDecision) -> None:
         self._volume.record_decision(decision)
+
+    def _zoom_landmarks_for_hand(self, hand: HandState) -> list[ZoomLandmark]:
+        center_x, center_y = hand.center
+        half_size = max(hand.size, 0.01) / 2
+        return [
+            ZoomLandmark(
+                _clamp(center_x - half_size, 0.0, 1.0),
+                _clamp(center_y - half_size, 0.0, 1.0),
+            ),
+            ZoomLandmark(
+                _clamp(center_x + half_size, 0.0, 1.0),
+                _clamp(center_y + half_size, 0.0, 1.0),
+            ),
+        ]
 
     def _record_pointer_decision(self, decision: JoystickDecision) -> None:
         self._pointer.record_decision(decision)

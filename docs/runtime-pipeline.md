@@ -10,7 +10,7 @@ runtime collaborators:
 
 | Pipeline | Responsibility |
 | --- | --- |
-| `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies the current zoom crop for detection and display. |
+| `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies the current detection/display zoom crops. |
 | `DetectionPipeline` | Converts BGR frames to RGB and submits them to MediaPipe live-stream detection. |
 | `GestureDecisionPipeline` | Projects hand states back from the active detection crop, evaluates the domain session, and updates auto-zoom for the next frame. |
 | `CommandDispatchPipeline` | Applies gesture debounce and enqueues TV key commands. |
@@ -29,11 +29,13 @@ frames; if frame versions jump, older frames are counted as dropped instead of
 being processed late.
 
 MediaPipe hand tracking runs in live-stream mode. The runtime submits the
-current detection frame and consumes the latest completed result. Detection and
-display use the same auto-zoom crop so pointer and volume motion use the same
-visual frame that the user sees. Once pointer or volume motion has established
-an anchor, auto-zoom crop updates are paused until the anchor clears; this keeps
-the visual neutral center fixed during motion and dropout grace.
+current detection frame and consumes the latest completed result. Auto-zoom uses
+separate display and detection crops: display follows the active hand, while
+detection lags wider so edge hands remain visible to MediaPipe. Pointer and
+volume distances are measured against the displayed crop. Once pointer or
+volume motion has established an anchor, auto-zoom crop updates are paused until
+the anchor clears; this keeps the visual neutral center fixed during motion and
+dropout grace.
 
 The preview smooths only the drawn landmark overlay in original-frame
 coordinates and holds it briefly through dropped detection frames. Gesture

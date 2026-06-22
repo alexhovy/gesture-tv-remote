@@ -41,13 +41,13 @@ class GestureDecisionPipeline:
         return decision
 
     def update_zoom(self, decision: GestureDecision) -> bool:
-        if decision.active_temporarily_lost:
-            return False
-
         if decision.anchor_locked:
             return False
 
         full_frame_crop = CropRect(0.0, 0.0, 1.0, 1.0)
+        if decision.active_temporarily_lost:
+            return self._zoom_controller.update([], full_frame_crop)
+
         if not decision.activated:
             return self._zoom_controller.update([], full_frame_crop)
 

@@ -165,7 +165,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
 
         self.assertEqual(session.pointer_reference_size, 0.40)
 
-    def test_update_zoom_holds_crop_during_temporary_active_hand_loss(self) -> None:
+    def test_update_zoom_recovers_crop_during_temporary_active_hand_loss(self) -> None:
         zoom_controller = FakeZoomController()
 
         changed = GestureDecisionPipeline(
@@ -180,8 +180,31 @@ class GestureRemoteServiceTests(unittest.TestCase):
             )
         )
 
+        self.assertTrue(changed)
+        self.assertEqual(
+            zoom_controller.updated_with,
+            ([], CropRect(0.0, 0.0, 1.0, 1.0)),
+        )
+
+    def test_update_zoom_holds_crop_during_temporary_loss_when_motion_anchor_is_locked(self) -> None:
+        zoom_controller = FakeZoomController()
+
+        changed = GestureDecisionPipeline(
+            FakeDecisionSession(),
+            zoom_controller,
+        ).update_zoom(
+            GestureDecision(
+                command_gesture=None,
+                activated=True,
+                debug_message="",
+                active_temporarily_lost=True,
+                anchor_locked=True,
+            )
+        )
+
         self.assertFalse(changed)
         self.assertIsNone(zoom_controller.updated_with)
+        self.assertIsNone(zoom_controller.conditional_update_with)
 
     def test_update_zoom_holds_crop_while_motion_anchor_is_locked(self) -> None:
         zoom_controller = FakeZoomController()

@@ -388,13 +388,17 @@ class GestureSession(GestureSessionDebugMixin):
     def _motion_anchor_locked(self) -> bool:
         return self._pointer.anchor is not None or self._volume.anchor is not None
 
-    @staticmethod
     def _secondary_motion_gesture(
+        self,
         secondary_gesture: str | None,
         secondary_command_gesture: str | None,
     ) -> str | None:
         if secondary_gesture is None:
             return None
+        if isinstance(self._pointer.anchor, tuple) and secondary_gesture != GESTURE_POINT:
+            return DEBUG_UNKNOWN
+        if isinstance(self._volume.anchor, float) and secondary_gesture != GESTURE_PINCH:
+            return DEBUG_UNKNOWN
         if secondary_gesture in {GESTURE_PINCH, GESTURE_POINT}:
             if secondary_command_gesture == secondary_gesture:
                 return secondary_gesture

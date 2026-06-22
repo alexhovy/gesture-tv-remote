@@ -65,4 +65,7 @@ hand first appears, detection stays wide only while stabilizing. After the
 secondary hand is active, MediaPipe detection uses the same precise crop as the
 preview for both pointer navigation and volume gestures. Brief secondary
 misreads keep the existing pointer or volume anchor through grace, but commands
-wait for a commandable point or pinch frame before emitting.
+wait for a commandable point or pinch frame before emitting. Once pointer or
+volume owns the motion mode, brief opposite-mode reads do not switch modes or
+replace the anchor; the current anchor remains in grace until its matching
+point or pinch returns, or until grace expires.

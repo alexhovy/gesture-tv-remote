@@ -4,6 +4,7 @@ from src.domain.constants import (
     DEBUG_UNKNOWN,
     GESTURE_OPEN_PALM,
     GESTURE_PINCH,
+    GESTURE_POINT,
     GESTURE_VOLUME_DOWN,
     GESTURE_VOLUME_UP,
 )
@@ -123,6 +124,28 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertIn("secondary=OPEN_PALM effective_secondary=PINCH", misread.debug_message)
         self.assertIn("volume_state=anchor=0.50", misread.debug_message)
         self.assertIn("blocked=motion_grace", misread.debug_message)
+        self.assertEqual(down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIn("volume_state=anchor=0.50", down.debug_message)
+
+    def test_volume_preserves_anchor_through_brief_point_misread(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._pinch(session, primary, 0.50, now=0.0)
+        misread = session.evaluate(
+            [
+                primary,
+                hand_state(GESTURE_POINT, center=(0.70, 0.70), size=0.20),
+            ],
+            now=0.2,
+        )
+        down = self._pinch(session, primary, 0.70, now=0.3)
+
+        self.assertIsNone(misread.command_gesture)
+        self.assertIn("secondary=POINT effective_secondary=PINCH", misread.debug_message)
+        self.assertIn("volume_state=anchor=0.50", misread.debug_message)
+        self.assertIn("blocked=motion_grace", misread.debug_message)
+        self.assertIn("pointer_state=anchor=none", misread.debug_message)
         self.assertEqual(down.command_gesture, GESTURE_VOLUME_DOWN)
         self.assertIn("volume_state=anchor=0.50", down.debug_message)
 

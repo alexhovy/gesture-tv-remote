@@ -63,6 +63,7 @@ class GestureRemoteService:
         metrics = PipelineMetrics(self._config.tv.adapter)
         last_debug_time = 0.0
         last_debug_message = ""
+        precise_detection_crop = False
         zoom_controller = CameraZoomController(self._config)
         frame_pipeline = FrameCapturePipeline(frame_source, metrics)
         detection_pipeline = DetectionPipeline(metrics)
@@ -103,9 +104,11 @@ class GestureRemoteService:
                 now = time.monotonic()
                 await self._reload_config_if_needed_async(now, zoom_controller, hand_tracker)
                 frame = frame_pipeline.flip_frame(frame)
+                detection_mode = "precision" if precise_detection_crop else "acquisition"
                 detection_frame = frame_pipeline.detection_frame(
                     frame,
                     zoom_controller,
+                    precise_detection_crop,
                 )
                 hand_states, detected_hands = detection_pipeline.detect_hands(
                     hand_tracker,
@@ -130,6 +133,7 @@ class GestureRemoteService:
                     decision.debug_message,
                     detection_frame.crop,
                     display_frame.crop,
+                    detection_mode,
                     decision.freeze_zoom,
                 )
                 if (
@@ -148,6 +152,8 @@ class GestureRemoteService:
                 )
                 if display_pipeline.render(self._config.app_name, display_frame.frame):
                     break
+
+                precise_detection_crop = decision.freeze_zoom
 
                 command_pipeline.record_dispatch_metrics()
                 metrics.log_if_due(

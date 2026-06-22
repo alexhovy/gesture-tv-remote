@@ -21,10 +21,12 @@ class DisplayPipeline:
         decision_debug_message: str,
         detection_crop: CropRect,
         display_crop: CropRect,
+        detection_mode: str,
         zoom_frozen: bool = False,
     ) -> str:
         return (
             f"{decision_debug_message} "
+            f"detection_mode={detection_mode} "
             f"detection_crop={_debug_crop(detection_crop)} "
             f"display_crop={_debug_crop(display_crop)} "
             f"zoom_frozen={zoom_frozen}"

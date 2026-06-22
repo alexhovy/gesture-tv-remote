@@ -88,6 +88,7 @@ class FakeZoomController:
     def __init__(self) -> None:
         self.updated_with = None
         self.conditional_update_with = None
+        self.precise_detection = None
 
     def update(self, landmarks_by_hand, crop):
         self.updated_with = (landmarks_by_hand, crop)
@@ -100,6 +101,10 @@ class FakeZoomController:
     def current_crop(self) -> CropRect:
         return CropRect(0.25, 0.25, 0.5, 0.5)
 
+    def detection_crop(self, precise: bool) -> CropRect:
+        self.precise_detection = precise
+        return CropRect(0.25, 0.25, 0.5, 0.5)
+
 
 class GestureRemoteServiceTests(unittest.TestCase):
     def test_detection_frame_uses_current_zoom_crop(self) -> None:
@@ -108,10 +113,23 @@ class GestureRemoteServiceTests(unittest.TestCase):
         detection_frame = FrameCapturePipeline().detection_frame(
             frame,
             FakeZoomController(),
+            precise=True,
         )
 
         self.assertEqual(detection_frame.frame.shape, frame.shape)
         self.assertEqual(detection_frame.crop, CropRect(0.25, 1 / 6, 0.5, 0.5))
+
+    def test_detection_frame_passes_precision_mode_to_zoom_controller(self) -> None:
+        frame = FakeFrame(6, 8)
+        zoom_controller = FakeZoomController()
+
+        FrameCapturePipeline().detection_frame(
+            frame,
+            zoom_controller,
+            precise=False,
+        )
+
+        self.assertFalse(zoom_controller.precise_detection)
 
     def test_update_zoom_uses_filtered_zoom_landmarks(self) -> None:
         zoom_controller = FakeZoomController()
@@ -182,6 +200,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
             "hands=2 activated=True",
             CropRect(0.0, 0.0, 1.0, 1.0),
             CropRect(0.25, 0.25, 0.5, 0.5),
+            "acquisition",
             zoom_frozen=True,
         )
 
@@ -189,6 +208,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
             debug_message,
             (
                 "hands=2 activated=True "
+                "detection_mode=acquisition "
                 "detection_crop=(0.00,0.00,1.00,1.00) "
                 "display_crop=(0.25,0.25,0.50,0.50) "
                 "zoom_frozen=True"

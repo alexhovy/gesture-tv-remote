@@ -151,6 +151,53 @@ class VideoPreprocessingTests(unittest.TestCase):
 
         self.assertEqual(controller.current_crop(), CropRect(0.5, 0.25, 0.5, 0.5))
 
+    def test_detection_crop_expands_current_crop_until_secondary_is_active(self) -> None:
+        controller = CameraZoomController(
+            app_config(
+                auto_zoom_enabled=True,
+                auto_zoom_min=1.0,
+                auto_zoom_max=10.0,
+                auto_zoom_padding=0.0,
+                auto_zoom_smoothing=1.0,
+            )
+        )
+        controller.update(
+            [[_landmark(0.45, 0.45), _landmark(0.55, 0.55)]],
+            CropRect(0.0, 0.0, 1.0, 1.0),
+        )
+
+        self._assert_crop_almost_equal(
+            controller.current_crop(),
+            CropRect(0.45, 0.45, 0.1, 0.1),
+        )
+        self._assert_crop_almost_equal(
+            controller.detection_crop(precise=False),
+            CropRect(0.25, 0.25, 0.5, 0.5),
+        )
+
+    def test_detection_crop_matches_current_crop_when_secondary_is_active(self) -> None:
+        controller = CameraZoomController(
+            app_config(
+                auto_zoom_enabled=True,
+                auto_zoom_min=1.0,
+                auto_zoom_max=10.0,
+                auto_zoom_padding=0.0,
+                auto_zoom_smoothing=1.0,
+            )
+        )
+        controller.update(
+            [[_landmark(0.45, 0.45), _landmark(0.55, 0.55)]],
+            CropRect(0.0, 0.0, 1.0, 1.0),
+        )
+
+        self.assertEqual(controller.detection_crop(precise=True), controller.current_crop())
+
+    def _assert_crop_almost_equal(self, actual: CropRect, expected: CropRect) -> None:
+        self.assertAlmostEqual(actual.x, expected.x)
+        self.assertAlmostEqual(actual.y, expected.y)
+        self.assertAlmostEqual(actual.width, expected.width)
+        self.assertAlmostEqual(actual.height, expected.height)
+
     def test_auto_zoom_zooms_out_for_two_hand_bounds(self) -> None:
         controller = CameraZoomController(
             app_config(

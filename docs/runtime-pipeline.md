@@ -10,7 +10,7 @@ runtime collaborators:
 
 | Pipeline | Responsibility |
 | --- | --- |
-| `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies the current zoom crop for detection and display. |
+| `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies acquisition or precision zoom crops for detection and display. |
 | `DetectionPipeline` | Converts BGR frames to RGB and submits them to MediaPipe live-stream detection. |
 | `GestureDecisionPipeline` | Projects hand states back from the active detection crop, evaluates the domain session, and updates auto-zoom for the next frame. |
 | `CommandDispatchPipeline` | Applies gesture debounce, starts voice capture for `MIC`, and enqueues TV key commands. |
@@ -29,8 +29,11 @@ frames; if frame versions jump, older frames are counted as dropped instead of
 being processed late.
 
 MediaPipe hand tracking runs in live-stream mode. The runtime submits the
-current detection frame and consumes the latest completed result. This lets
-MediaPipe skip work when detection is slower than camera capture.
+current detection frame and consumes the latest completed result. While only the
+primary hand is active, the detection frame uses a wider acquisition crop than
+the preview. Once a secondary hand is present or in grace, detection switches to
+the precise preview crop. This lets MediaPipe skip work when detection is slower
+than camera capture.
 
 TV commands are sent by one bounded async dispatcher task. Slow TV network
 calls, reconnects, or adapter retries do not block camera capture, hand
@@ -59,6 +62,7 @@ Metrics include:
 - camera FPS
 - detection time per frame
 - gesture decision time
+- detection crop mode
 - command dispatch queue depth
 - command send latency
 - dropped command count

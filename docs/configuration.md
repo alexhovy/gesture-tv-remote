@@ -201,11 +201,12 @@ two-hand gestures.
 Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the tracking/display crop follow
 the last detected hand area. Auto zoom changes the MediaPipe input crop and then
 the runtime maps detected landmarks back into original frame coordinates before
-gesture decisions run. When the secondary hand appears, the crop may make a
-bounded adjustment if that hand is near or outside the visible crop. After both
-hands are framed, the crop is held steady while the secondary hand is present,
-including brief secondary-hand classification flicker, so navigation and volume
-gestures have stable tracking and visual feedback.
+gesture decisions run. While only the primary hand is active, detection uses a
+wider acquisition crop than the preview so the secondary hand can be detected
+without being placed inside the primary-hand crop. After the secondary hand is
+present, including brief secondary-hand classification flicker, detection uses
+the precise preview crop so navigation and volume gestures have stable distance
+math and visual feedback.
 
 Numeric settings are validated at startup. Zoom values must be at least `1.0`,
 confidence values must be between `0.0` and `1.0`, max values must not be lower

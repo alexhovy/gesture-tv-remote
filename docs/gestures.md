@@ -45,11 +45,12 @@ re-arm after two release frames by default. Moving to a different direction
 before that release return is ignored so return strokes do not become accidental
 opposite commands.
 
-Auto-zoom uses the same crop for MediaPipe tracking and the preview. When hands
-are far from the camera, the crop makes them larger in the tracking input before
-landmarks are projected back to original frame space for gesture decisions. The
-crop first makes a bounded adjustment if the secondary hand is near or outside
-the visible crop, then freezes while the secondary hand is present, including
-brief classification flicker during pointing or pinching. This keeps both hands
-framed before stabilizing tracking and visual feedback for navigation or volume
-changes; auto-zoom resumes when the secondary motion gesture is released.
+Auto-zoom has acquisition and precision tracking modes. When only the primary
+hand is active, MediaPipe uses a wider detection crop than the preview so the
+secondary hand can be lifted naturally beside the primary. Once the secondary
+hand is present, including brief classification flicker during pointing or
+pinching, detection switches to the precise preview crop and landmarks are
+projected back to original frame space for gesture decisions. This keeps both
+hands easy to acquire before stabilizing tracking and visual feedback for
+navigation or volume changes; auto-zoom resumes when the secondary motion
+gesture is released.

@@ -115,7 +115,7 @@ FIELD_HELP: dict[str, str] = {
     "voice_capture_seconds": "Android TV voice capture duration in seconds.",
     "webcam_index": "Usually 0 for the default webcam.",
     "camera_zoom": "Digital tracking crop. Start near 1.5 if hands appear small.",
-    "auto_zoom_enabled": "Moves the tracking and display crop so small distant hands are larger.",
+    "auto_zoom_enabled": "Keeps distant hands larger and widens detection while acquiring secondary.",
     "auto_zoom_min": "Smallest automatic tracking zoom.",
     "auto_zoom_max": "Largest automatic tracking zoom.",
     "debounce_seconds": "Minimum delay between repeated commands.",

@@ -102,10 +102,13 @@ thread without blocking the gesture loop.
 Camera preprocessing is split by responsibility inside `infrastructure/camera`:
 latest-frame capture lives in `frame_source`, frame cropping lives in
 `video_preprocessing`, coordinate projection lives in `landmark_projection`, and
-auto-zoom state lives in `camera_zoom`. The active zoom crop feeds MediaPipe
-detection and the preview, while landmarks are projected back to original frame
-space before gesture rules run. Camera capture keeps only the newest frame so
-slow processing cannot build a stale frame backlog.
+auto-zoom state lives in `camera_zoom`. Before a secondary hand is active,
+MediaPipe detection uses a wider acquisition crop than the preview so the second
+hand can enter without being forced into the primary-hand crop. Once a secondary
+hand is present or in grace, detection uses the precise preview crop for stable
+distance and motion math. Landmarks are projected back to original frame space
+before gesture rules run. Camera capture keeps only the newest frame so slow
+processing cannot build a stale frame backlog.
 
 Hand tracking uses MediaPipe live-stream mode. The service submits frames and
 consumes the latest completed result, allowing MediaPipe to skip frames while it

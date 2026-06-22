@@ -7,9 +7,6 @@ from src.infrastructure.camera.video_preprocessing import CropRect, center_crop_
 from src.shared.config import AppConfig
 
 
-SECONDARY_ACQUISITION_MAX_ZOOM = 2.0
-
-
 class CameraZoomController:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
@@ -54,7 +51,10 @@ class CameraZoomController:
         if precise or not self._config.camera.auto_zoom_enabled:
             return crop
 
-        acquisition_zoom = min(self._zoom, SECONDARY_ACQUISITION_MAX_ZOOM)
+        acquisition_zoom = min(
+            self._zoom,
+            self._config.camera.secondary_acquisition_max_zoom,
+        )
         acquisition_zoom = max(1.0, acquisition_zoom)
         if acquisition_zoom >= self._zoom:
             return crop

@@ -51,6 +51,7 @@ class EnvVar:
     AUTO_ZOOM_POSITION_DEADBAND = "GESTURE_TV_AUTO_ZOOM_POSITION_DEADBAND"
     AUTO_ZOOM_SCALE_DEADBAND = "GESTURE_TV_AUTO_ZOOM_SCALE_DEADBAND"
     AUTO_ZOOM_CROP_RESET_THRESHOLD = "GESTURE_TV_AUTO_ZOOM_CROP_RESET_THRESHOLD"
+    SECONDARY_ACQUISITION_MAX_ZOOM = "GESTURE_TV_SECONDARY_ACQUISITION_MAX_ZOOM"
     MAX_HANDS = "GESTURE_TV_MAX_HANDS"
     MIN_HAND_DETECTION_CONFIDENCE = "GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE"
     MIN_HAND_PRESENCE_CONFIDENCE = "GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE"
@@ -103,6 +104,7 @@ class CameraConfig:
     auto_zoom_position_deadband: float = 0.08
     auto_zoom_scale_deadband: float = 0.12
     auto_zoom_crop_reset_threshold: float = 0.08
+    secondary_acquisition_max_zoom: float = 1.25
 
 
 @dataclass(frozen=True)
@@ -191,6 +193,7 @@ RELOADABLE_CONFIG_FIELDS = (
     "auto_zoom_position_deadband",
     "auto_zoom_scale_deadband",
     "auto_zoom_crop_reset_threshold",
+    "secondary_acquisition_max_zoom",
     "verbose_pipeline_diagnostics",
     "metrics_log_seconds",
 )
@@ -272,6 +275,11 @@ def validate_config(config: AppConfig) -> None:
         config.camera.auto_zoom_crop_reset_threshold,
         "auto_zoom_crop_reset_threshold",
         0.0,
+    )
+    _require_at_least(
+        config.camera.secondary_acquisition_max_zoom,
+        "secondary_acquisition_max_zoom",
+        1.0,
     )
     _require_at_least(config.model.max_hands, "max_hands", 1)
     _require_between(
@@ -546,6 +554,13 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         EnvVar.AUTO_ZOOM_CROP_RESET_THRESHOLD,
         "camera",
         "auto_zoom_crop_reset_threshold",
+        _float,
+    ),
+    ConfigField(
+        "secondary_acquisition_max_zoom",
+        EnvVar.SECONDARY_ACQUISITION_MAX_ZOOM,
+        "camera",
+        "secondary_acquisition_max_zoom",
         _float,
     ),
     ConfigField("max_hands", EnvVar.MAX_HANDS, "model", "max_hands", _int),

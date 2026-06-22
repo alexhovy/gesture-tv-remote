@@ -38,6 +38,7 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.AUTO_ZOOM_MAX: "2.4",
                 EnvVar.AUTO_ZOOM_PADDING: "0.5",
                 EnvVar.AUTO_ZOOM_SMOOTHING: "0.25",
+                EnvVar.SECONDARY_ACQUISITION_MAX_ZOOM: "1.4",
                 EnvVar.ANDROID_CERT_FILE: "local/android/cert.pem",
                 EnvVar.ANDROID_KEY_FILE: "local/android/key.pem",
                 EnvVar.SAMSUNG_TOKEN_FILE: "local/samsung/token.txt",
@@ -73,6 +74,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.camera.auto_zoom_max, 2.4)
         self.assertEqual(config.camera.auto_zoom_padding, 0.5)
         self.assertEqual(config.camera.auto_zoom_smoothing, 0.25)
+        self.assertEqual(config.camera.secondary_acquisition_max_zoom, 1.4)
         self.assertEqual(config.tv.android_cert_file, Path("local/android/cert.pem"))
         self.assertEqual(config.tv.android_key_file, Path("local/android/key.pem"))
         self.assertEqual(config.tv.samsung_token_file, Path("local/samsung/token.txt"))
@@ -172,6 +174,10 @@ class ConfigTests(unittest.TestCase):
                     EnvVar.AUTO_ZOOM_MAX: "1.5",
                 }
             )
+
+    def test_load_config_rejects_secondary_acquisition_max_zoom_below_one(self) -> None:
+        with self.assertRaisesRegex(ValueError, "secondary_acquisition_max_zoom"):
+            load_config_from_env({EnvVar.SECONDARY_ACQUISITION_MAX_ZOOM: "0.9"})
 
     def test_load_config_rejects_confidence_outside_unit_interval(self) -> None:
         with self.assertRaisesRegex(ValueError, "min_tracking_confidence"):

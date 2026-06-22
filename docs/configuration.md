@@ -148,6 +148,7 @@ will not override that environment value.
 | `GESTURE_TV_AUTO_ZOOM_POSITION_DEADBAND` | `0.08` |
 | `GESTURE_TV_AUTO_ZOOM_SCALE_DEADBAND` | `0.12` |
 | `GESTURE_TV_AUTO_ZOOM_CROP_RESET_THRESHOLD` | `0.08` |
+| `GESTURE_TV_SECONDARY_ACQUISITION_MAX_ZOOM` | `1.25` |
 | `GESTURE_TV_MAX_HANDS` | `2` |
 | `GESTURE_TV_DEBOUNCE_SECONDS` | `0.3` |
 | `GESTURE_TV_HOME_CHORD_SECONDS` | `0.35` |
@@ -207,6 +208,11 @@ without being placed inside the primary-hand crop. After the secondary hand is
 present, including brief secondary-hand classification flicker, detection uses
 the precise preview crop so navigation and volume gestures have stable distance
 math and visual feedback.
+
+`GESTURE_TV_SECONDARY_ACQUISITION_MAX_ZOOM` controls how wide the acquisition
+crop remains while waiting for the secondary hand. Lower values are wider:
+`1.25` keeps about `80%` of the frame visible to MediaPipe, while `2.0` keeps
+about `50%`.
 
 Numeric settings are validated at startup. Zoom values must be at least `1.0`,
 confidence values must be between `0.0` and `1.0`, max values must not be lower

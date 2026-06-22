@@ -39,6 +39,7 @@ SECTIONS: tuple[ConfigSection, ...] = (
             "auto_zoom_position_deadband",
             "auto_zoom_scale_deadband",
             "auto_zoom_crop_reset_threshold",
+            "secondary_acquisition_max_zoom",
         ),
     ),
     ConfigSection(
@@ -118,6 +119,7 @@ FIELD_HELP: dict[str, str] = {
     "auto_zoom_enabled": "Keeps distant hands larger and widens detection while acquiring secondary.",
     "auto_zoom_min": "Smallest automatic tracking zoom.",
     "auto_zoom_max": "Largest automatic tracking zoom.",
+    "secondary_acquisition_max_zoom": "Largest zoom while acquiring the secondary hand. Lower is wider.",
     "debounce_seconds": "Minimum delay between repeated commands.",
     "home_chord_seconds": "How long the HOME chord must be held.",
     "pointer_distance_ratio": "Pointer movement threshold scaled by hand size.",
@@ -173,6 +175,7 @@ def input_constraints(name: str) -> str:
         "camera_zoom",
         "auto_zoom_min",
         "auto_zoom_max",
+        "secondary_acquisition_max_zoom",
     }:
         return ' min="1"'
     if name == "max_hands":

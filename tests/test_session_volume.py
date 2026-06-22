@@ -2,6 +2,7 @@ import unittest
 
 from src.domain.constants import (
     DEBUG_UNKNOWN,
+    GESTURE_FIST,
     GESTURE_OPEN_PALM,
     GESTURE_PINCH,
     GESTURE_POINT,
@@ -125,22 +126,37 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertTrue(unknown.freeze_zoom)
         self.assertIn("active=UNKNOWN effective_motion=PINCH", unknown.debug_message)
 
-    def test_volume_preserves_anchor_through_brief_open_palm_misread(self) -> None:
+    def test_volume_clears_anchor_on_open_palm(self) -> None:
         session = GestureSession(app_config())
         self._activate(session, 0.50)
 
         self._pinch(session, 0.50, now=0.1)
-        misread = session.evaluate(
+        open_palm = session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.70, 0.70), size=0.20)],
             now=0.2,
         )
-        down = self._pinch(session, 0.70, now=0.3)
 
-        self.assertIsNone(misread.command_gesture)
-        self.assertIn("active=OPEN_PALM effective_motion=PINCH", misread.debug_message)
-        self.assertIn("volume_state=anchor=0.50", misread.debug_message)
-        self.assertIn("blocked=motion_grace", misread.debug_message)
-        self.assertEqual(down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIsNone(open_palm.command_gesture)
+        self.assertFalse(open_palm.anchor_locked)
+        self.assertFalse(open_palm.freeze_zoom)
+        self.assertIn("active=OPEN_PALM effective_motion=none", open_palm.debug_message)
+        self.assertIn("volume_state=anchor=none", open_palm.debug_message)
+
+    def test_volume_clears_anchor_on_fist(self) -> None:
+        session = GestureSession(app_config())
+        self._activate(session, 0.50)
+
+        self._pinch(session, 0.50, now=0.1)
+        fist = session.evaluate(
+            [hand_state(GESTURE_FIST, center=(0.70, 0.70), size=0.20)],
+            now=0.2,
+        )
+
+        self.assertIsNone(fist.command_gesture)
+        self.assertFalse(fist.anchor_locked)
+        self.assertFalse(fist.freeze_zoom)
+        self.assertIn("active=FIST effective_motion=none", fist.debug_message)
+        self.assertIn("volume_state=anchor=none", fist.debug_message)
 
     def test_volume_clears_anchor_after_extended_open_palm(self) -> None:
         session = GestureSession(app_config())
@@ -157,23 +173,20 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertIn("active=OPEN_PALM effective_motion=none", open_palm.debug_message)
         self.assertIn("volume_state=anchor=none", open_palm.debug_message)
 
-    def test_volume_preserves_anchor_through_brief_point_misread(self) -> None:
+    def test_volume_switches_to_point_motion(self) -> None:
         session = GestureSession(app_config())
         self._activate(session, 0.50)
 
         self._pinch(session, 0.50, now=0.1)
-        misread = session.evaluate(
+        point = session.evaluate(
             [hand_state(GESTURE_POINT, center=(0.70, 0.70), size=0.20)],
             now=0.2,
         )
-        down = self._pinch(session, 0.70, now=0.3)
 
-        self.assertIsNone(misread.command_gesture)
-        self.assertIn("active=POINT effective_motion=PINCH", misread.debug_message)
-        self.assertIn("volume_state=anchor=0.50", misread.debug_message)
-        self.assertIn("blocked=motion_grace", misread.debug_message)
-        self.assertIn("pointer_state=anchor=none", misread.debug_message)
-        self.assertEqual(down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIsNone(point.command_gesture)
+        self.assertIn("active=POINT effective_motion=POINT", point.debug_message)
+        self.assertIn("volume_state=anchor=none", point.debug_message)
+        self.assertIn("pointer_state=anchor=(0.00,0.00)", point.debug_message)
 
     def _activate(self, session: GestureSession, y: float) -> None:
         session.evaluate(

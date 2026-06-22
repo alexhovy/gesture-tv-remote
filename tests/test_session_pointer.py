@@ -3,6 +3,7 @@ import unittest
 from src.domain.constants import (
     DEBUG_UNKNOWN,
     GESTURE_OPEN_PALM,
+    GESTURE_FIST,
     GESTURE_PINCH,
     GESTURE_POINT,
     GESTURE_POINT_DOWN,
@@ -193,12 +194,12 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("blocked=active_hand_grace", missing.debug_message)
         self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
 
-    def test_pointer_preserves_anchor_through_brief_open_palm_misread(self) -> None:
+    def test_pointer_clears_anchor_on_open_palm(self) -> None:
         session = GestureSession(app_config())
         self._activate(session, (0.50, 0.50))
 
         self._point(session, (0.50, 0.50), now=0.1)
-        misread = session.evaluate(
+        open_palm = session.evaluate(
             [hand_state(
                 GESTURE_OPEN_PALM,
                 center=(0.67, 0.50),
@@ -207,13 +208,33 @@ class SessionPointerTests(unittest.TestCase):
             )],
             now=0.2,
         )
-        right = self._point(session, (0.67, 0.50), now=0.3)
 
-        self.assertIsNone(misread.command_gesture)
-        self.assertIn("active=OPEN_PALM effective_motion=POINT", misread.debug_message)
-        self.assertIn("anchor=(0.50,0.50)", misread.debug_message)
-        self.assertIn("blocked=motion_grace", misread.debug_message)
-        self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIsNone(open_palm.command_gesture)
+        self.assertFalse(open_palm.anchor_locked)
+        self.assertFalse(open_palm.freeze_zoom)
+        self.assertIn("active=OPEN_PALM effective_motion=none", open_palm.debug_message)
+        self.assertIn("pointer_state=anchor=none", open_palm.debug_message)
+
+    def test_pointer_clears_anchor_on_fist(self) -> None:
+        session = GestureSession(app_config())
+        self._activate(session, (0.50, 0.50))
+
+        self._point(session, (0.50, 0.50), now=0.1)
+        fist = session.evaluate(
+            [hand_state(
+                GESTURE_FIST,
+                center=(0.67, 0.50),
+                size=0.20,
+                index_position=(0.67, 0.50),
+            )],
+            now=0.2,
+        )
+
+        self.assertIsNone(fist.command_gesture)
+        self.assertFalse(fist.anchor_locked)
+        self.assertFalse(fist.freeze_zoom)
+        self.assertIn("active=FIST effective_motion=none", fist.debug_message)
+        self.assertIn("pointer_state=anchor=none", fist.debug_message)
 
     def test_pointer_clears_anchor_after_extended_open_palm(self) -> None:
         session = GestureSession(app_config())
@@ -235,12 +256,12 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("active=OPEN_PALM effective_motion=none", open_palm.debug_message)
         self.assertIn("pointer_state=anchor=none", open_palm.debug_message)
 
-    def test_pointer_preserves_anchor_through_brief_pinch_misread(self) -> None:
+    def test_pointer_switches_to_pinch_motion(self) -> None:
         session = GestureSession(app_config())
         self._activate(session, (0.50, 0.50))
 
         self._point(session, (0.50, 0.50), now=0.1)
-        misread = session.evaluate(
+        pinch = session.evaluate(
             [hand_state(
                 GESTURE_PINCH,
                 center=(0.67, 0.50),
@@ -249,14 +270,11 @@ class SessionPointerTests(unittest.TestCase):
             )],
             now=0.2,
         )
-        right = self._point(session, (0.67, 0.50), now=0.3)
 
-        self.assertIsNone(misread.command_gesture)
-        self.assertIn("active=PINCH effective_motion=POINT", misread.debug_message)
-        self.assertIn("anchor=(0.50,0.50)", misread.debug_message)
-        self.assertIn("blocked=motion_grace", misread.debug_message)
-        self.assertIn("volume_state=anchor=none", misread.debug_message)
-        self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIsNone(pinch.command_gesture)
+        self.assertIn("active=PINCH effective_motion=PINCH", pinch.debug_message)
+        self.assertIn("pointer_state=anchor=none", pinch.debug_message)
+        self.assertIn("volume_state=anchor=0.50", pinch.debug_message)
 
     def test_pointer_uses_index_tip_for_horizontal_movement(self) -> None:
         session = GestureSession(app_config())

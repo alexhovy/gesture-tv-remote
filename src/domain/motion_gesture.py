@@ -32,7 +32,7 @@ class MotionGestureInterpreter:
             self.recent_motion_gestures.append((now, gesture))
             return gesture
 
-        if gesture is not None and self._last_motion_within_grace(now):
+        if gesture == DEBUG_UNKNOWN and self._last_motion_within_grace(now):
             return self.last_motion_gesture
 
         return None

@@ -212,7 +212,10 @@ class GestureSession(GestureSessionDebugMixin):
                 self._mark_motion_grace("motion_grace")
             elif effective_motion_gesture != GESTURE_PINCH:
                 if self._volume.anchor is not None:
-                    if self._explicit_non_motion_gesture(active_gesture):
+                    if (
+                        commandable_motion_gesture == GESTURE_POINT
+                        or self._explicit_non_motion_gesture(active_gesture)
+                    ):
                         self._reset_volume_tracking()
                     else:
                         self._mark_motion_grace("motion_lost")
@@ -246,7 +249,10 @@ class GestureSession(GestureSessionDebugMixin):
                 self._mark_motion_grace("motion_grace")
             elif effective_motion_gesture != GESTURE_POINT:
                 if self._pointer.anchor is not None:
-                    if self._explicit_non_motion_gesture(active_gesture):
+                    if (
+                        commandable_motion_gesture == GESTURE_PINCH
+                        or self._explicit_non_motion_gesture(active_gesture)
+                    ):
                         self._reset_pointer_tracking()
                     else:
                         self._mark_motion_grace("motion_lost")
@@ -402,15 +408,13 @@ class GestureSession(GestureSessionDebugMixin):
     ) -> str | None:
         if gesture is None:
             return None
-        if isinstance(self._pointer.anchor, tuple) and gesture != GESTURE_POINT:
-            return DEBUG_UNKNOWN
-        if isinstance(self._volume.anchor, float) and gesture != GESTURE_PINCH:
+        if gesture == DEBUG_UNKNOWN:
             return DEBUG_UNKNOWN
         if gesture in MOTION_COMMAND_GESTURES:
             if commandable_motion_gesture == gesture:
                 return gesture
             return DEBUG_UNKNOWN
-        return DEBUG_UNKNOWN
+        return None
 
     @staticmethod
     def _explicit_non_motion_gesture(gesture: str | None) -> bool:

@@ -1,4 +1,5 @@
 import asyncio
+import sys
 from collections.abc import Callable
 
 from src.infrastructure.data_access.sqlite_store import SqliteStore
@@ -33,7 +34,15 @@ def create_config_provider() -> Callable[[], AppConfig]:
 def run(configure_logging: bool = True) -> None:
     if configure_logging:
         configure_app_logging()
+    _configure_windows_event_loop_policy()
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
         AppLogger().info("Exiting.")
+
+
+def _configure_windows_event_loop_policy() -> None:
+    if sys.platform != "win32":
+        return
+
+    asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())

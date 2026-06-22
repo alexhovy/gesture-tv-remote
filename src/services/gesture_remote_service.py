@@ -6,7 +6,6 @@ from typing import Any
 
 import cv2
 
-from src.domain.landmarks import hand_center
 from src.domain.session import GestureSession
 from src.infrastructure.camera.camera_zoom import CameraZoomController
 from src.infrastructure.camera.frame_source import LatestFrameSource
@@ -31,8 +30,6 @@ from src.shared.logging import AppLogger
 CLEANUP_TIMEOUT_SECONDS = 1.0
 CONFIG_RELOAD_INTERVAL_SECONDS = 1.0
 SECONDARY_STABILIZE_FRAMES = 4
-PRECISION_MIN_HAND_SIZE = 0.10
-PRECISION_CROP_MARGIN = 0.08
 
 
 class DetectionCropModeTracker:
@@ -44,7 +41,7 @@ class DetectionCropModeTracker:
 
     @property
     def precise(self) -> bool:
-        return False
+        return self.mode == "precise"
 
     def record_decision(self, decision: Any, current_crop: CropRect) -> None:
         if decision.activated and len(decision.zoom_landmarks) > 1:
@@ -59,13 +56,8 @@ class DetectionCropModeTracker:
             self.mode = "stabilizing"
             self.precision_blocked_reason = "settling_secondary"
         else:
-            self.precision_blocked_reason = _precision_blocked_reason(
-                decision.zoom_landmarks,
-                current_crop,
-            )
-            if self.precision_blocked_reason == "none":
-                self.precision_blocked_reason = "wide_tracking"
-            self.mode = "stabilizing"
+            self.mode = "precise"
+            self.precision_blocked_reason = "secondary_active"
 
 
 class GestureRemoteService:
@@ -333,54 +325,3 @@ class GestureRemoteService:
             method()
         except Exception as error:
             self._logger.error(f"Error while cleaning up {name}: {error}")
-
-
-def _precision_blocked_reason(
-    landmarks_by_hand: list[list[Any]],
-    current_crop: CropRect,
-) -> str:
-    hand_landmarks = [landmarks for landmarks in landmarks_by_hand if landmarks]
-    if len(hand_landmarks) < 2:
-        return "no_secondary"
-
-    hand_sizes = [hand_center(landmarks)[2] for landmarks in hand_landmarks]
-    if any(size < PRECISION_MIN_HAND_SIZE for size in hand_sizes):
-        return "hand_too_small"
-
-    hand_bounds = [_landmark_bounds(landmarks) for landmarks in hand_landmarks]
-    if not _bounds_fit_crop(hand_bounds, current_crop, PRECISION_CROP_MARGIN):
-        return "crop_too_tight"
-
-    return "none"
-
-
-def _landmark_bounds(landmarks: list[Any]) -> CropRect:
-    min_x = min(landmark.x for landmark in landmarks)
-    min_y = min(landmark.y for landmark in landmarks)
-    max_x = max(landmark.x for landmark in landmarks)
-    max_y = max(landmark.y for landmark in landmarks)
-    return CropRect(min_x, min_y, max_x - min_x, max_y - min_y)
-
-
-def _bounds_fit_crop(
-    hand_bounds: list[CropRect],
-    crop: CropRect,
-    margin: float,
-) -> bool:
-    if crop.width <= 0 or crop.height <= 0:
-        return False
-
-    min_x = min(bounds.x for bounds in hand_bounds)
-    min_y = min(bounds.y for bounds in hand_bounds)
-    max_x = max(bounds.x + bounds.width for bounds in hand_bounds)
-    max_y = max(bounds.y + bounds.height for bounds in hand_bounds)
-    left = (min_x - crop.x) / crop.width
-    right = (max_x - crop.x) / crop.width
-    top = (min_y - crop.y) / crop.height
-    bottom = (max_y - crop.y) / crop.height
-    return (
-        left >= margin
-        and right <= 1 - margin
-        and top >= margin
-        and bottom <= 1 - margin
-    )

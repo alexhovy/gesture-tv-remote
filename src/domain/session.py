@@ -146,10 +146,9 @@ class GestureSession(GestureSessionDebugMixin):
             secondary_gesture,
             secondary_size,
         )
-        secondary_motion_gesture = (
-            secondary_gesture
-            if secondary_gesture in {DEBUG_UNKNOWN, GESTURE_PINCH, GESTURE_POINT}
-            else None
+        secondary_motion_gesture = self._secondary_motion_gesture(
+            secondary_gesture,
+            secondary_command_gesture,
         )
         effective_secondary_gesture = self._effective_secondary_motion_gesture(
             secondary_motion_gesture,
@@ -179,8 +178,10 @@ class GestureSession(GestureSessionDebugMixin):
         if command_gesture == GESTURE_HOME:
             self.reset_motion_tracking()
 
-        if secondary_hand is None:
+        if secondary_hand is None and not self._secondary_missing_within_grace(now):
             self.reset_motion_tracking()
+        elif secondary_hand is None:
+            self._mark_motion_grace("secondary_grace")
 
         if command_gesture is None and secondary_hand is not None:
             pinch_commandable = (
@@ -217,7 +218,9 @@ class GestureSession(GestureSessionDebugMixin):
                     now,
                 )
                 command_gesture = volume_gesture
-            elif secondary_motion_gesture != GESTURE_PINCH:
+            elif effective_secondary_gesture == GESTURE_PINCH:
+                self._mark_motion_grace("motion_grace")
+            elif effective_secondary_gesture != GESTURE_PINCH:
                 self._reset_volume_tracking()
 
             if (
@@ -243,7 +246,9 @@ class GestureSession(GestureSessionDebugMixin):
                     now,
                 )
                 command_gesture = pointer_gesture
-            elif secondary_motion_gesture != GESTURE_POINT:
+            elif command_gesture is None and effective_secondary_gesture == GESTURE_POINT:
+                self._mark_motion_grace("motion_grace")
+            elif effective_secondary_gesture != GESTURE_POINT:
                 self._reset_pointer_tracking()
 
             if command_gesture is None and secondary_command_gesture == GESTURE_TWO_FINGERS:
@@ -366,6 +371,25 @@ class GestureSession(GestureSessionDebugMixin):
 
     def _reset_pointer_diagnostics(self) -> None:
         self._pointer.reset_diagnostics()
+
+    def _mark_motion_grace(self, reason: str) -> None:
+        if self._pointer.anchor is not None:
+            self._pointer.last_blocked_reason = reason
+        if self._volume.anchor is not None:
+            self._volume.last_blocked_reason = reason
+
+    @staticmethod
+    def _secondary_motion_gesture(
+        secondary_gesture: str | None,
+        secondary_command_gesture: str | None,
+    ) -> str | None:
+        if secondary_gesture is None:
+            return None
+        if secondary_gesture in {GESTURE_PINCH, GESTURE_POINT}:
+            if secondary_command_gesture == secondary_gesture:
+                return secondary_gesture
+            return DEBUG_UNKNOWN
+        return DEBUG_UNKNOWN
 
     def _effective_secondary_motion_gesture(
         self,

@@ -237,7 +237,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
 
 
 class DetectionCropModeTrackerTests(unittest.TestCase):
-    def test_secondary_stays_wide_after_stabilizing(self) -> None:
+    def test_secondary_switches_to_precise_after_stabilizing(self) -> None:
         tracker = DetectionCropModeTracker(secondary_stabilize_frames=3)
 
         self.assertEqual(tracker.mode, "acquisition")
@@ -264,10 +264,10 @@ class DetectionCropModeTrackerTests(unittest.TestCase):
             _decision_with_hands(2),
             CropRect(0.20, 0.20, 0.60, 0.60),
         )
-        self.assertEqual(tracker.mode, "stabilizing")
-        self.assertFalse(tracker.precise)
+        self.assertEqual(tracker.mode, "precise")
+        self.assertTrue(tracker.precise)
         self.assertEqual(tracker.secondary_stable_frames, 3)
-        self.assertEqual(tracker.precision_blocked_reason, "wide_tracking")
+        self.assertEqual(tracker.precision_blocked_reason, "secondary_active")
 
     def test_secondary_miss_returns_to_acquisition_mode(self) -> None:
         tracker = DetectionCropModeTracker(secondary_stabilize_frames=2)
@@ -290,19 +290,7 @@ class DetectionCropModeTrackerTests(unittest.TestCase):
         self.assertEqual(tracker.secondary_stable_frames, 0)
         self.assertEqual(tracker.precision_blocked_reason, "no_secondary")
 
-    def test_precision_waits_when_current_crop_is_too_tight_for_hands(self) -> None:
-        tracker = DetectionCropModeTracker(secondary_stabilize_frames=1)
-
-        tracker.record_decision(
-            _decision_with_hands(2),
-            CropRect(0.38, 0.38, 0.20, 0.20),
-        )
-
-        self.assertEqual(tracker.mode, "stabilizing")
-        self.assertFalse(tracker.precise)
-        self.assertEqual(tracker.precision_blocked_reason, "crop_too_tight")
-
-    def test_precision_waits_when_hands_are_too_small(self) -> None:
+    def test_precision_uses_display_crop_when_secondary_is_small(self) -> None:
         tracker = DetectionCropModeTracker(secondary_stabilize_frames=1)
 
         tracker.record_decision(
@@ -310,9 +298,9 @@ class DetectionCropModeTrackerTests(unittest.TestCase):
             CropRect(0.20, 0.20, 0.60, 0.60),
         )
 
-        self.assertEqual(tracker.mode, "stabilizing")
-        self.assertFalse(tracker.precise)
-        self.assertEqual(tracker.precision_blocked_reason, "hand_too_small")
+        self.assertEqual(tracker.mode, "precise")
+        self.assertTrue(tracker.precise)
+        self.assertEqual(tracker.precision_blocked_reason, "secondary_active")
 
 
 class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):

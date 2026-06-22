@@ -128,6 +128,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIsNone(undersized.command_gesture)
         self.assertIn("secondary_pose_blocked=hand_too_small", undersized.debug_message)
         self.assertIn("anchor=(0.50,0.50)", undersized.debug_message)
+        self.assertIn("blocked=motion_grace", undersized.debug_message)
         self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
         self.assertIn("anchor=(0.50,0.50)", right.debug_message)
 
@@ -138,10 +139,39 @@ class SessionPointerTests(unittest.TestCase):
         self._point(session, primary, (0.50, 0.50), now=0.0)
         self._point(session, primary, (0.71, 0.50), now=0.1)
         missing_secondary = session.evaluate([primary], now=0.2)
+        expired = session.evaluate([primary], now=0.8)
 
         self.assertIsNone(missing_secondary.command_gesture)
         self.assertIn("secondary=none", missing_secondary.debug_message)
-        self.assertIn("pointer_state=anchor=none:active=none", missing_secondary.debug_message)
+        self.assertIn("pointer_state=anchor=(0.50,0.50)", missing_secondary.debug_message)
+        self.assertIn("blocked=secondary_grace", missing_secondary.debug_message)
+        self.assertIn("pointer_state=anchor=none:active=none", expired.debug_message)
+
+    def test_pointer_preserves_anchor_through_brief_open_palm_misread(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._point(session, primary, (0.50, 0.50), now=0.0)
+        misread = session.evaluate(
+            [
+                primary,
+                hand_state(
+                    GESTURE_OPEN_PALM,
+                    center=(0.67, 0.50),
+                    size=0.20,
+                    index_position=(0.67, 0.50),
+                ),
+            ],
+            now=0.2,
+        )
+        right = self._point(session, primary, (0.67, 0.50), now=0.3)
+
+        self.assertIsNone(misread.command_gesture)
+        self.assertIn("secondary=OPEN_PALM effective_secondary=POINT", misread.debug_message)
+        self.assertIn("anchor=(0.50,0.50)", misread.debug_message)
+        self.assertIn("blocked=motion_grace", misread.debug_message)
+        self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIn("anchor=(0.50,0.50)", right.debug_message)
 
     def test_pointer_uses_index_tip_for_horizontal_movement(self) -> None:
         session = GestureSession(app_config())

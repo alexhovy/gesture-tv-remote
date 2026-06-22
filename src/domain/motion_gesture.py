@@ -32,15 +32,17 @@ class SecondaryGestureInterpreter:
             self.recent_motion_gestures.append((now, secondary_gesture))
             return secondary_gesture
 
-        if (
-            secondary_gesture == DEBUG_UNKNOWN
-            and self.last_motion_gesture is not None
-            and self.last_motion_time is not None
-            and now - self.last_motion_time <= self.motion_grace_seconds
-        ):
+        if secondary_gesture is not None and self._last_motion_within_grace(now):
             return self.last_motion_gesture
 
         return None
+
+    def _last_motion_within_grace(self, now: float) -> bool:
+        return (
+            self.last_motion_gesture is not None
+            and self.last_motion_time is not None
+            and now - self.last_motion_time <= self.motion_grace_seconds
+        )
 
     def missing_within_grace(self, now: float) -> bool:
         return (

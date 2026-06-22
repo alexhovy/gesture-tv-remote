@@ -59,8 +59,8 @@ the finger entered the center return area before attempting the next direction.
 Auto-zoom has acquisition and stabilizing detection modes. When only the primary
 hand is active, MediaPipe uses a wider detection crop than the preview so the
 secondary hand can be lifted naturally beside the primary. Once the secondary
-hand first appears, detection stays wide while the secondary hand remains active
-or in grace. The preview can still show the tighter zoom crop, but MediaPipe
-detection does not switch to that tight crop during two-hand tracking. This
-keeps both hands easy to acquire and prevents the preview crop from making
-far-away hands flicker in and out of detection.
+hand first appears, detection stays wide only while stabilizing. After the
+secondary hand is active, MediaPipe detection uses the same precise crop as the
+preview for both pointer navigation and volume gestures. Brief secondary
+misreads keep the existing pointer or volume anchor through grace, but commands
+wait for a commandable point or pinch frame before emitting.

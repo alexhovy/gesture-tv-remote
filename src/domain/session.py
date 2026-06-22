@@ -3,11 +3,9 @@ from src.domain.constants import (
     DEBUG_UNKNOWN,
     GESTURE_FIST,
     GESTURE_HOME,
-    GESTURE_MIC,
     GESTURE_OPEN_PALM,
     GESTURE_PINCH,
     GESTURE_POINT,
-    GESTURE_TWO_FINGERS,
 )
 from src.domain.landmarks import LANDMARK_INDEX_TIP, landmark_position
 from src.domain.motion_filter import (
@@ -16,11 +14,14 @@ from src.domain.motion_filter import (
     classify_volume_joystick,
 )
 from src.domain.activation_tracker import ActiveHandTracker
-from src.domain.command_decision import CommandDecision, EmitDebounce
+from src.domain.command_decision import (
+    CommandDecision,
+    EmitDebounce,
+    TwoFingerBackDecision,
+)
 from src.domain.motion_gesture import (
     MotionGestureInterpreter,
     MotionJoystickState,
-    WaveGestureState,
 )
 from src.domain.session_debug import GestureSessionDebugMixin
 from src.domain.session_types import GestureDecision, HandState
@@ -44,10 +45,10 @@ class GestureSession(GestureSessionDebugMixin):
             motion_grace_seconds=self.MOTION_GRACE_SECONDS
         )
         self._command_decision = CommandDecision()
+        self._two_finger_back = TwoFingerBackDecision()
         self._emit = EmitDebounce()
         self._volume = MotionJoystickState()
         self._pointer = MotionJoystickState()
-        self._wave = WaveGestureState()
         self._pose_blocked_reason: str | None = None
 
     def update_config(self, config: AppConfig) -> None:
@@ -130,8 +131,7 @@ class GestureSession(GestureSessionDebugMixin):
         command_gesture = None
         volume_gesture = None
         pointer_gesture = None
-        mic_gesture = None
-        wave_gesture = None
+        two_finger_back_gesture = None
         volume_distance = 0.0
         pointer_distance = 0.0
         pointer_position = None
@@ -238,13 +238,9 @@ class GestureSession(GestureSessionDebugMixin):
                 else:
                     self._reset_pointer_tracking()
 
-            if command_gesture is None and active_gesture == GESTURE_TWO_FINGERS:
-                mic_gesture = GESTURE_MIC
-                command_gesture = mic_gesture
-
             if command_gesture is None:
-                wave_gesture = self._wave_command(active_gesture, active_center, now)
-                command_gesture = wave_gesture
+                two_finger_back_gesture = self._two_finger_back.evaluate(active_gesture)
+                command_gesture = two_finger_back_gesture
 
         self._active.previous_gesture = active_gesture
         anchor_locked = self._motion_anchor_locked()
@@ -263,9 +259,8 @@ class GestureSession(GestureSessionDebugMixin):
                 f"pose_blocked={self._pose_blocked_reason or DEBUG_NONE} "
                 f"volume={volume_gesture or DEBUG_NONE} "
                 f"pointer={pointer_gesture or DEBUG_NONE} "
-                f"mic={mic_gesture or DEBUG_NONE} "
-                f"wave={wave_gesture or DEBUG_NONE} "
-                f"wave_state={self._debug_wave_state()} "
+                f"two_finger_back={two_finger_back_gesture or DEBUG_NONE} "
+                f"two_finger_back_state={self._debug_two_finger_back_state()} "
                 f"size={active_size:.2f} "
                 f"pointer_distance={pointer_distance:.2f} "
                 f"volume_distance={volume_distance:.2f} "
@@ -305,9 +300,9 @@ class GestureSession(GestureSessionDebugMixin):
         self._motion.reset()
         self._emit.record_idle()
         self._command_decision.reset()
+        self._two_finger_back.reset()
         self._reset_volume_tracking()
         self._reset_pointer_tracking()
-        self._wave.reset()
         self._pose_blocked_reason = None
 
     def _volume_joystick_command(
@@ -360,26 +355,11 @@ class GestureSession(GestureSessionDebugMixin):
         if self._volume.anchor is not None:
             self._volume.last_blocked_reason = reason
 
-    def _wave_command(
-        self,
-        active_gesture: str | None,
-        active_center: tuple[float, float],
-        now: float,
-    ) -> str | None:
-        if active_gesture != GESTURE_OPEN_PALM:
-            self._wave.reset_for_pose_change()
-            return None
-        return self._wave.command(
-            active_center,
-            now,
-            self._config.gesture.debounce_seconds,
-        )
-
-    def _debug_wave_state(self) -> str:
+    def _debug_two_finger_back_state(self) -> str:
         return (
-            f"armed={self._wave.armed}"
-            f":samples={len(self._wave.positions)}"
-            f":blocked={self._wave.last_blocked_reason or DEBUG_NONE}"
+            f"armed={self._two_finger_back.armed}"
+            f":frames={self._two_finger_back.two_finger_frames}"
+            f":required={self._two_finger_back.required_frames}"
         )
 
     def _motion_anchor_locked(self) -> bool:

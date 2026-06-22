@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 
-from src.domain.constants import DEBUG_UNKNOWN, GESTURE_BACK, GESTURE_PINCH, GESTURE_POINT
+from src.domain.constants import DEBUG_UNKNOWN, GESTURE_PINCH, GESTURE_POINT
 from src.domain.gesture_history import BoundedHistory
 from src.domain.motion_filter import JoystickDecision
 from src.domain.session_types import HandState
@@ -153,83 +153,3 @@ class MotionJoystickState:
 
         self.last_blocked_reason = "holding"
         return None
-
-
-@dataclass
-class WaveGestureState:
-    min_horizontal_distance: float = 0.20
-    max_vertical_distance: float = 0.12
-    max_window_seconds: float = 0.8
-    min_direction_distance: float = 0.06
-    positions: BoundedHistory[tuple[float, tuple[float, float]]] = field(
-        default_factory=lambda: BoundedHistory[tuple[float, tuple[float, float]]](12)
-    )
-    armed: bool = True
-    last_emit_time: float | None = None
-    last_blocked_reason: str | None = None
-
-    def reset(self) -> None:
-        self.positions.clear()
-        self.armed = True
-        self.last_emit_time = None
-        self.last_blocked_reason = None
-
-    def reset_for_pose_change(self) -> None:
-        self.positions.clear()
-        self.armed = True
-        self.last_blocked_reason = "pose_changed"
-
-    def command(self, center: tuple[float, float], now: float, debounce_seconds: float) -> str | None:
-        self.positions.append((now, center))
-        recent = [
-            (timestamp, position)
-            for timestamp, position in self.positions.values()
-            if now - timestamp <= self.max_window_seconds
-        ]
-        if len(recent) < 3:
-            if not self.armed:
-                self.armed = True
-            self.last_blocked_reason = "collecting"
-            return None
-
-        xs = [position[0] for _, position in recent]
-        ys = [position[1] for _, position in recent]
-        horizontal_distance = max(xs) - min(xs)
-        vertical_distance = max(ys) - min(ys)
-        if not self.armed and horizontal_distance < self.min_direction_distance:
-            self.armed = True
-        if horizontal_distance < self.min_horizontal_distance:
-            self.last_blocked_reason = "horizontal_too_small"
-            return None
-        if vertical_distance > self.max_vertical_distance:
-            self.last_blocked_reason = "vertical_too_large"
-            return None
-        if not self._has_reversal(recent):
-            self.last_blocked_reason = "no_reversal"
-            return None
-        if not self.armed:
-            self.last_blocked_reason = "awaiting_reset"
-            return None
-        if self.last_emit_time is not None and now - self.last_emit_time < debounce_seconds:
-            self.last_blocked_reason = "debounced"
-            return None
-
-        self.armed = False
-        self.last_emit_time = now
-        self.last_blocked_reason = "emitted"
-        return GESTURE_BACK
-
-    def _has_reversal(
-        self,
-        positions: list[tuple[float, tuple[float, float]]],
-    ) -> bool:
-        previous_direction = 0
-        for (_, previous), (_, current) in zip(positions, positions[1:], strict=False):
-            dx = current[0] - previous[0]
-            if abs(dx) < self.min_direction_distance:
-                continue
-            direction = 1 if dx > 0 else -1
-            if previous_direction and direction != previous_direction:
-                return True
-            previous_direction = direction
-        return False

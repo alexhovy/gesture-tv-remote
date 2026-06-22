@@ -40,5 +40,5 @@ the current gesture MVP command surface. They are tracked as `not_implemented`
 when a future adapter extension could reasonably add them without changing the
 gesture pipeline.
 
-Voice capture is not part of the key-command table. The `MIC` gesture asks the
-active adapter for a voice stream; currently only Android TV returns one.
+Voice capture is not part of the key-command table. Android TV can provide a
+voice stream, but no default gesture currently starts voice capture.

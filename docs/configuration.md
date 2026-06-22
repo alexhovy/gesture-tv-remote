@@ -42,8 +42,8 @@ Set `GESTURE_TV_ADAPTER` to select the TV integration:
 | `webos` | `aiowebostv` | Supports key commands. Accept the pairing prompt on the TV when required. |
 | `roku` | `rokuecp` | Supports ECP key commands. |
 
-The `MIC` gesture starts voice capture only when the selected adapter returns a
-voice stream. Unsupported adapters log that microphone capture is skipped.
+Voice capture is available only when the selected adapter returns a voice
+stream. No default gesture currently starts microphone capture.
 
 ## Model File
 

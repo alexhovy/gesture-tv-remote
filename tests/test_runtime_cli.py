@@ -2,6 +2,7 @@ import unittest
 from unittest.mock import Mock, patch
 
 from src.runtime import cli
+from src.runtime import gesture_app
 
 
 class RuntimeCliTests(unittest.TestCase):
@@ -45,6 +46,22 @@ class RuntimeCliTests(unittest.TestCase):
             cli.run_all()
 
         run_gesture.assert_called_once_with(configure_logging=False)
+
+    def test_windows_gesture_runtime_uses_selector_event_loop_policy(self) -> None:
+        policy = object()
+        with (
+            patch("src.runtime.gesture_app.sys.platform", "win32"),
+            patch(
+                "src.runtime.gesture_app.asyncio.WindowsSelectorEventLoopPolicy",
+                return_value=policy,
+                create=True,
+            ) as policy_factory,
+            patch("src.runtime.gesture_app.asyncio.set_event_loop_policy") as set_policy,
+        ):
+            gesture_app._configure_windows_event_loop_policy()
+
+        policy_factory.assert_called_once_with()
+        set_policy.assert_called_once_with(policy)
 
 
 if __name__ == "__main__":

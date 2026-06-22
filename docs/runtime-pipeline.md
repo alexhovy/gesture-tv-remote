@@ -13,7 +13,7 @@ runtime collaborators:
 | `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies the current zoom crop for detection and display. |
 | `DetectionPipeline` | Converts BGR frames to RGB and submits them to MediaPipe live-stream detection. |
 | `GestureDecisionPipeline` | Projects hand states back from the active detection crop, evaluates the domain session, and updates auto-zoom for the next frame. |
-| `CommandDispatchPipeline` | Applies gesture debounce, starts voice capture for `MIC`, and enqueues TV key commands. |
+| `CommandDispatchPipeline` | Applies gesture debounce and enqueues TV key commands. |
 | `DisplayPipeline` | Draws detected hand landmarks and renders the OpenCV preview window. |
 | `PipelineMetrics` | Tracks lightweight counters and timings for debug diagnostics. |
 
@@ -47,9 +47,8 @@ Samsung and Roku clients use one thread-bound executor each because their
 libraries are synchronous. That keeps each TV connection opened, used, retried,
 and closed on one worker thread.
 
-Voice capture runs only when requested by the `MIC` gesture and only when the
-selected adapter can provide a voice stream. Its audio queue is bounded and
-drops stale chunks.
+Voice capture remains adapter-scoped infrastructure, but no default gesture
+currently starts it. Its audio queue is bounded and drops stale chunks.
 
 Shutdown is owned by `GestureRemoteService._cleanup`. It cancels voice capture,
 stops frame capture, closes MediaPipe, releases the camera, closes OpenCV

@@ -1,10 +1,12 @@
 from dataclasses import dataclass
 
 from src.domain.constants import (
+    GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
     GESTURE_OPEN_PALM,
     GESTURE_OPEN_TO_FIST,
+    GESTURE_TWO_FINGERS,
 )
 
 
@@ -51,6 +53,31 @@ class CommandDecision:
         if gesture not in {GESTURE_FIST, None} and previous_gesture != GESTURE_FIST:
             self.reset()
 
+        return None
+
+
+@dataclass
+class TwoFingerBackDecision:
+    required_frames: int = 3
+    two_finger_frames: int = 0
+    armed: bool = False
+
+    def reset(self) -> None:
+        self.two_finger_frames = 0
+        self.armed = False
+
+    def evaluate(self, gesture: str | None) -> str | None:
+        if gesture == GESTURE_TWO_FINGERS:
+            self.two_finger_frames += 1
+            if self.two_finger_frames >= self.required_frames:
+                self.armed = True
+            return None
+
+        if gesture == GESTURE_OPEN_PALM and self.armed:
+            self.reset()
+            return GESTURE_BACK
+
+        self.reset()
         return None
 
 

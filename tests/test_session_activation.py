@@ -1,9 +1,9 @@
 import unittest
 
 from src.domain.constants import (
+    GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
-    GESTURE_MIC,
     GESTURE_OPEN_PALM,
     GESTURE_OPEN_TO_FIST,
     GESTURE_POINT,
@@ -62,17 +62,20 @@ class SessionActivationTests(unittest.TestCase):
 
         self.assertEqual(decision.command_gesture, GESTURE_HOME)
 
-    def test_two_fingers_emits_mic(self) -> None:
+    def test_two_fingers_then_open_emits_back(self) -> None:
         session = GestureSession(app_config())
         open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         two_fingers = hand_state(GESTURE_TWO_FINGERS, center=(0.20, 0.50), size=0.20)
 
         session.evaluate([open_hand], now=0.0)
-        decision = session.evaluate([two_fingers], now=0.1)
+        session.evaluate([two_fingers], now=0.1)
+        session.evaluate([two_fingers], now=0.2)
+        session.evaluate([two_fingers], now=0.3)
+        decision = session.evaluate([open_hand], now=0.4)
 
         self.assertTrue(decision.activated)
-        self.assertEqual(decision.command_gesture, GESTURE_MIC)
-        self.assertIn("mic=MIC", decision.debug_message)
+        self.assertEqual(decision.command_gesture, GESTURE_BACK)
+        self.assertIn("two_finger_back=BACK", decision.debug_message)
 
     def test_decision_does_not_activate_from_non_upright_open_palm(self) -> None:
         session = GestureSession(app_config())

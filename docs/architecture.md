@@ -61,8 +61,7 @@ The session transition model remains:
 1. An upright open palm activates the active hand.
 2. The active hand is matched by position while brief dropouts stay active for
    the configured grace interval.
-3. The active hand can produce select, HOME, BACK, pointer, volume, or
-   microphone gestures.
+3. The active hand can produce select, HOME, BACK, pointer, or volume gestures.
 4. Pointer and volume gestures arm from a fixed anchor, emit after leaving the
    neutral area, repeat while held, and re-arm after returning to neutral.
 5. Loss of activation clears pending fist decisions and motion anchors.

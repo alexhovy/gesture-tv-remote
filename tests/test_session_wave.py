@@ -6,6 +6,7 @@ from src.domain.constants import (
     GESTURE_OPEN_PALM,
     GESTURE_PINCH,
     GESTURE_POINT,
+    GESTURE_TWO_FINGERS,
 )
 from src.domain.session import GestureSession
 from tests.config_helpers import app_config
@@ -13,22 +14,37 @@ from tests.session_helpers import hand_state
 
 
 class SessionWaveTests(unittest.TestCase):
-    def test_open_palm_left_right_wave_emits_back(self) -> None:
+    def test_two_fingers_then_open_emits_back(self) -> None:
         session = GestureSession(app_config())
         self._open(session, 0.50, now=0.0)
-        self._open(session, 0.35, now=0.1)
-        decision = self._open(session, 0.62, now=0.2)
+        self._two_fingers(session, now=0.1)
+        self._two_fingers(session, now=0.2)
+        self._two_fingers(session, now=0.3)
+        decision = self._open(session, 0.50, now=0.4)
 
         self.assertEqual(decision.command_gesture, GESTURE_BACK)
-        self.assertIn("wave=BACK", decision.debug_message)
+        self.assertIn("two_finger_back=BACK", decision.debug_message)
 
-    def test_open_palm_right_left_wave_emits_back(self) -> None:
+    def test_single_two_finger_misread_does_not_emit_back(self) -> None:
         session = GestureSession(app_config())
         self._open(session, 0.50, now=0.0)
-        self._open(session, 0.65, now=0.1)
-        decision = self._open(session, 0.38, now=0.2)
+        self._two_fingers(session, now=0.1)
+        decision = self._open(session, 0.50, now=0.2)
 
-        self.assertEqual(decision.command_gesture, GESTURE_BACK)
+        self.assertIsNone(decision.command_gesture)
+
+    def test_unknown_between_two_fingers_resets_back(self) -> None:
+        session = GestureSession(app_config())
+        self._open(session, 0.52, now=0.0)
+        self._two_fingers(session, now=0.1)
+        self._two_fingers(session, now=0.2)
+        session.evaluate(
+            [hand_state(None, center=(0.50, 0.50), size=0.20)],
+            now=0.3,
+        )
+        decision = self._open(session, 0.50, now=0.4)
+
+        self.assertIsNone(decision.command_gesture)
 
     def test_slow_drift_without_reversal_does_not_emit_back(self) -> None:
         session = GestureSession(app_config())
@@ -38,7 +54,7 @@ class SessionWaveTests(unittest.TestCase):
         decision = self._open(session, 0.72, now=0.6)
 
         self.assertIsNone(decision.command_gesture)
-        self.assertIn("blocked=no_reversal", decision.debug_message)
+        self.assertIn("two_finger_back_state=armed=False", decision.debug_message)
 
     def test_vertical_open_palm_movement_does_not_emit_back(self) -> None:
         session = GestureSession(app_config())
@@ -56,9 +72,9 @@ class SessionWaveTests(unittest.TestCase):
         )
 
         self.assertIsNone(decision.command_gesture)
-        self.assertIn("blocked=vertical_too_large", decision.debug_message)
+        self.assertIn("two_finger_back_state=armed=False", decision.debug_message)
 
-    def test_point_pinch_and_fist_do_not_emit_wave_back(self) -> None:
+    def test_point_pinch_and_fist_do_not_emit_back(self) -> None:
         session = GestureSession(app_config())
         self._open(session, 0.50, now=0.0)
 
@@ -79,25 +95,32 @@ class SessionWaveTests(unittest.TestCase):
         self.assertNotEqual(pinch.command_gesture, GESTURE_BACK)
         self.assertNotEqual(fist.command_gesture, GESTURE_BACK)
 
-    def test_wave_back_does_not_repeat_until_open_palm_settles(self) -> None:
+    def test_two_finger_back_does_not_repeat_while_open_palm_is_held(self) -> None:
         session = GestureSession(app_config(debounce_seconds=0.3))
         self._open(session, 0.50, now=0.0)
-        self._open(session, 0.35, now=0.1)
-        first = self._open(session, 0.62, now=0.2)
-        blocked = self._open(session, 0.35, now=0.3)
-        self._open(session, 0.50, now=1.2)
-        self._open(session, 0.50, now=1.3)
-        self._open(session, 0.35, now=1.4)
-        second = self._open(session, 0.62, now=1.5)
+        self._two_fingers(session, now=0.1)
+        self._two_fingers(session, now=0.2)
+        self._two_fingers(session, now=0.3)
+        first = self._open(session, 0.50, now=0.4)
+        blocked = self._open(session, 0.50, now=0.5)
+        self._two_fingers(session, now=1.2)
+        self._two_fingers(session, now=1.3)
+        self._two_fingers(session, now=1.4)
+        second = self._open(session, 0.50, now=1.5)
 
         self.assertEqual(first.command_gesture, GESTURE_BACK)
         self.assertIsNone(blocked.command_gesture)
-        self.assertIn("blocked=awaiting_reset", blocked.debug_message)
         self.assertEqual(second.command_gesture, GESTURE_BACK)
 
     def _open(self, session: GestureSession, x: float, now: float):
         return session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(x, 0.50), size=0.20)],
+            now=now,
+        )
+
+    def _two_fingers(self, session: GestureSession, now: float):
+        return session.evaluate(
+            [hand_state(GESTURE_TWO_FINGERS, center=(0.50, 0.50), size=0.20)],
             now=now,
         )
 

@@ -9,14 +9,13 @@ then performs every command gesture. An open palm is neutral.
 | --- | --- |
 | Open palm closes to fist, then opens again | SELECT / DPAD_CENTER |
 | Fist held past the hold threshold | HOME |
-| Open palm horizontal wave | BACK |
+| Two fingers held briefly, then open palm | BACK |
 | Pinch moves up | VOLUME_UP |
 | Pinch moves down | VOLUME_DOWN |
 | Pointing hand moves left | DPAD_LEFT |
 | Pointing hand moves right | DPAD_RIGHT |
 | Pointing hand moves up | DPAD_UP |
 | Pointing hand moves down | DPAD_DOWN |
-| Two fingers up | TV voice input |
 
 ## Gesture Ownership
 
@@ -40,10 +39,10 @@ before the HOME hold threshold. Holding the fist through
 `GESTURE_TV_FIST_HOLD_HOME_SECONDS` emits HOME once, then waits for the hand to
 open before another fist command can occur.
 
-BACK emits from an open-palm horizontal wave. The wave requires clear
-side-to-side movement with one direction reversal inside a short window. Vertical-heavy
-movement is ignored, and point, pinch, fist, and two-finger poses do not trigger
-BACK.
+BACK emits when the active hand holds two fingers up for several consecutive
+frames and then returns to an open palm. A single two-finger misread does not
+emit BACK, and point, pinch, fist, unknown, or missing-hand frames reset the
+pending BACK gesture.
 
 Point navigation tracks the active hand's index fingertip so left/right intent
 does not depend on moving the whole hand. The first point frame captures a fixed

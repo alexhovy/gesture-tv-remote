@@ -13,7 +13,8 @@ audio, or TV adapter libraries.
 5. `activation_tracker.py` maintains active-hand activation and identity
    matching.
 6. `motion_gesture.py` applies motion grace and joystick state.
-7. `command_decision.py` decides fist select/home transitions and emit debounce.
+7. `command_decision.py` decides fist select/home transitions, two-finger BACK,
+   and emit debounce.
 8. `commands.py` maps command gestures to TV commands.
 
 ## Activation
@@ -64,10 +65,8 @@ memory over time.
 | --- | --- |
 | Open palm closes to fist and opens before hold threshold | `OPEN_TO_FIST` |
 | Fist held through hold threshold | `HOME` |
-| Open palm horizontal wave | `BACK` |
+| Two fingers held for several frames, then open palm | `BACK` |
 | Pinch moves up/down | `VOLUME_UP` / `VOLUME_DOWN` |
 | Point moves left/right/up/down | `POINT_LEFT` / `POINT_RIGHT` / `POINT_UP` / `POINT_DOWN` |
-| Two fingers up | `MIC` |
 
-`commands.py` maps command gestures to adapter-neutral TV commands. `MIC` is
-handled by voice capture instead of the key-command map.
+`commands.py` maps command gestures to adapter-neutral TV commands.

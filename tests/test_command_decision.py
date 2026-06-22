@@ -1,11 +1,18 @@
 import unittest
 
-from src.domain.command_decision import CommandDecision, EmitDebounce
+from src.domain.command_decision import (
+    CommandDecision,
+    EmitDebounce,
+    TwoFingerBackDecision,
+)
 from src.domain.constants import (
+    GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
     GESTURE_OPEN_PALM,
     GESTURE_OPEN_TO_FIST,
+    GESTURE_POINT,
+    GESTURE_TWO_FINGERS,
 )
 
 
@@ -92,6 +99,33 @@ class EmitDebounceTests(unittest.TestCase):
         debounce.record_emit("HOME", now=1.0)
         self.assertFalse(debounce.should_emit("HOME", now=1.1, debounce_seconds=0.3))
         self.assertTrue(debounce.should_emit("HOME", now=1.31, debounce_seconds=0.3))
+
+
+class TwoFingerBackDecisionTests(unittest.TestCase):
+    def test_three_two_finger_frames_then_open_emits_back(self) -> None:
+        decision = TwoFingerBackDecision()
+
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS))
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS))
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS))
+
+        self.assertEqual(decision.evaluate(GESTURE_OPEN_PALM), GESTURE_BACK)
+
+    def test_single_two_finger_frame_does_not_emit_back(self) -> None:
+        decision = TwoFingerBackDecision()
+
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS))
+
+        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM))
+
+    def test_other_gesture_resets_armed_back(self) -> None:
+        decision = TwoFingerBackDecision()
+        decision.evaluate(GESTURE_TWO_FINGERS)
+        decision.evaluate(GESTURE_TWO_FINGERS)
+        decision.evaluate(GESTURE_TWO_FINGERS)
+
+        self.assertIsNone(decision.evaluate(GESTURE_POINT))
+        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM))
 
 
 if __name__ == "__main__":

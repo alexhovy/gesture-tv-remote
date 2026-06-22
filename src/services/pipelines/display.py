@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from numbers import Real
 from typing import Any
 
 import cv2
@@ -134,6 +135,7 @@ def _blend_landmark(previous: Any, current: Any, alpha: float) -> Any:
             current_value = getattr(current, attribute)
             if hasattr(previous, attribute):
                 previous_value = getattr(previous, attribute)
-                current_value = previous_value + alpha * (current_value - previous_value)
+                if isinstance(current_value, Real) and isinstance(previous_value, Real):
+                    current_value = previous_value + alpha * (current_value - previous_value)
             setattr(blended, attribute, current_value)
     return blended

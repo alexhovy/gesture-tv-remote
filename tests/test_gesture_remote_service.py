@@ -377,6 +377,45 @@ class DisplayPipelineTests(unittest.TestCase):
         self.assertAlmostEqual(drawn[1][0].x, 0.38)
         self.assertAlmostEqual(drawn[2][0].x, 0.38)
 
+    def test_detected_hand_overlay_handles_none_optional_landmark_fields(self) -> None:
+        drawn = []
+        original_draw = display_module.draw_simple_landmarks
+        display_module.draw_simple_landmarks = lambda frame, landmarks: drawn.append(landmarks)
+        try:
+            pipeline = DisplayPipeline(FakeLogger())
+            frame = FakeFrame(100, 100)
+            crop = CropRect(0.0, 0.0, 1.0, 1.0)
+
+            pipeline.draw_detected_hands(
+                frame,
+                [
+                    SimpleNamespace(
+                        landmarks=[_landmark(0.20, 0.20, z=None, visibility=None)],
+                        handedness="Right",
+                    )
+                ],
+                crop,
+                crop,
+            )
+            pipeline.draw_detected_hands(
+                frame,
+                [
+                    SimpleNamespace(
+                        landmarks=[_landmark(0.60, 0.20, z=None, visibility=None)],
+                        handedness="Right",
+                    )
+                ],
+                crop,
+                crop,
+            )
+        finally:
+            display_module.draw_simple_landmarks = original_draw
+
+        self.assertEqual(len(drawn), 2)
+        self.assertAlmostEqual(drawn[1][0].x, 0.38)
+        self.assertIsNone(drawn[1][0].z)
+        self.assertIsNone(drawn[1][0].visibility)
+
 
 class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
     async def test_activated_empty_decision_does_not_clear_last_command(self) -> None:
@@ -670,8 +709,8 @@ class FakeCommandDispatcher:
         pass
 
 
-def _landmark(x: float, y: float):
-    return SimpleNamespace(x=x, y=y)
+def _landmark(x: float, y: float, **attributes):
+    return SimpleNamespace(x=x, y=y, **attributes)
 
 
 def _decision_with_hands(

@@ -38,7 +38,6 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.AUTO_ZOOM_MAX: "2.4",
                 EnvVar.AUTO_ZOOM_PADDING: "0.5",
                 EnvVar.AUTO_ZOOM_SMOOTHING: "0.25",
-                EnvVar.SECONDARY_ACQUISITION_MAX_ZOOM: "1.4",
                 EnvVar.ANDROID_CERT_FILE: "local/android/cert.pem",
                 EnvVar.ANDROID_KEY_FILE: "local/android/key.pem",
                 EnvVar.SAMSUNG_TOKEN_FILE: "local/samsung/token.txt",
@@ -52,8 +51,9 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.VOLUME_MAX_DISTANCE: "0.3",
                 EnvVar.REQUIRE_UPRIGHT_HANDS: "false",
                 EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO: "0.5",
-                EnvVar.PRIMARY_LOST_GRACE_SECONDS: "0.45",
-                EnvVar.PRIMARY_MATCH_MAX_DISTANCE: "0.25",
+                EnvVar.FIST_HOLD_HOME_SECONDS: "0.65",
+                EnvVar.ACTIVE_HAND_LOST_GRACE_SECONDS: "0.45",
+                EnvVar.ACTIVE_HAND_MATCH_MAX_DISTANCE: "0.25",
                 EnvVar.VERBOSE_PIPELINE_DIAGNOSTICS: "true",
                 EnvVar.METRICS_LOG_SECONDS: "1.5",
             }
@@ -73,7 +73,6 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.camera.auto_zoom_max, 2.4)
         self.assertEqual(config.camera.auto_zoom_padding, 0.5)
         self.assertEqual(config.camera.auto_zoom_smoothing, 0.25)
-        self.assertEqual(config.camera.secondary_acquisition_max_zoom, 1.4)
         self.assertEqual(config.tv.android_cert_file, Path("local/android/cert.pem"))
         self.assertEqual(config.tv.android_key_file, Path("local/android/key.pem"))
         self.assertEqual(config.tv.samsung_token_file, Path("local/samsung/token.txt"))
@@ -86,12 +85,13 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.model.download_timeout_seconds, 3.5)
         self.assertEqual(config.model.download_retries, 4)
         self.assertEqual(config.gesture.debounce_seconds, 0.25)
+        self.assertEqual(config.gesture.fist_hold_home_seconds, 0.65)
         self.assertEqual(config.gesture.pointer_screen_radius_ratio, 0.12)
         self.assertEqual(config.gesture.volume_max_distance, 0.3)
         self.assertFalse(config.gesture.require_upright_hands)
         self.assertEqual(config.gesture.hand_upright_max_tilt_ratio, 0.5)
-        self.assertEqual(config.gesture.primary_lost_grace_seconds, 0.45)
-        self.assertEqual(config.gesture.primary_match_max_distance, 0.25)
+        self.assertEqual(config.gesture.active_hand_lost_grace_seconds, 0.45)
+        self.assertEqual(config.gesture.active_hand_match_max_distance, 0.25)
         self.assertTrue(config.debug.verbose_pipeline_diagnostics)
         self.assertEqual(config.performance.metrics_log_seconds, 1.5)
 
@@ -172,10 +172,6 @@ class ConfigTests(unittest.TestCase):
                     EnvVar.AUTO_ZOOM_MAX: "1.5",
                 }
             )
-
-    def test_load_config_rejects_secondary_acquisition_max_zoom_below_one(self) -> None:
-        with self.assertRaisesRegex(ValueError, "secondary_acquisition_max_zoom"):
-            load_config_from_env({EnvVar.SECONDARY_ACQUISITION_MAX_ZOOM: "0.9"})
 
     def test_load_config_rejects_confidence_outside_unit_interval(self) -> None:
         with self.assertRaisesRegex(ValueError, "min_tracking_confidence"):

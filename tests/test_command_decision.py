@@ -2,7 +2,6 @@ import unittest
 
 from src.domain.command_decision import CommandDecision, EmitDebounce
 from src.domain.constants import (
-    GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
     GESTURE_OPEN_PALM,
@@ -11,76 +10,77 @@ from src.domain.constants import (
 
 
 class CommandDecisionTests(unittest.TestCase):
-    def test_primary_close_emits_select_after_chord_window(self) -> None:
+    def test_open_fist_open_emits_select(self) -> None:
         decision = CommandDecision()
 
         self.assertIsNone(
             decision.evaluate(
                 GESTURE_OPEN_PALM,
                 GESTURE_FIST,
-                None,
-                None,
                 now=0.0,
-                home_chord_seconds=0.35,
+                fist_hold_home_seconds=0.7,
             )
         )
 
         self.assertEqual(
             decision.evaluate(
                 GESTURE_FIST,
-                GESTURE_FIST,
-                None,
-                None,
-                now=0.36,
-                home_chord_seconds=0.35,
+                GESTURE_OPEN_PALM,
+                now=0.3,
+                fist_hold_home_seconds=0.7,
             ),
             GESTURE_OPEN_TO_FIST,
         )
 
-    def test_secondary_close_emits_back_after_chord_window(self) -> None:
-        decision = CommandDecision()
-        decision.evaluate(
-            None,
-            None,
-            GESTURE_OPEN_PALM,
-            GESTURE_FIST,
-            now=0.0,
-            home_chord_seconds=0.35,
-        )
-
-        self.assertEqual(
-            decision.evaluate(
-                None,
-                None,
-                GESTURE_FIST,
-                GESTURE_FIST,
-                now=0.36,
-                home_chord_seconds=0.35,
-            ),
-            GESTURE_BACK,
-        )
-
-    def test_two_close_transitions_emit_home_inside_chord_window(self) -> None:
+    def test_held_fist_emits_home(self) -> None:
         decision = CommandDecision()
         decision.evaluate(
             GESTURE_OPEN_PALM,
             GESTURE_FIST,
-            None,
-            None,
             now=1.0,
-            home_chord_seconds=0.35,
+            fist_hold_home_seconds=0.7,
         )
 
         self.assertEqual(
             decision.evaluate(
                 GESTURE_FIST,
                 GESTURE_FIST,
-                GESTURE_OPEN_PALM,
-                GESTURE_FIST,
-                now=1.2,
-                home_chord_seconds=0.35,
+                now=1.7,
+                fist_hold_home_seconds=0.7,
             ),
             GESTURE_HOME,
+        )
+
+    def test_home_does_not_repeat_until_fist_reopens(self) -> None:
+        decision = CommandDecision()
+        decision.evaluate(
+            GESTURE_OPEN_PALM,
+            GESTURE_FIST,
+            now=1.0,
+            fist_hold_home_seconds=0.7,
+        )
+        decision.evaluate(
+            GESTURE_FIST,
+            GESTURE_FIST,
+            now=1.7,
+            fist_hold_home_seconds=0.7,
+        )
+
+        self.assertIsNone(
+            decision.evaluate(
+                GESTURE_FIST,
+                GESTURE_FIST,
+                now=2.5,
+                fist_hold_home_seconds=0.7,
+            )
+        )
+        self.assertIsNone(
+            decision.evaluate(
+                GESTURE_FIST,
+                GESTURE_OPEN_PALM,
+                now=2.6,
+                fist_hold_home_seconds=0.7,
+            )
         )
 
 

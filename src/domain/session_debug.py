@@ -9,13 +9,13 @@ class GestureSessionDebugMixin:
     def _debug_hands(
         self,
         hands: list[HandState],
-        primary_anchor: tuple[float, float] | None,
+        active_anchor: tuple[float, float] | None,
     ) -> str:
         if not hands:
             return "hand_details=[]"
 
         details = [
-            self._debug_hand(index, hand, primary_anchor)
+            self._debug_hand(index, hand, active_anchor)
             for index, hand in enumerate(hands)
         ]
         return f"hand_details=[{';'.join(details)}]"
@@ -24,14 +24,14 @@ class GestureSessionDebugMixin:
         self,
         index: int,
         hand: HandState,
-        primary_anchor: tuple[float, float] | None,
+        active_anchor: tuple[float, float] | None,
     ) -> str:
         center_x, center_y = hand.center
         distance = "none"
-        if primary_anchor is not None:
+        if active_anchor is not None:
             distance_value = math.hypot(
-                center_x - primary_anchor[0],
-                center_y - primary_anchor[1],
+                center_x - active_anchor[0],
+                center_y - active_anchor[1],
             )
             distance = f"{distance_value:.2f}"
         dx, dy, tilt_ratio = hand_upright_metrics(hand.landmarks)
@@ -50,7 +50,7 @@ class GestureSessionDebugMixin:
             f":upright_tilt={tilt}"
             f":center=({center_x:.2f},{center_y:.2f})"
             f":size={hand.size:.2f}"
-            f":primary_dist={distance}"
+            f":active_dist={distance}"
         )
 
     def _debug_pointer_state(self, current_position: tuple[float, float] | None) -> str:

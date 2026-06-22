@@ -15,44 +15,40 @@ from src.domain.motion_filter import (
     classify_pointer_joystick,
     classify_volume_joystick,
 )
-from src.domain.activation_tracker import ActivationTracker
+from src.domain.activation_tracker import ActiveHandTracker
 from src.domain.command_decision import CommandDecision, EmitDebounce
-from src.domain.motion_gesture import MotionJoystickState, SecondaryGestureInterpreter
+from src.domain.motion_gesture import (
+    MotionGestureInterpreter,
+    MotionJoystickState,
+    WaveGestureState,
+)
 from src.domain.session_debug import GestureSessionDebugMixin
 from src.domain.session_types import GestureDecision, HandState
 from src.shared.config import AppConfig
 
 
-SECONDARY_MOTION_COMMAND_MIN_HAND_SIZE = 0.10
-SECONDARY_DISCRETE_COMMAND_MIN_HAND_SIZE = 0.06
-SECONDARY_DISCRETE_COMMAND_STABLE_FRAMES = 3
-SECONDARY_MOTION_COMMAND_GESTURES = {
+MOTION_COMMAND_MIN_HAND_SIZE = 0.10
+MOTION_COMMAND_GESTURES = {
     GESTURE_PINCH,
     GESTURE_POINT,
-}
-SECONDARY_DISCRETE_COMMAND_GESTURES = {
-    GESTURE_FIST,
-    GESTURE_TWO_FINGERS,
 }
 
 
 class GestureSession(GestureSessionDebugMixin):
-    SECONDARY_MOTION_GRACE_SECONDS = 0.6
+    MOTION_GRACE_SECONDS = 0.6
 
     def __init__(self, config: AppConfig) -> None:
         self._config = config
-        self._activation = ActivationTracker()
-        self._secondary = SecondaryGestureInterpreter(
-            motion_grace_seconds=self.SECONDARY_MOTION_GRACE_SECONDS
+        self._active = ActiveHandTracker()
+        self._motion = MotionGestureInterpreter(
+            motion_grace_seconds=self.MOTION_GRACE_SECONDS
         )
         self._command_decision = CommandDecision()
         self._emit = EmitDebounce()
         self._volume = MotionJoystickState()
         self._pointer = MotionJoystickState()
-        self.secondary_previous_gesture: str | None = None
-        self._secondary_pose_candidate: str | None = None
-        self._secondary_pose_candidate_frames = 0
-        self._secondary_pose_blocked_reason: str | None = None
+        self._wave = WaveGestureState()
+        self._pose_blocked_reason: str | None = None
 
     def update_config(self, config: AppConfig) -> None:
         self._config = config
@@ -63,41 +59,23 @@ class GestureSession(GestureSessionDebugMixin):
         now: float,
         pointer_reference_size: float = 1.0,
     ) -> GestureDecision:
-        primary_anchor = self._activation.position
-        if self._activation.position is None:
-            primary_index = next(
-                (
-                    index
-                    for index, hand in enumerate(hand_states)
-                    if hand.upright and hand.gesture == GESTURE_OPEN_PALM
-                ),
-                None,
-            )
-        else:
-            primary_index = self._primary_hand_index(hand_states)
-
-        primary_hand = hand_states[primary_index] if primary_index is not None else None
-        secondary_index = next(
-            (index for index, hand in enumerate(hand_states) if index != primary_index),
-            None,
-        )
-        secondary_hand = hand_states[secondary_index] if secondary_index is not None else None
+        active_anchor = self._active.position
+        active_index = self._active_hand_index(hand_states)
+        active_hand = hand_states[active_index] if active_index is not None else None
         debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hand_states]
-        hand_debug = self._debug_hands(hand_states, primary_anchor)
+        hand_debug = self._debug_hands(hand_states, active_anchor)
 
-        if primary_hand is None:
-            if self._primary_missing_within_grace(now):
+        if active_hand is None:
+            if self._active_missing_within_grace(now):
                 command_gesture = self._command_decision.evaluate(
-                    self._activation.previous_gesture,
-                    None,
-                    self.secondary_previous_gesture,
+                    self._active.previous_gesture,
                     None,
                     now,
-                    self._config.gesture.home_chord_seconds,
+                    self._config.gesture.fist_hold_home_seconds,
                 )
                 anchor_locked = self._motion_anchor_locked()
                 if anchor_locked:
-                    self._mark_motion_grace("primary_grace")
+                    self._mark_motion_grace("active_hand_grace")
                 else:
                     self.reset_motion_tracking()
                 return GestureDecision(
@@ -105,17 +83,15 @@ class GestureSession(GestureSessionDebugMixin):
                     activated=True,
                     debug_message=(
                         f"hands={len(hand_states)} activated=True "
-                        f"gestures={debug_gestures} primary_temporarily_lost "
+                        f"gestures={debug_gestures} active_hand_temporarily_lost "
                         f"command={command_gesture or DEBUG_NONE} "
-                        f"primary_index=none secondary_index=none "
-                        f"zoom_hands=0 "
+                        f"active_index=none zoom_hands=0 "
                         f"pointer_state={self._debug_pointer_state(None)} "
                         f"volume_state={self._debug_volume_state()} "
-                        f"zoom_freeze_reason={'motion_anchor' if anchor_locked else 'primary_grace'} "
-                        f"anchor_locked={anchor_locked} "
-                        f"{hand_debug}"
+                        f"zoom_freeze_reason={'motion_anchor' if anchor_locked else 'active_hand_grace'} "
+                        f"anchor_locked={anchor_locked} {hand_debug}"
                     ),
-                    primary_temporarily_lost=True,
+                    active_temporarily_lost=True,
                     freeze_zoom=anchor_locked,
                     anchor_locked=anchor_locked,
                     pointer_debug=self._pointer_debug(None),
@@ -127,59 +103,35 @@ class GestureSession(GestureSessionDebugMixin):
                 activated=False,
                 debug_message=(
                     f"hands={len(hand_states)} activated=False "
-                    f"gestures={debug_gestures} need_primary_open_palm_or_upright "
-                    f"primary_index=none secondary_index=none "
-                    f"zoom_hands=0 {hand_debug}"
+                    f"gestures={debug_gestures} need_upright_open_palm "
+                    f"active_index=none zoom_hands=0 {hand_debug}"
                 ),
             )
 
-        if not primary_hand.upright:
+        if not active_hand.upright:
             self._reset_activation()
             return GestureDecision(
                 command_gesture=None,
                 activated=False,
                 debug_message=(
                     f"hands={len(hand_states)} activated=False "
-                    f"gestures={debug_gestures} need_primary_open_palm_or_upright "
-                    f"primary_index={primary_index} secondary_index=none "
-                    f"zoom_hands=0 {hand_debug}"
+                    f"gestures={debug_gestures} need_upright_open_palm "
+                    f"active_index={active_index} zoom_hands=0 {hand_debug}"
                 ),
             )
 
-        if secondary_hand is not None and not secondary_hand.upright:
-            secondary_hand = None
-            secondary_index = None
-            if not self._motion_anchor_locked():
-                self.reset_motion_tracking()
-
-        primary_gesture = primary_hand.gesture
-        self._activation.update_seen(primary_hand, now)
-        secondary_gesture = secondary_hand.gesture if secondary_hand else None
-        secondary_center = secondary_hand.center if secondary_hand else None
-        secondary_size = secondary_hand.size if secondary_hand else 0.0
-        zoom_landmarks = [primary_hand.landmarks]
-        if secondary_hand is not None:
-            zoom_landmarks.append(secondary_hand.landmarks)
-            self._secondary.record_seen(now)
-        freeze_zoom = secondary_hand is not None or self._secondary_missing_within_grace(now)
-        zoom_freeze_reason = self._zoom_freeze_reason(secondary_hand, now)
-        secondary_command_gesture = self._secondary_command_gesture(
-            secondary_gesture,
-            secondary_size,
-        )
-        secondary_motion_gesture = self._secondary_motion_gesture(
-            secondary_gesture,
-            secondary_command_gesture,
-        )
-        effective_secondary_gesture = self._effective_secondary_motion_gesture(
-            secondary_motion_gesture,
-            now,
-        )
+        active_gesture = active_hand.gesture
+        self._active.update_seen(active_hand, now)
+        self._motion.record_seen(now)
+        zoom_landmarks = [active_hand.landmarks]
+        active_size = active_hand.size
+        active_center = active_hand.center
 
         command_gesture = None
         volume_gesture = None
         pointer_gesture = None
         mic_gesture = None
+        wave_gesture = None
         volume_distance = 0.0
         pointer_distance = 0.0
         pointer_position = None
@@ -189,64 +141,63 @@ class GestureSession(GestureSessionDebugMixin):
         self._reset_volume_diagnostics()
 
         command_gesture = self._command_decision.evaluate(
-            self._activation.previous_gesture,
-            primary_gesture,
-            self.secondary_previous_gesture,
-            secondary_command_gesture,
+            self._active.previous_gesture,
+            active_gesture,
             now,
-            self._config.gesture.home_chord_seconds,
+            self._config.gesture.fist_hold_home_seconds,
         )
         if command_gesture == GESTURE_HOME:
             self.reset_motion_tracking()
 
-        if secondary_hand is None:
-            if self._secondary_missing_within_grace(now):
-                self._mark_motion_grace("secondary_grace")
-            elif self._motion_anchor_locked():
-                self._mark_motion_grace("secondary_lost")
-            else:
-                self.reset_motion_tracking()
+        commandable_motion_gesture = self._commandable_motion_gesture(
+            active_gesture,
+            active_size,
+        )
+        motion_gesture = self._motion_gesture(
+            active_gesture,
+            commandable_motion_gesture,
+        )
+        effective_motion_gesture = self._effective_motion_gesture(motion_gesture, now)
 
-        if command_gesture is None and secondary_hand is not None:
+        if command_gesture is None:
             pinch_commandable = (
-                secondary_command_gesture == GESTURE_PINCH
-                or secondary_gesture == DEBUG_UNKNOWN
+                commandable_motion_gesture == GESTURE_PINCH
+                or active_gesture == DEBUG_UNKNOWN
             )
             point_commandable = (
-                secondary_command_gesture == GESTURE_POINT
-                or secondary_gesture == DEBUG_UNKNOWN
+                commandable_motion_gesture == GESTURE_POINT
+                or active_gesture == DEBUG_UNKNOWN
             )
             if (
-                effective_secondary_gesture == GESTURE_PINCH
+                effective_motion_gesture == GESTURE_PINCH
                 and pinch_commandable
-                and secondary_center is not None
             ):
                 self._reset_pointer_tracking()
                 if not isinstance(self._volume.anchor, float):
-                    self._volume.anchor = secondary_center[1]
+                    self._volume.anchor = active_center[1]
                 volume_distance = self._scaled_distance(
-                    secondary_size,
+                    active_size,
                     self._config.gesture.volume_distance_ratio,
                     self._config.gesture.volume_min_distance,
                     self._config.gesture.volume_max_distance,
                 )
                 volume_candidate = classify_volume_joystick(
                     self._volume.anchor if isinstance(self._volume.anchor, float) else None,
-                    secondary_center[1],
+                    active_center[1],
                     volume_distance,
                 )
                 self._record_volume_decision(volume_candidate)
                 volume_gesture = self._volume_joystick_command(
                     volume_candidate,
-                    secondary_center[1],
+                    active_center[1],
                     now,
                 )
                 command_gesture = volume_gesture
-            elif effective_secondary_gesture == GESTURE_PINCH:
+            elif effective_motion_gesture == GESTURE_PINCH:
                 self._mark_motion_grace("motion_grace")
-            elif effective_secondary_gesture != GESTURE_PINCH:
+            elif effective_motion_gesture != GESTURE_PINCH:
                 if self._volume.anchor is not None:
-                    if self._explicit_non_motion_secondary(secondary_gesture):
+                    if self._explicit_non_motion_gesture(active_gesture):
                         self._reset_volume_tracking()
                     else:
                         self._mark_motion_grace("motion_lost")
@@ -255,10 +206,10 @@ class GestureSession(GestureSessionDebugMixin):
 
             if (
                 command_gesture is None
-                and effective_secondary_gesture == GESTURE_POINT
+                and effective_motion_gesture == GESTURE_POINT
                 and point_commandable
             ):
-                pointer_position = self._pointer_position(secondary_hand)
+                pointer_position = self._pointer_position(active_hand)
                 if not isinstance(self._pointer.anchor, tuple):
                     self._pointer.anchor = pointer_position
                 pointer_distance = self._pointer_distance(pointer_reference_size)
@@ -276,33 +227,29 @@ class GestureSession(GestureSessionDebugMixin):
                     now,
                 )
                 command_gesture = pointer_gesture
-            elif command_gesture is None and effective_secondary_gesture == GESTURE_POINT:
+            elif command_gesture is None and effective_motion_gesture == GESTURE_POINT:
                 self._mark_motion_grace("motion_grace")
-            elif effective_secondary_gesture != GESTURE_POINT:
+            elif effective_motion_gesture != GESTURE_POINT:
                 if self._pointer.anchor is not None:
-                    if self._explicit_non_motion_secondary(secondary_gesture):
+                    if self._explicit_non_motion_gesture(active_gesture):
                         self._reset_pointer_tracking()
                     else:
                         self._mark_motion_grace("motion_lost")
                 else:
                     self._reset_pointer_tracking()
 
-            if command_gesture is None and secondary_command_gesture == GESTURE_TWO_FINGERS:
+            if command_gesture is None and active_gesture == GESTURE_TWO_FINGERS:
                 mic_gesture = GESTURE_MIC
                 command_gesture = mic_gesture
-            elif secondary_command_gesture != GESTURE_TWO_FINGERS:
-                mic_gesture = None
 
-        self._activation.previous_gesture = primary_gesture
-        if secondary_command_gesture is not None:
-            self.secondary_previous_gesture = secondary_command_gesture
-        elif secondary_hand is None:
-            self.secondary_previous_gesture = None
+            if command_gesture is None:
+                wave_gesture = self._wave_command(active_gesture, active_center, now)
+                command_gesture = wave_gesture
 
+        self._active.previous_gesture = active_gesture
         anchor_locked = self._motion_anchor_locked()
-        freeze_zoom = freeze_zoom or anchor_locked
-        if anchor_locked:
-            zoom_freeze_reason = "motion_anchor"
+        freeze_zoom = anchor_locked
+        zoom_freeze_reason = "motion_anchor" if anchor_locked else "none"
 
         return GestureDecision(
             command_gesture=command_gesture,
@@ -310,27 +257,25 @@ class GestureSession(GestureSessionDebugMixin):
             debug_message=(
                 f"hands={len(hand_states)} activated=True "
                 f"gestures={debug_gestures} "
-                f"primary={primary_gesture or DEBUG_UNKNOWN} "
-                f"secondary={secondary_gesture or DEBUG_NONE} "
-                f"effective_secondary={effective_secondary_gesture or DEBUG_NONE} "
-                f"secondary_command={secondary_command_gesture or DEBUG_NONE} "
-                f"secondary_pose_frames={self._secondary_pose_candidate_frames} "
-                f"secondary_pose_blocked={self._secondary_pose_blocked_reason or DEBUG_NONE} "
+                f"active={active_gesture or DEBUG_UNKNOWN} "
+                f"effective_motion={effective_motion_gesture or DEBUG_NONE} "
+                f"motion_command={commandable_motion_gesture or DEBUG_NONE} "
+                f"pose_blocked={self._pose_blocked_reason or DEBUG_NONE} "
                 f"volume={volume_gesture or DEBUG_NONE} "
                 f"pointer={pointer_gesture or DEBUG_NONE} "
                 f"mic={mic_gesture or DEBUG_NONE} "
-                f"size={secondary_size:.2f} "
+                f"wave={wave_gesture or DEBUG_NONE} "
+                f"wave_state={self._debug_wave_state()} "
+                f"size={active_size:.2f} "
                 f"pointer_distance={pointer_distance:.2f} "
                 f"volume_distance={volume_distance:.2f} "
                 f"command={command_gesture or DEBUG_NONE} "
                 f"pointer_state={self._debug_pointer_state(pointer_position)} "
                 f"volume_state={self._debug_volume_state()} "
-                f"primary_index={primary_index} "
-                f"secondary_index={secondary_index if secondary_index is not None else DEBUG_NONE} "
+                f"active_index={active_index} "
                 f"zoom_hands={len(zoom_landmarks)} "
                 f"zoom_freeze_reason={zoom_freeze_reason} "
-                f"anchor_locked={anchor_locked} "
-                f"{hand_debug}"
+                f"anchor_locked={anchor_locked} {hand_debug}"
             ),
             freeze_zoom=freeze_zoom,
             anchor_locked=anchor_locked,
@@ -356,14 +301,14 @@ class GestureSession(GestureSessionDebugMixin):
         self._reset_pointer_tracking()
 
     def _reset_activation(self) -> None:
-        self._activation.reset()
-        self.secondary_previous_gesture = None
-        self._reset_secondary_pose_tracking()
-        self._secondary.reset()
+        self._active.reset()
+        self._motion.reset()
         self._emit.record_idle()
         self._command_decision.reset()
         self._reset_volume_tracking()
         self._reset_pointer_tracking()
+        self._wave.reset()
+        self._pose_blocked_reason = None
 
     def _volume_joystick_command(
         self,
@@ -400,17 +345,11 @@ class GestureSession(GestureSessionDebugMixin):
     def _reset_volume_tracking(self) -> None:
         self._volume.reset_tracking()
 
-    def _reset_volume_motion_state(self) -> None:
-        self._volume.reset_motion_state()
-
-    def _reset_volume_diagnostics(self) -> None:
-        self._volume.reset_diagnostics()
-
     def _reset_pointer_tracking(self) -> None:
         self._pointer.reset_tracking()
 
-    def _reset_pointer_motion_state(self) -> None:
-        self._pointer.reset_motion_state()
+    def _reset_volume_diagnostics(self) -> None:
+        self._volume.reset_diagnostics()
 
     def _reset_pointer_diagnostics(self) -> None:
         self._pointer.reset_diagnostics()
@@ -421,112 +360,88 @@ class GestureSession(GestureSessionDebugMixin):
         if self._volume.anchor is not None:
             self._volume.last_blocked_reason = reason
 
+    def _wave_command(
+        self,
+        active_gesture: str | None,
+        active_center: tuple[float, float],
+        now: float,
+    ) -> str | None:
+        if active_gesture != GESTURE_OPEN_PALM:
+            self._wave.reset_for_pose_change()
+            return None
+        return self._wave.command(
+            active_center,
+            now,
+            self._config.gesture.debounce_seconds,
+        )
+
+    def _debug_wave_state(self) -> str:
+        return (
+            f"armed={self._wave.armed}"
+            f":samples={len(self._wave.positions)}"
+            f":blocked={self._wave.last_blocked_reason or DEBUG_NONE}"
+        )
+
     def _motion_anchor_locked(self) -> bool:
         return self._pointer.anchor is not None or self._volume.anchor is not None
 
-    def _secondary_motion_gesture(
+    def _motion_gesture(
         self,
-        secondary_gesture: str | None,
-        secondary_command_gesture: str | None,
+        gesture: str | None,
+        commandable_motion_gesture: str | None,
     ) -> str | None:
-        if secondary_gesture is None:
+        if gesture is None:
             return None
-        if isinstance(self._pointer.anchor, tuple) and secondary_gesture != GESTURE_POINT:
+        if isinstance(self._pointer.anchor, tuple) and gesture != GESTURE_POINT:
             return DEBUG_UNKNOWN
-        if isinstance(self._volume.anchor, float) and secondary_gesture != GESTURE_PINCH:
+        if isinstance(self._volume.anchor, float) and gesture != GESTURE_PINCH:
             return DEBUG_UNKNOWN
-        if secondary_gesture in {GESTURE_PINCH, GESTURE_POINT}:
-            if secondary_command_gesture == secondary_gesture:
-                return secondary_gesture
+        if gesture in MOTION_COMMAND_GESTURES:
+            if commandable_motion_gesture == gesture:
+                return gesture
             return DEBUG_UNKNOWN
         return DEBUG_UNKNOWN
 
     @staticmethod
-    def _explicit_non_motion_secondary(secondary_gesture: str | None) -> bool:
+    def _explicit_non_motion_gesture(gesture: str | None) -> bool:
         return (
-            secondary_gesture is not None
-            and secondary_gesture != DEBUG_UNKNOWN
-            and secondary_gesture not in {GESTURE_PINCH, GESTURE_POINT}
+            gesture is not None
+            and gesture != DEBUG_UNKNOWN
+            and gesture not in MOTION_COMMAND_GESTURES
         )
 
-    def _effective_secondary_motion_gesture(
+    def _effective_motion_gesture(self, gesture: str | None, now: float) -> str | None:
+        return self._motion.effective_motion_gesture(gesture, now)
+
+    def _commandable_motion_gesture(
         self,
-        secondary_gesture: str | None,
-        now: float,
+        gesture: str | None,
+        hand_size: float,
     ) -> str | None:
-        return self._secondary.effective_motion_gesture(secondary_gesture, now)
-
-    def _secondary_command_gesture(
-        self,
-        secondary_gesture: str | None,
-        secondary_size: float,
-    ) -> str | None:
-        self._secondary_pose_blocked_reason = None
-
-        if secondary_gesture is None:
-            self._reset_secondary_pose_tracking()
+        self._pose_blocked_reason = None
+        if gesture not in MOTION_COMMAND_GESTURES:
             return None
-
-        min_hand_size = self._secondary_command_min_hand_size(secondary_gesture)
-        if min_hand_size is not None and secondary_size < min_hand_size:
-            self._reset_secondary_pose_tracking()
-            self._secondary_pose_blocked_reason = "hand_too_small"
+        if hand_size < MOTION_COMMAND_MIN_HAND_SIZE:
+            self._pose_blocked_reason = "hand_too_small"
             return None
+        return gesture
 
-        if secondary_gesture not in SECONDARY_DISCRETE_COMMAND_GESTURES:
-            self._secondary_pose_candidate = secondary_gesture
-            self._secondary_pose_candidate_frames = 1
-            return secondary_gesture
-
-        if secondary_gesture == self._secondary_pose_candidate:
-            self._secondary_pose_candidate_frames += 1
-        else:
-            self._secondary_pose_candidate = secondary_gesture
-            self._secondary_pose_candidate_frames = 1
-
-        if (
-            self._secondary_pose_candidate_frames
-            < SECONDARY_DISCRETE_COMMAND_STABLE_FRAMES
-        ):
-            self._secondary_pose_blocked_reason = "settling_pose"
-            return None
-
-        return secondary_gesture
-
-    @staticmethod
-    def _secondary_command_min_hand_size(secondary_gesture: str) -> float | None:
-        if secondary_gesture in SECONDARY_MOTION_COMMAND_GESTURES:
-            return SECONDARY_MOTION_COMMAND_MIN_HAND_SIZE
-        if secondary_gesture in SECONDARY_DISCRETE_COMMAND_GESTURES:
-            return SECONDARY_DISCRETE_COMMAND_MIN_HAND_SIZE
-        return None
-
-    def _reset_secondary_pose_tracking(self) -> None:
-        self._secondary_pose_candidate = None
-        self._secondary_pose_candidate_frames = 0
-
-    def _secondary_missing_within_grace(self, now: float) -> bool:
-        return self._secondary.missing_within_grace(now)
-
-    def _zoom_freeze_reason(self, secondary_hand: HandState | None, now: float) -> str:
-        return self._secondary.zoom_freeze_reason(secondary_hand, now)
-
-    def _pointer_position(self, secondary_hand: HandState) -> tuple[float, float]:
-        if len(secondary_hand.landmarks) > LANDMARK_INDEX_TIP:
+    def _pointer_position(self, active_hand: HandState) -> tuple[float, float]:
+        if len(active_hand.landmarks) > LANDMARK_INDEX_TIP:
             self._pointer.position_source = "index_tip"
-            return landmark_position(secondary_hand.landmarks, LANDMARK_INDEX_TIP)
+            return landmark_position(active_hand.landmarks, LANDMARK_INDEX_TIP)
 
         self._pointer.position_source = "center"
-        return secondary_hand.center
+        return active_hand.center
 
-    def _primary_missing_within_grace(self, now: float) -> bool:
-        return self._activation.missing_within_grace(self._config, now)
+    def _active_missing_within_grace(self, now: float) -> bool:
+        return self._active.missing_within_grace(self._config, now)
 
-    def _primary_hand_index(self, hands: list[HandState]) -> int | None:
-        return self._activation.find_primary_index(hands, self._config)
+    def _active_hand_index(self, hands: list[HandState]) -> int | None:
+        return self._active.find_active_index(hands, self._config)
 
-    def _distance_from_primary(self, hand: HandState) -> float:
-        return self._activation.distance_from_primary(hand)
+    def _distance_from_active(self, hand: HandState) -> float:
+        return self._active.distance_from_active(hand)
 
     @staticmethod
     def _scaled_distance(

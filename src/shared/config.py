@@ -25,7 +25,7 @@ class EnvVar:
     MODEL_DOWNLOAD_TIMEOUT_SECONDS = "GESTURE_TV_MODEL_DOWNLOAD_TIMEOUT_SECONDS"
     MODEL_DOWNLOAD_RETRIES = "GESTURE_TV_MODEL_DOWNLOAD_RETRIES"
     DEBOUNCE_SECONDS = "GESTURE_TV_DEBOUNCE_SECONDS"
-    HOME_CHORD_SECONDS = "GESTURE_TV_HOME_CHORD_SECONDS"
+    FIST_HOLD_HOME_SECONDS = "GESTURE_TV_FIST_HOLD_HOME_SECONDS"
     POINTER_SCREEN_RADIUS_RATIO = "GESTURE_TV_POINTER_SCREEN_RADIUS_RATIO"
     POINTER_DOMINANCE = "GESTURE_TV_POINTER_DOMINANCE"
     VOLUME_DISTANCE_RATIO = "GESTURE_TV_VOLUME_DISTANCE_RATIO"
@@ -36,8 +36,8 @@ class EnvVar:
     HAND_UPRIGHT_MAX_TILT_RATIO = "GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO"
     VOICE_CAPTURE_SECONDS = "GESTURE_TV_VOICE_CAPTURE_SECONDS"
     DEBUG_LOG_SECONDS = "GESTURE_TV_DEBUG_LOG_SECONDS"
-    PRIMARY_LOST_GRACE_SECONDS = "GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS"
-    PRIMARY_MATCH_MAX_DISTANCE = "GESTURE_TV_PRIMARY_MATCH_MAX_DISTANCE"
+    ACTIVE_HAND_LOST_GRACE_SECONDS = "GESTURE_TV_ACTIVE_HAND_LOST_GRACE_SECONDS"
+    ACTIVE_HAND_MATCH_MAX_DISTANCE = "GESTURE_TV_ACTIVE_HAND_MATCH_MAX_DISTANCE"
     WEBCAM_INDEX = "GESTURE_TV_WEBCAM_INDEX"
     CAMERA_ZOOM = "GESTURE_TV_CAMERA_ZOOM"
     AUTO_ZOOM_ENABLED = "GESTURE_TV_AUTO_ZOOM_ENABLED"
@@ -48,7 +48,6 @@ class EnvVar:
     AUTO_ZOOM_POSITION_DEADBAND = "GESTURE_TV_AUTO_ZOOM_POSITION_DEADBAND"
     AUTO_ZOOM_SCALE_DEADBAND = "GESTURE_TV_AUTO_ZOOM_SCALE_DEADBAND"
     AUTO_ZOOM_CROP_RESET_THRESHOLD = "GESTURE_TV_AUTO_ZOOM_CROP_RESET_THRESHOLD"
-    SECONDARY_ACQUISITION_MAX_ZOOM = "GESTURE_TV_SECONDARY_ACQUISITION_MAX_ZOOM"
     MAX_HANDS = "GESTURE_TV_MAX_HANDS"
     MIN_HAND_DETECTION_CONFIDENCE = "GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE"
     MIN_HAND_PRESENCE_CONFIDENCE = "GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE"
@@ -73,7 +72,7 @@ class TvConfig:
 @dataclass(frozen=True)
 class GestureConfig:
     debounce_seconds: float = 0.3
-    home_chord_seconds: float = 0.35
+    fist_hold_home_seconds: float = 0.70
     pointer_screen_radius_ratio: float = 0.14
     pointer_dominance: float = 1.0
     volume_distance_ratio: float = 1.0
@@ -82,8 +81,8 @@ class GestureConfig:
     pinch_distance_ratio: float = 0.22
     require_upright_hands: bool = True
     hand_upright_max_tilt_ratio: float = 0.75
-    primary_lost_grace_seconds: float = 0.35
-    primary_match_max_distance: float = 0.35
+    active_hand_lost_grace_seconds: float = 0.35
+    active_hand_match_max_distance: float = 0.60
 
 
 @dataclass(frozen=True)
@@ -98,7 +97,6 @@ class CameraConfig:
     auto_zoom_position_deadband: float = 0.08
     auto_zoom_scale_deadband: float = 0.12
     auto_zoom_crop_reset_threshold: float = 0.08
-    secondary_acquisition_max_zoom: float = 1.25
 
 
 @dataclass(frozen=True)
@@ -110,7 +108,7 @@ class ModelConfig:
     )
     download_timeout_seconds: float = 20.0
     download_retries: int = 2
-    max_hands: int = 2
+    max_hands: int = 1
     min_hand_detection_confidence: float = 0.6
     min_hand_presence_confidence: float = 0.6
     min_tracking_confidence: float = 0.6
@@ -162,7 +160,7 @@ DEFAULT_CONFIG = AppConfig()
 _SUPPORTED_TV_ADAPTERS = {"androidtv", "samsung", "webos", "roku"}
 RELOADABLE_CONFIG_FIELDS = (
     "debounce_seconds",
-    "home_chord_seconds",
+    "fist_hold_home_seconds",
     "pointer_screen_radius_ratio",
     "pointer_dominance",
     "volume_distance_ratio",
@@ -173,8 +171,8 @@ RELOADABLE_CONFIG_FIELDS = (
     "hand_upright_max_tilt_ratio",
     "voice_capture_seconds",
     "debug_log_seconds",
-    "primary_lost_grace_seconds",
-    "primary_match_max_distance",
+    "active_hand_lost_grace_seconds",
+    "active_hand_match_max_distance",
     "camera_zoom",
     "auto_zoom_enabled",
     "auto_zoom_min",
@@ -184,7 +182,6 @@ RELOADABLE_CONFIG_FIELDS = (
     "auto_zoom_position_deadband",
     "auto_zoom_scale_deadband",
     "auto_zoom_crop_reset_threshold",
-    "secondary_acquisition_max_zoom",
     "verbose_pipeline_diagnostics",
     "metrics_log_seconds",
 )
@@ -218,7 +215,11 @@ def validate_config(config: AppConfig) -> None:
     _require_between(config.tv.samsung_port, "samsung_port", 1, 65535)
     _require_between(config.tv.roku_port, "roku_port", 1, 65535)
     _require_at_least(config.gesture.debounce_seconds, "debounce_seconds", 0.0)
-    _require_at_least(config.gesture.home_chord_seconds, "home_chord_seconds", 0.0)
+    _require_at_least(
+        config.gesture.fist_hold_home_seconds,
+        "fist_hold_home_seconds",
+        0.0,
+    )
     _require_at_least(config.tv.voice_capture_seconds, "voice_capture_seconds", 0.0)
     _require_at_least(
         config.model.download_timeout_seconds,
@@ -233,13 +234,13 @@ def validate_config(config: AppConfig) -> None:
         0.0,
     )
     _require_at_least(
-        config.gesture.primary_lost_grace_seconds,
-        "primary_lost_grace_seconds",
+        config.gesture.active_hand_lost_grace_seconds,
+        "active_hand_lost_grace_seconds",
         0.0,
     )
     _require_at_least(
-        config.gesture.primary_match_max_distance,
-        "primary_match_max_distance",
+        config.gesture.active_hand_match_max_distance,
+        "active_hand_match_max_distance",
         0.0,
     )
     _require_at_least(config.camera.webcam_index, "webcam_index", 0)
@@ -266,11 +267,6 @@ def validate_config(config: AppConfig) -> None:
         config.camera.auto_zoom_crop_reset_threshold,
         "auto_zoom_crop_reset_threshold",
         0.0,
-    )
-    _require_at_least(
-        config.camera.secondary_acquisition_max_zoom,
-        "secondary_acquisition_max_zoom",
-        1.0,
     )
     _require_at_least(config.model.max_hands, "max_hands", 1)
     _require_between(
@@ -434,7 +430,13 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         _int,
     ),
     ConfigField("debounce_seconds", EnvVar.DEBOUNCE_SECONDS, "gesture", "debounce_seconds", _float),
-    ConfigField("home_chord_seconds", EnvVar.HOME_CHORD_SECONDS, "gesture", "home_chord_seconds", _float),
+    ConfigField(
+        "fist_hold_home_seconds",
+        EnvVar.FIST_HOLD_HOME_SECONDS,
+        "gesture",
+        "fist_hold_home_seconds",
+        _float,
+    ),
     ConfigField(
         "pointer_screen_radius_ratio",
         EnvVar.POINTER_SCREEN_RADIUS_RATIO,
@@ -490,17 +492,17 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         _float,
     ),
     ConfigField(
-        "primary_lost_grace_seconds",
-        EnvVar.PRIMARY_LOST_GRACE_SECONDS,
+        "active_hand_lost_grace_seconds",
+        EnvVar.ACTIVE_HAND_LOST_GRACE_SECONDS,
         "gesture",
-        "primary_lost_grace_seconds",
+        "active_hand_lost_grace_seconds",
         _float,
     ),
     ConfigField(
-        "primary_match_max_distance",
-        EnvVar.PRIMARY_MATCH_MAX_DISTANCE,
+        "active_hand_match_max_distance",
+        EnvVar.ACTIVE_HAND_MATCH_MAX_DISTANCE,
         "gesture",
-        "primary_match_max_distance",
+        "active_hand_match_max_distance",
         _float,
     ),
     ConfigField("webcam_index", EnvVar.WEBCAM_INDEX, "camera", "webcam_index", _int),
@@ -529,13 +531,6 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         EnvVar.AUTO_ZOOM_CROP_RESET_THRESHOLD,
         "camera",
         "auto_zoom_crop_reset_threshold",
-        _float,
-    ),
-    ConfigField(
-        "secondary_acquisition_max_zoom",
-        EnvVar.SECONDARY_ACQUISITION_MAX_ZOOM,
-        "camera",
-        "secondary_acquisition_max_zoom",
         _float,
     ),
     ConfigField("max_hands", EnvVar.MAX_HANDS, "model", "max_hands", _int),

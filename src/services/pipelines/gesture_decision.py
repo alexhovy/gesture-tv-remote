@@ -41,7 +41,7 @@ class GestureDecisionPipeline:
         return decision
 
     def update_zoom(self, decision: GestureDecision) -> bool:
-        if decision.primary_temporarily_lost:
+        if decision.active_temporarily_lost:
             return False
 
         if decision.anchor_locked:

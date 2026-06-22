@@ -46,24 +46,8 @@ class CameraZoomController:
             self._zoom,
         )
 
-    def detection_crop(self, precise: bool) -> CropRect:
-        crop = self.current_crop()
-        if precise or not self._config.camera.auto_zoom_enabled:
-            return crop
-
-        acquisition_zoom = min(
-            self._zoom,
-            self._config.camera.secondary_acquisition_max_zoom,
-        )
-        acquisition_zoom = max(1.0, acquisition_zoom)
-        if acquisition_zoom >= self._zoom:
-            return crop
-
-        return crop_from_center_zoom(
-            crop.x + crop.width / 2,
-            crop.y + crop.height / 2,
-            acquisition_zoom,
-        )
+    def detection_crop(self) -> CropRect:
+        return self.current_crop()
 
     def reset(self) -> None:
         self._center_x = 0.5

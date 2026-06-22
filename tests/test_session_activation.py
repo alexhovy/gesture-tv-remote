@@ -1,8 +1,8 @@
 import unittest
 
 from src.domain.constants import (
-    GESTURE_BACK,
     GESTURE_FIST,
+    GESTURE_HOME,
     GESTURE_MIC,
     GESTURE_OPEN_PALM,
     GESTURE_OPEN_TO_FIST,
@@ -15,7 +15,7 @@ from tests.session_helpers import hand_state
 
 
 class SessionActivationTests(unittest.TestCase):
-    def test_decision_is_not_activated_before_primary_open_palm(self) -> None:
+    def test_decision_is_not_activated_before_upright_open_palm(self) -> None:
         session = GestureSession(app_config())
 
         decision = session.evaluate(
@@ -26,7 +26,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertFalse(decision.activated)
         self.assertIsNone(decision.command_gesture)
 
-    def test_decision_activates_from_primary_open_palm(self) -> None:
+    def test_decision_activates_from_upright_open_palm(self) -> None:
         session = GestureSession(app_config())
 
         decision = session.evaluate(
@@ -36,6 +36,43 @@ class SessionActivationTests(unittest.TestCase):
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
+        self.assertIn("active_index=0", decision.debug_message)
+
+    def test_open_fist_open_selects(self) -> None:
+        session = GestureSession(app_config())
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate([open_hand], now=0.0)
+        pending = session.evaluate([fist], now=0.1)
+        decision = session.evaluate([open_hand], now=0.2)
+
+        self.assertIsNone(pending.command_gesture)
+        self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
+        self.assertIn("active=OPEN_PALM", decision.debug_message)
+
+    def test_held_fist_emits_home(self) -> None:
+        session = GestureSession(app_config(fist_hold_home_seconds=0.5))
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate([open_hand], now=0.0)
+        session.evaluate([fist], now=0.1)
+        decision = session.evaluate([fist], now=0.6)
+
+        self.assertEqual(decision.command_gesture, GESTURE_HOME)
+
+    def test_two_fingers_emits_mic(self) -> None:
+        session = GestureSession(app_config())
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        two_fingers = hand_state(GESTURE_TWO_FINGERS, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate([open_hand], now=0.0)
+        decision = session.evaluate([two_fingers], now=0.1)
+
+        self.assertTrue(decision.activated)
+        self.assertEqual(decision.command_gesture, GESTURE_MIC)
+        self.assertIn("mic=MIC", decision.debug_message)
 
     def test_decision_does_not_activate_from_non_upright_open_palm(self) -> None:
         session = GestureSession(app_config())
@@ -55,7 +92,7 @@ class SessionActivationTests(unittest.TestCase):
         self.assertFalse(decision.activated)
         self.assertIsNone(decision.command_gesture)
 
-    def test_active_session_deactivates_when_primary_is_not_upright(self) -> None:
+    def test_active_session_deactivates_when_active_hand_is_not_upright(self) -> None:
         session = GestureSession(app_config())
         session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
@@ -77,8 +114,8 @@ class SessionActivationTests(unittest.TestCase):
         self.assertFalse(decision.activated)
         self.assertIsNone(decision.command_gesture)
 
-    def test_active_session_stays_active_during_brief_primary_dropout(self) -> None:
-        session = GestureSession(app_config(primary_lost_grace_seconds=0.35))
+    def test_active_session_stays_active_during_brief_hand_dropout(self) -> None:
+        session = GestureSession(app_config(active_hand_lost_grace_seconds=0.35))
         session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
             now=0.0,
@@ -88,11 +125,11 @@ class SessionActivationTests(unittest.TestCase):
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
-        self.assertTrue(decision.primary_temporarily_lost)
-        self.assertIn("primary_temporarily_lost", decision.debug_message)
+        self.assertTrue(decision.active_temporarily_lost)
+        self.assertIn("active_hand_temporarily_lost", decision.debug_message)
 
-    def test_active_session_deactivates_after_primary_dropout_grace(self) -> None:
-        session = GestureSession(app_config(primary_lost_grace_seconds=0.35))
+    def test_active_session_deactivates_after_dropout_grace(self) -> None:
+        session = GestureSession(app_config(active_hand_lost_grace_seconds=0.35))
         session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
             now=0.0,
@@ -103,218 +140,52 @@ class SessionActivationTests(unittest.TestCase):
         self.assertFalse(decision.activated)
         self.assertIsNone(decision.command_gesture)
 
-    def test_brief_primary_dropout_preserves_previous_gesture(self) -> None:
-        session = GestureSession(app_config(primary_lost_grace_seconds=0.35))
-        session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
-            now=0.0,
-        )
-        session.evaluate([], now=0.1)
-        session.evaluate(
-            [hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
-            now=0.2,
-        )
-
-        decision = session.evaluate(
-            [hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
-            now=0.6,
-        )
-
-        self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
-
-    def test_select_can_emit_during_primary_dropout_grace(self) -> None:
-        session = GestureSession(app_config(primary_lost_grace_seconds=0.60))
-        session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
-            now=0.0,
-        )
-        pending = session.evaluate(
-            [hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
-            now=0.1,
-        )
-
-        decision = session.evaluate([], now=0.5)
-
-        self.assertIsNone(pending.command_gesture)
-        self.assertTrue(decision.primary_temporarily_lost)
-        self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
-        self.assertIn("command=OPEN_TO_FIST", decision.debug_message)
-
-    def test_decision_reports_activation_alongside_command_gesture(self) -> None:
-        session = GestureSession(app_config())
-
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        secondary = hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.20)
-
-        session.evaluate([primary, secondary], now=0.0)
-        session.evaluate([primary, secondary], now=0.1)
-        decision = session.evaluate([primary, secondary], now=0.2)
-
-        self.assertTrue(decision.activated)
-        self.assertEqual(decision.command_gesture, GESTURE_MIC)
-        self.assertIn("primary_index=0 secondary_index=1", decision.debug_message)
-        self.assertIn("zoom_hands=2", decision.debug_message)
-        self.assertIn(
-            "0:gesture=OPEN_PALM:upright=True",
-            decision.debug_message,
-        )
-        self.assertIn(
-            ":center=(0.20,0.50):size=0.20",
-            decision.debug_message,
-        )
-        self.assertIn(
-            "1:gesture=TWO_FINGERS:upright=True",
-            decision.debug_message,
-        )
-        self.assertIn(
-            ":center=(0.70,0.50):size=0.20",
-            decision.debug_message,
-        )
-
-    def test_tiny_secondary_command_pose_is_blocked(self) -> None:
-        session = GestureSession(app_config())
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        secondary = hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.05)
-
-        decision = session.evaluate([primary, secondary], now=0.0)
-
-        self.assertTrue(decision.activated)
-        self.assertIsNone(decision.command_gesture)
-        self.assertIn("secondary_pose_blocked=hand_too_small", decision.debug_message)
-
-    def test_small_stable_secondary_fist_can_emit_back(self) -> None:
-        session = GestureSession(app_config())
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        open_secondary = hand_state(GESTURE_OPEN_PALM, center=(0.70, 0.50), size=0.06)
-        fist_secondary = hand_state(GESTURE_FIST, center=(0.70, 0.50), size=0.06)
-
-        session.evaluate([primary, open_secondary], now=0.0)
-        session.evaluate([primary, fist_secondary], now=0.1)
-        session.evaluate([primary, fist_secondary], now=0.2)
-        session.evaluate([primary, fist_secondary], now=0.3)
-        decision = session.evaluate([primary, fist_secondary], now=0.7)
-
-        self.assertEqual(decision.command_gesture, GESTURE_BACK)
-        self.assertIn("secondary_pose_blocked=none", decision.debug_message)
-
-    def test_secondary_fist_must_settle_before_back_command(self) -> None:
-        session = GestureSession(app_config())
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        open_secondary = hand_state(GESTURE_OPEN_PALM, center=(0.70, 0.50), size=0.20)
-        fist_secondary = hand_state(GESTURE_FIST, center=(0.70, 0.50), size=0.20)
-
-        session.evaluate([primary, open_secondary], now=0.0)
-        settling = session.evaluate([primary, fist_secondary], now=0.1)
-        still_settling = session.evaluate([primary, fist_secondary], now=0.2)
-        pending = session.evaluate([primary, fist_secondary], now=0.3)
-        decision = session.evaluate([primary, fist_secondary], now=0.7)
-
-        self.assertIsNone(settling.command_gesture)
-        self.assertIn("secondary_pose_blocked=settling_pose", settling.debug_message)
-        self.assertIsNone(still_settling.command_gesture)
-        self.assertIsNone(pending.command_gesture)
-        self.assertEqual(decision.command_gesture, GESTURE_BACK)
-
-    def test_zoom_landmarks_include_valid_primary_and_secondary_hands(self) -> None:
-        session = GestureSession(app_config())
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        secondary = hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.20)
-
-        decision = session.evaluate([primary, secondary], now=0.0)
-
-        self.assertEqual(decision.zoom_landmarks, [primary.landmarks, secondary.landmarks])
-
-    def test_secondary_hand_does_not_steal_primary_when_closer_to_anchor(self) -> None:
-        session = GestureSession(app_config(primary_match_max_distance=0.35))
-        session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.30, 0.50), size=0.20)],
-            now=0.0,
-        )
-        secondary = hand_state(GESTURE_TWO_FINGERS, center=(0.31, 0.50), size=0.20)
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.36, 0.50), size=0.20)
-
-        decision = session.evaluate([secondary, primary], now=0.1)
-
-        self.assertTrue(decision.activated)
-        self.assertIn("primary=OPEN_PALM secondary=TWO_FINGERS", decision.debug_message)
-        self.assertEqual(decision.zoom_landmarks, [primary.landmarks, secondary.landmarks])
-
-    def test_secondary_gesture_is_not_promoted_to_missing_primary(self) -> None:
+    def test_home_can_emit_during_active_hand_dropout_grace(self) -> None:
         session = GestureSession(
             app_config(
-                primary_lost_grace_seconds=0.35,
-                primary_match_max_distance=0.35,
+                active_hand_lost_grace_seconds=0.80,
+                fist_hold_home_seconds=0.50,
             )
         )
         session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.30, 0.50), size=0.20)],
+            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
             now=0.0,
         )
-
-        decision = session.evaluate(
-            [hand_state(GESTURE_TWO_FINGERS, center=(0.31, 0.50), size=0.20)],
+        session.evaluate(
+            [hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
             now=0.1,
         )
 
-        self.assertTrue(decision.activated)
-        self.assertTrue(decision.primary_temporarily_lost)
-        self.assertEqual(decision.zoom_landmarks, [])
+        decision = session.evaluate([], now=0.6)
 
-    def test_non_upright_secondary_hand_is_ignored(self) -> None:
-        session = GestureSession(app_config())
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        secondary = hand_state(
-            GESTURE_TWO_FINGERS,
-            center=(0.70, 0.50),
-            size=0.20,
-            upright=False,
-            upright_vector=(0.30, -0.10),
-        )
+        self.assertTrue(decision.active_temporarily_lost)
+        self.assertEqual(decision.command_gesture, GESTURE_HOME)
 
-        decision = session.evaluate([primary, secondary], now=0.0)
+    def test_extra_hands_do_not_contribute_to_zoom_or_commands(self) -> None:
+        session = GestureSession(app_config(active_hand_match_max_distance=0.35))
+        active = hand_state(GESTURE_OPEN_PALM, center=(0.30, 0.50), size=0.20)
+        extra = hand_state(GESTURE_TWO_FINGERS, center=(0.80, 0.50), size=0.20)
+
+        decision = session.evaluate([active, extra], now=0.0)
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
-        self.assertEqual(decision.zoom_landmarks, [primary.landmarks])
-        self.assertIn("secondary_index=none", decision.debug_message)
-        self.assertIn(
-            "1:gesture=TWO_FINGERS:upright=False:upright_reason=tilted",
-            decision.debug_message,
-        )
+        self.assertEqual(decision.zoom_landmarks, [active.landmarks])
+        self.assertIn("active_index=0", decision.debug_message)
+        self.assertIn("zoom_hands=1", decision.debug_message)
 
-    def test_upside_down_secondary_hand_is_ignored(self) -> None:
-        session = GestureSession(app_config())
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        secondary = hand_state(
-            GESTURE_TWO_FINGERS,
-            center=(0.70, 0.50),
-            size=0.20,
-            upright=False,
-            upright_vector=(0.00, 0.10),
-        )
+    def test_active_hand_is_matched_by_position_after_other_hand_enters_first(self) -> None:
+        session = GestureSession(app_config(active_hand_match_max_distance=0.35))
+        active = hand_state(GESTURE_OPEN_PALM, center=(0.30, 0.50), size=0.20)
+        extra = hand_state(GESTURE_TWO_FINGERS, center=(0.80, 0.50), size=0.20)
 
-        decision = session.evaluate([primary, secondary], now=0.0)
+        session.evaluate([active], now=0.0)
+        decision = session.evaluate([extra, active], now=0.1)
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
-        self.assertEqual(decision.zoom_landmarks, [primary.landmarks])
-        self.assertIn("secondary_index=none", decision.debug_message)
-        self.assertIn(
-            "1:gesture=TWO_FINGERS:upright=False:upright_reason=upside_down",
-            decision.debug_message,
-        )
-
-    def test_unknown_secondary_hand_keeps_zoom_stable(self) -> None:
-        session = GestureSession(app_config())
-        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
-        secondary = hand_state(None, center=(0.70, 0.50), size=0.20)
-
-        decision = session.evaluate([primary, secondary], now=0.0)
-
-        self.assertTrue(decision.activated)
-        self.assertEqual(decision.zoom_landmarks, [primary.landmarks, secondary.landmarks])
-        self.assertTrue(decision.freeze_zoom)
-        self.assertIn("zoom_freeze_reason=secondary_present", decision.debug_message)
+        self.assertEqual(decision.zoom_landmarks, [active.landmarks])
+        self.assertIn("active_index=1", decision.debug_message)
 
 
 if __name__ == "__main__":

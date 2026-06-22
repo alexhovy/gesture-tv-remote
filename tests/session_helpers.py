@@ -18,74 +18,58 @@ from tests.config_helpers import app_config
 
 def evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> str | None:
     session = GestureSession(app_config())
-    primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+    open_hand = hand_state(GESTURE_OPEN_PALM, center=(start_x, 0.50), size=hand_size)
 
+    session.evaluate([open_hand], now=0.0)
     session.evaluate(
-        [
-            primary,
-            hand_state(
-                GESTURE_POINT,
-                center=(start_x, 0.50),
-                size=hand_size,
-                index_position=(start_x, 0.50),
-            ),
-        ],
-        now=0.0,
+        [hand_state(
+            GESTURE_POINT,
+            center=(start_x, 0.50),
+            size=hand_size,
+            index_position=(start_x, 0.50),
+        )],
+        now=0.1,
     )
     first = session.evaluate(
-        [
-            primary,
-            hand_state(
-                GESTURE_POINT,
-                center=(end_x, 0.50),
-                size=hand_size,
-                index_position=(end_x, 0.50),
-            ),
-        ],
-        now=0.1,
+        [hand_state(
+            GESTURE_POINT,
+            center=(end_x, 0.50),
+            size=hand_size,
+            index_position=(end_x, 0.50),
+        )],
+        now=0.2,
     ).command_gesture
     if first is not None:
         return first
     return session.evaluate(
-        [
-            primary,
-            hand_state(
-                GESTURE_POINT,
-                center=(end_x, 0.50),
-                size=hand_size,
-                index_position=(end_x, 0.50),
-            ),
-        ],
-        now=0.2,
+        [hand_state(
+            GESTURE_POINT,
+            center=(end_x, 0.50),
+            size=hand_size,
+            index_position=(end_x, 0.50),
+        )],
+        now=0.3,
     ).command_gesture
 
 
 def evaluate_volume_move(hand_size: float, start_y: float, end_y: float) -> str | None:
     session = GestureSession(app_config())
-    primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+    open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.70, start_y), size=hand_size)
 
+    session.evaluate([open_hand], now=0.0)
     session.evaluate(
-        [
-            primary,
-            hand_state(GESTURE_PINCH, center=(0.70, start_y), size=hand_size),
-        ],
-        now=0.0,
+        [hand_state(GESTURE_PINCH, center=(0.70, start_y), size=hand_size)],
+        now=0.1,
     )
     first = session.evaluate(
-        [
-            primary,
-            hand_state(GESTURE_PINCH, center=(0.70, end_y), size=hand_size),
-        ],
-        now=0.1,
+        [hand_state(GESTURE_PINCH, center=(0.70, end_y), size=hand_size)],
+        now=0.2,
     ).command_gesture
     if first is not None:
         return first
     return session.evaluate(
-        [
-            primary,
-            hand_state(GESTURE_PINCH, center=(0.70, end_y), size=hand_size),
-        ],
-        now=0.2,
+        [hand_state(GESTURE_PINCH, center=(0.70, end_y), size=hand_size)],
+        now=0.3,
     ).command_gesture
 
 

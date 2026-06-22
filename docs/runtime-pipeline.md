@@ -10,7 +10,7 @@ runtime collaborators:
 
 | Pipeline | Responsibility |
 | --- | --- |
-| `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies acquisition or precise zoom crops for detection and display. |
+| `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies the current zoom crop for detection and display. |
 | `DetectionPipeline` | Converts BGR frames to RGB and submits them to MediaPipe live-stream detection. |
 | `GestureDecisionPipeline` | Projects hand states back from the active detection crop, evaluates the domain session, and updates auto-zoom for the next frame. |
 | `CommandDispatchPipeline` | Applies gesture debounce, starts voice capture for `MIC`, and enqueues TV key commands. |
@@ -29,20 +29,11 @@ frames; if frame versions jump, older frames are counted as dropped instead of
 being processed late.
 
 MediaPipe hand tracking runs in live-stream mode. The runtime submits the
-current detection frame and consumes the latest completed result. While only the
-primary hand is active, the detection frame uses a wider acquisition crop than
-the preview. When a secondary hand first appears, detection remains wide only
-during stabilization. After the secondary hand is active for the configured
-stabilization window and the hands are large enough to track reliably, detection
-switches to the same precise crop as the preview so pointer and volume motion
-use the same visual frame that the user sees. Small far-away hands stay in the
-wider acquisition/stabilizing crop, with a short lost-frame grace, so the runtime
-does not flap between tight precision and reacquisition crops. Once pointer or
-volume motion has established an anchor, auto-zoom crop updates are paused until
-the anchor clears; this keeps the visual neutral center fixed during motion,
-grace, and secondary-hand reacquisition. If the secondary hand drops out,
-detection can widen again for reacquisition while the preview crop and motion
-anchor remain fixed.
+current detection frame and consumes the latest completed result. Detection and
+display use the same auto-zoom crop so pointer and volume motion use the same
+visual frame that the user sees. Once pointer or volume motion has established
+an anchor, auto-zoom crop updates are paused until the anchor clears; this keeps
+the visual neutral center fixed during motion and dropout grace.
 
 The preview smooths only the drawn landmark overlay in original-frame
 coordinates and holds it briefly through dropped detection frames. Gesture

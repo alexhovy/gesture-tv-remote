@@ -148,10 +148,9 @@ will not override that environment value.
 | `GESTURE_TV_AUTO_ZOOM_POSITION_DEADBAND` | `0.08` |
 | `GESTURE_TV_AUTO_ZOOM_SCALE_DEADBAND` | `0.12` |
 | `GESTURE_TV_AUTO_ZOOM_CROP_RESET_THRESHOLD` | `0.08` |
-| `GESTURE_TV_SECONDARY_ACQUISITION_MAX_ZOOM` | `1.25` |
-| `GESTURE_TV_MAX_HANDS` | `2` |
+| `GESTURE_TV_MAX_HANDS` | `1` |
 | `GESTURE_TV_DEBOUNCE_SECONDS` | `0.3` |
-| `GESTURE_TV_HOME_CHORD_SECONDS` | `0.35` |
+| `GESTURE_TV_FIST_HOLD_HOME_SECONDS` | `0.7` |
 | `GESTURE_TV_POINTER_SCREEN_RADIUS_RATIO` | `0.14` |
 | `GESTURE_TV_POINTER_DOMINANCE` | `1.0` |
 | `GESTURE_TV_VOLUME_DISTANCE_RATIO` | `1.0` |
@@ -164,7 +163,8 @@ will not override that environment value.
 | `GESTURE_TV_DEBUG_LOG_SECONDS` | `0.5` |
 | `GESTURE_TV_VERBOSE_PIPELINE_DIAGNOSTICS` | `False` |
 | `GESTURE_TV_METRICS_LOG_SECONDS` | `2.0` |
-| `GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` | `0.35` |
+| `GESTURE_TV_ACTIVE_HAND_LOST_GRACE_SECONDS` | `0.35` |
+| `GESTURE_TV_ACTIVE_HAND_MATCH_MAX_DISTANCE` | `0.6` |
 | `GESTURE_TV_MIN_HAND_DETECTION_CONFIDENCE` | `0.6` |
 | `GESTURE_TV_MIN_HAND_PRESENCE_CONFIDENCE` | `0.6` |
 | `GESTURE_TV_MIN_TRACKING_CONFIDENCE` | `0.6` |
@@ -180,7 +180,7 @@ the yellow circle stays visually stable as auto-zoom widens or tightens the
 preview. The first point frame captures the index fingertip as a fixed pointer
 center; moving beyond a small activation margin outside that circle emits the
 dominant direction. Volume uses a fixed vertical center from the first pinch
-frame, with its neutral band scaled from the detected secondary hand size and
+frame, with its neutral band scaled from the detected active hand size and
 clamped by the volume min/max distance settings. Returning inside the neutral
 circle or band re-arms motion without moving the anchor. Holding outside the
 activation margin repeats the same command after `GESTURE_TV_DEBOUNCE_SECONDS`;
@@ -189,24 +189,14 @@ changing direction requires returning to neutral first.
 `GESTURE_TV_CAMERA_ZOOM` is the starting digital center-crop zoom for MediaPipe
 hand tracking and display. Values above `1.0` make hands larger in the tracking
 input, which can help finger landmark reliability when the camera is far away.
-Start with `1.5`; larger values reduce the field of view and can crop out
-two-hand gestures.
+Start with `1.5`; larger values reduce the field of view and can crop out the
+active hand during large movements.
 
 Set `GESTURE_TV_AUTO_ZOOM_ENABLED=true` to let the tracking/display crop follow
 the last detected hand area. Auto zoom changes the MediaPipe input crop and then
 the runtime maps detected landmarks back into original frame coordinates before
-gesture decisions run. While only the primary hand is active, detection uses a
-wider acquisition crop than the preview so the secondary hand can be detected
-without being placed inside the primary-hand crop. After the secondary hand is
-detected for several consecutive frames, detection uses the precise preview crop
-so navigation and volume gestures have stable distance math and visual
-feedback. If the secondary hand drops out, detection widens again for
-reacquisition.
-
-`GESTURE_TV_SECONDARY_ACQUISITION_MAX_ZOOM` controls how wide the acquisition
-crop remains while waiting for the secondary hand. Lower values are wider:
-`1.25` keeps about `80%` of the frame visible to MediaPipe, while `2.0` keeps
-about `50%`.
+gesture decisions run. Detection and display use the same crop so navigation
+and volume gestures have stable distance math and visual feedback.
 
 Numeric settings are validated at startup. Zoom values must be at least `1.0`,
 confidence values must be between `0.0` and `1.0`, max values must not be lower
@@ -215,14 +205,14 @@ negative.
 Boolean settings accept `1`, `true`, `yes`, `on`, `0`, `false`, `no`, and `off`.
 
 `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` and
-`GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` apply to both primary and secondary
-hands. This prevents sideways or upside-down hands from activating controls or
-being misclassified as command gestures.
+`GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` apply to the active hand. This
+prevents sideways or upside-down hands from activating controls or being
+misclassified as command gestures.
 
-`GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS` keeps an active gesture session alive
-through brief primary-hand detection dropouts. This helps when a hand is close
-to a frame or crop edge and MediaPipe occasionally reports zero hands for a
-frame or two. Once the primary hand is missing longer than the grace interval,
+`GESTURE_TV_ACTIVE_HAND_LOST_GRACE_SECONDS` keeps an active gesture session
+alive through brief active-hand detection dropouts. This helps when a hand is
+close to a frame or crop edge and MediaPipe occasionally reports zero hands for
+a frame or two. Once the active hand is missing longer than the grace interval,
 the session deactivates normally.
 
 Set `GESTURE_TV_VERBOSE_PIPELINE_DIAGNOSTICS=true` to log camera FPS, detection

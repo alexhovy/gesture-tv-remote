@@ -40,9 +40,8 @@ class FrameCapturePipeline:
         self,
         frame: Any,
         zoom_controller: CameraZoomController,
-        precise: bool,
     ) -> CroppedFrame:
-        return apply_crop(frame, zoom_controller.detection_crop(precise))
+        return apply_crop(frame, zoom_controller.detection_crop())
 
     def display_frame(
         self,

@@ -41,7 +41,6 @@ _install_service_import_stubs()
 
 from src.services.gesture_remote_service import (  # noqa: E402
     CONFIG_RELOAD_INTERVAL_SECONDS,
-    DetectionCropModeTracker,
     GestureRemoteService,
 )
 from src.services.pipeline_metrics import PipelineMetrics  # noqa: E402
@@ -90,7 +89,6 @@ class FakeZoomController:
     def __init__(self) -> None:
         self.updated_with = None
         self.conditional_update_with = None
-        self.precise_detection = None
 
     def update(self, landmarks_by_hand, crop):
         self.updated_with = (landmarks_by_hand, crop)
@@ -103,8 +101,7 @@ class FakeZoomController:
     def current_crop(self) -> CropRect:
         return CropRect(0.25, 0.25, 0.5, 0.5)
 
-    def detection_crop(self, precise: bool) -> CropRect:
-        self.precise_detection = precise
+    def detection_crop(self) -> CropRect:
         return CropRect(0.25, 0.25, 0.5, 0.5)
 
 
@@ -115,23 +112,21 @@ class GestureRemoteServiceTests(unittest.TestCase):
         detection_frame = FrameCapturePipeline().detection_frame(
             frame,
             FakeZoomController(),
-            precise=True,
         )
 
         self.assertEqual(detection_frame.frame.shape, frame.shape)
         self.assertEqual(detection_frame.crop, CropRect(0.25, 1 / 6, 0.5, 0.5))
 
-    def test_detection_frame_passes_precision_mode_to_zoom_controller(self) -> None:
+    def test_detection_frame_uses_same_crop_api_as_display(self) -> None:
         frame = FakeFrame(6, 8)
         zoom_controller = FakeZoomController()
 
-        FrameCapturePipeline().detection_frame(
+        detection_frame = FrameCapturePipeline().detection_frame(
             frame,
             zoom_controller,
-            precise=False,
         )
 
-        self.assertFalse(zoom_controller.precise_detection)
+        self.assertEqual(detection_frame.crop, CropRect(0.25, 1 / 6, 0.5, 0.5))
 
     def test_update_zoom_uses_filtered_zoom_landmarks(self) -> None:
         zoom_controller = FakeZoomController()
@@ -170,7 +165,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
 
         self.assertEqual(session.pointer_reference_size, 0.40)
 
-    def test_update_zoom_holds_crop_during_temporary_primary_loss(self) -> None:
+    def test_update_zoom_holds_crop_during_temporary_active_hand_loss(self) -> None:
         zoom_controller = FakeZoomController()
 
         changed = GestureDecisionPipeline(
@@ -181,7 +176,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
                 command_gesture=None,
                 activated=True,
                 debug_message="",
-                primary_temporarily_lost=True,
+                active_temporarily_lost=True,
             )
         )
 
@@ -239,11 +234,6 @@ class GestureRemoteServiceTests(unittest.TestCase):
             "hands=2 activated=True",
             CropRect(0.0, 0.0, 1.0, 1.0),
             CropRect(0.25, 0.25, 0.5, 0.5),
-            "acquisition",
-            0,
-            0,
-            0.20,
-            "no_secondary",
             zoom_frozen=True,
         )
 
@@ -251,100 +241,11 @@ class GestureRemoteServiceTests(unittest.TestCase):
             debug_message,
             (
                 "hands=2 activated=True "
-                "detection_mode=acquisition "
-                "secondary_stable_frames=0 "
-                "secondary_lost_frames=0 "
-                "min_hand_size=0.20 "
-                "precision_blocked=no_secondary "
                 "detection_crop=(0.00,0.00,1.00,1.00) "
                 "display_crop=(0.25,0.25,0.50,0.50) "
                 "zoom_frozen=True"
             ),
         )
-
-
-class DetectionCropModeTrackerTests(unittest.TestCase):
-    def test_secondary_switches_to_precise_after_stabilizing(self) -> None:
-        tracker = DetectionCropModeTracker(secondary_stabilize_frames=3)
-
-        self.assertEqual(tracker.mode, "acquisition")
-        self.assertFalse(tracker.precise)
-
-        tracker.record_decision(
-            _decision_with_hands(2),
-            CropRect(0.20, 0.20, 0.60, 0.60),
-        )
-        self.assertEqual(tracker.mode, "stabilizing")
-        self.assertFalse(tracker.precise)
-        self.assertEqual(tracker.secondary_stable_frames, 1)
-        self.assertEqual(tracker.precision_blocked_reason, "settling_secondary")
-
-        tracker.record_decision(
-            _decision_with_hands(2),
-            CropRect(0.20, 0.20, 0.60, 0.60),
-        )
-        self.assertEqual(tracker.mode, "stabilizing")
-        self.assertFalse(tracker.precise)
-        self.assertEqual(tracker.secondary_stable_frames, 2)
-
-        tracker.record_decision(
-            _decision_with_hands(2),
-            CropRect(0.20, 0.20, 0.60, 0.60),
-        )
-        self.assertEqual(tracker.mode, "precise")
-        self.assertTrue(tracker.precise)
-        self.assertEqual(tracker.secondary_stable_frames, 3)
-        self.assertEqual(tracker.precision_blocked_reason, "secondary_active")
-
-    def test_secondary_miss_uses_grace_before_returning_to_acquisition_mode(self) -> None:
-        tracker = DetectionCropModeTracker(
-            secondary_stabilize_frames=2,
-            lost_grace_frames=1,
-        )
-        tracker.record_decision(
-            _decision_with_hands(2),
-            CropRect(0.20, 0.20, 0.60, 0.60),
-        )
-        tracker.record_decision(
-            _decision_with_hands(2),
-            CropRect(0.20, 0.20, 0.60, 0.60),
-        )
-
-        tracker.record_decision(
-            _decision_with_hands(1, freeze_zoom=True),
-            CropRect(0.20, 0.20, 0.60, 0.60),
-        )
-
-        self.assertEqual(tracker.mode, "precise")
-        self.assertTrue(tracker.precise)
-        self.assertEqual(tracker.secondary_stable_frames, 2)
-        self.assertEqual(tracker.secondary_lost_frames, 1)
-        self.assertEqual(tracker.precision_blocked_reason, "secondary_grace")
-
-        tracker.record_decision(
-            _decision_with_hands(1, freeze_zoom=True),
-            CropRect(0.20, 0.20, 0.60, 0.60),
-        )
-
-        self.assertEqual(tracker.mode, "acquisition")
-        self.assertFalse(tracker.precise)
-        self.assertEqual(tracker.secondary_stable_frames, 0)
-        self.assertEqual(tracker.secondary_lost_frames, 2)
-        self.assertEqual(tracker.precision_blocked_reason, "no_secondary")
-
-    def test_small_secondary_hand_blocks_precise_detection(self) -> None:
-        tracker = DetectionCropModeTracker(secondary_stabilize_frames=1)
-
-        tracker.record_decision(
-            _decision_with_hands(2, hand_size=0.05),
-            CropRect(0.20, 0.20, 0.60, 0.60),
-        )
-
-        self.assertEqual(tracker.mode, "stabilizing")
-        self.assertFalse(tracker.precise)
-        self.assertEqual(tracker.precision_blocked_reason, "hand_too_small_for_precise")
-        self.assertAlmostEqual(tracker.min_hand_size, 0.05)
-
 
 class DisplayPipelineTests(unittest.TestCase):
     def test_detected_hand_overlay_is_smoothed_and_held_through_brief_dropout(self) -> None:

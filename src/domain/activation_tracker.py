@@ -1,13 +1,13 @@
 import math
 from dataclasses import dataclass
 
-from src.domain.constants import GESTURE_FIST, GESTURE_OPEN_PALM
+from src.domain.constants import GESTURE_OPEN_PALM
 from src.domain.session_types import HandState
 from src.shared.config import AppConfig
 
 
 @dataclass
-class ActivationTracker:
+class ActiveHandTracker:
     position: tuple[float, float] | None = None
     last_seen_time: float | None = None
     previous_gesture: str | None = None
@@ -24,10 +24,10 @@ class ActivationTracker:
     def missing_within_grace(self, config: AppConfig, now: float) -> bool:
         if self.position is None or self.last_seen_time is None:
             return False
-        grace_seconds = max(0.0, config.gesture.primary_lost_grace_seconds)
+        grace_seconds = max(0.0, config.gesture.active_hand_lost_grace_seconds)
         return now - self.last_seen_time <= grace_seconds
 
-    def find_primary_index(self, hands: list[HandState], config: AppConfig) -> int | None:
+    def find_active_index(self, hands: list[HandState], config: AppConfig) -> int | None:
         if not hands:
             return None
         if self.position is None:
@@ -40,22 +40,22 @@ class ActivationTracker:
                 None,
             )
 
-        max_distance = max(0.0, config.gesture.primary_match_max_distance)
+        max_distance = max(0.0, config.gesture.active_hand_match_max_distance)
         candidates = [
             index for index, hand in enumerate(hands)
-            if self.distance_from_primary(hand) <= max_distance
+            if self.distance_from_active(hand) <= max_distance
         ]
         if not candidates:
             return None
 
         upright_candidates = [index for index in candidates if hands[index].upright]
         if not upright_candidates:
-            return min(candidates, key=lambda index: self.distance_from_primary(hands[index]))
+            return min(candidates, key=lambda index: self.distance_from_active(hands[index]))
 
         if self.previous_gesture is None:
             return min(
                 upright_candidates,
-                key=lambda index: self.distance_from_primary(hands[index]),
+                key=lambda index: self.distance_from_active(hands[index]),
             )
 
         same_gesture = [
@@ -64,19 +64,11 @@ class ActivationTracker:
             if hands[index].gesture == self.previous_gesture
         ]
         if same_gesture:
-            return min(same_gesture, key=lambda index: self.distance_from_primary(hands[index]))
+            return min(same_gesture, key=lambda index: self.distance_from_active(hands[index]))
 
-        primary_like = [
-            index
-            for index in upright_candidates
-            if hands[index].gesture in {GESTURE_OPEN_PALM, GESTURE_FIST}
-        ]
-        if primary_like:
-            return min(primary_like, key=lambda index: self.distance_from_primary(hands[index]))
+        return min(upright_candidates, key=lambda index: self.distance_from_active(hands[index]))
 
-        return None
-
-    def distance_from_primary(self, hand: HandState) -> float:
+    def distance_from_active(self, hand: HandState) -> float:
         if self.position is None:
             return math.inf
         target_x, target_y = self.position

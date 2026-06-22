@@ -21,7 +21,6 @@ from src.domain.landmarks import (
     hand_center,
     hand_is_upright,
     landmark_distance,
-    thumb_is_extended,
 )
 
 
@@ -40,7 +39,6 @@ def classify_static_hand_pose(
     middle_up = finger_is_extended(landmarks, LANDMARK_MIDDLE_TIP, LANDMARK_MIDDLE_PIP)
     ring_up = finger_is_extended(landmarks, LANDMARK_RING_TIP, LANDMARK_RING_PIP)
     pinky_up = finger_is_extended(landmarks, LANDMARK_PINKY_TIP, LANDMARK_PINKY_PIP)
-    thumb_extended = thumb_is_extended(landmarks, handedness)
     pinch_distance = landmark_distance(landmarks, LANDMARK_THUMB_TIP, LANDMARK_INDEX_TIP)
 
     fingers_up = [index_up, middle_up, ring_up, pinky_up]
@@ -51,13 +49,13 @@ def classify_static_hand_pose(
     if size > 0 and pinch_distance <= pinch_distance_ratio * size:
         return GESTURE_PINCH
 
-    if index_up and middle_up and not ring_up and not pinky_up and not thumb_extended:
+    if index_up and middle_up and not ring_up and not pinky_up:
         return GESTURE_TWO_FINGERS
 
     if index_up and not middle_up and not ring_up and not pinky_up:
         return GESTURE_POINT
 
-    if not any(fingers_up) and not thumb_extended:
+    if not any(fingers_up):
         return GESTURE_FIST
 
     return None

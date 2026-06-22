@@ -47,25 +47,25 @@ collaborators:
 - `gesture_preprocessing.py` converts raw detected hands into normalized hand data.
 - `gesture_classification.py` classifies static hand poses.
 - `gesture_history.py` provides bounded history buffers for recent motion state.
-- `activation_tracker.py` owns primary-hand activation and identity matching.
-- `motion_gesture.py` owns secondary motion grace and pointer/volume joystick state.
-- `command_decision.py` owns close-chord decisions and emit debounce.
+- `activation_tracker.py` owns active-hand activation and identity matching.
+- `motion_gesture.py` owns motion grace and pointer/volume joystick state.
+- `command_decision.py` owns fist select/home decisions and emit debounce.
 - `commands.py` keeps the gesture-to-TV-command mapping easy to inspect.
 
 `GestureSession` does not expose collaborator state as a public compatibility
-surface. Primary activation state, secondary motion grace, command chord
-timing, emit debounce, and pointer/volume joystick state each have one owner.
+surface. Active-hand state, motion grace, fist command timing, emit debounce,
+and pointer/volume joystick state each have one owner.
 
 The session transition model remains:
 
-1. An upright open palm activates the primary hand.
-2. The primary hand is matched by position and primary-like gestures while
-   brief primary dropouts stay active for the configured grace interval.
-3. A valid secondary hand can produce BACK, HOME chord, pointer, volume, or
+1. An upright open palm activates the active hand.
+2. The active hand is matched by position while brief dropouts stay active for
+   the configured grace interval.
+3. The active hand can produce select, HOME, BACK, pointer, volume, or
    microphone gestures.
 4. Pointer and volume gestures arm from a fixed anchor, emit after leaving the
    neutral area, repeat while held, and re-arm after returning to neutral.
-5. Loss of activation clears pending chords and motion anchors.
+5. Loss of activation clears pending fist decisions and motion anchors.
 
 ### Infrastructure
 
@@ -102,16 +102,12 @@ thread without blocking the gesture loop.
 Camera preprocessing is split by responsibility inside `infrastructure/camera`:
 latest-frame capture lives in `frame_source`, frame cropping lives in
 `video_preprocessing`, coordinate projection lives in `landmark_projection`, and
-auto-zoom state lives in `camera_zoom`. Before a secondary hand is active,
-MediaPipe detection uses a wider acquisition crop than the preview so the second
-hand can enter without being forced into the primary-hand crop. After the
-secondary hand is detected for several consecutive frames, detection uses the
-precise preview crop for stable distance and motion math. If the secondary hand
-drops out, detection returns to acquisition for reacquisition. Pointer and
-volume anchors pause auto-zoom crop updates while active so the visual neutral
-center remains fixed. Landmarks are projected back to original frame space
-before gesture rules run. Camera capture keeps only the newest frame so slow
-processing cannot build a stale frame backlog.
+auto-zoom state lives in `camera_zoom`. MediaPipe detection and display use the
+same crop so gesture math and visual feedback stay in sync. Pointer and volume
+anchors pause auto-zoom crop updates while active so the visual neutral center
+remains fixed. Landmarks are projected back to original frame space before
+gesture rules run. Camera capture keeps only the newest frame so slow processing
+cannot build a stale frame backlog.
 
 Hand tracking uses MediaPipe live-stream mode. The service submits frames and
 consumes the latest completed result, allowing MediaPipe to skip frames while it

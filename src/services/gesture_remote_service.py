@@ -29,73 +29,6 @@ from src.shared.logging import AppLogger
 
 CLEANUP_TIMEOUT_SECONDS = 1.0
 CONFIG_RELOAD_INTERVAL_SECONDS = 1.0
-SECONDARY_STABILIZE_FRAMES = 4
-SECONDARY_PRECISE_MIN_HAND_SIZE = 0.16
-SECONDARY_LOST_GRACE_FRAMES = 3
-
-
-class DetectionCropModeTracker:
-    def __init__(
-        self,
-        secondary_stabilize_frames: int = SECONDARY_STABILIZE_FRAMES,
-        precise_min_hand_size: float = SECONDARY_PRECISE_MIN_HAND_SIZE,
-        lost_grace_frames: int = SECONDARY_LOST_GRACE_FRAMES,
-    ) -> None:
-        self._secondary_stabilize_frames = max(1, secondary_stabilize_frames)
-        self._precise_min_hand_size = max(0.0, precise_min_hand_size)
-        self._lost_grace_frames = max(0, lost_grace_frames)
-        self.secondary_stable_frames = 0
-        self.secondary_lost_frames = 0
-        self.min_hand_size = 0.0
-        self.mode = "acquisition"
-        self.precision_blocked_reason = "no_secondary"
-
-    @property
-    def precise(self) -> bool:
-        return self.mode == "precise"
-
-    def record_decision(self, decision: Any, current_crop: CropRect) -> None:
-        del current_crop
-        has_secondary = decision.activated and len(decision.zoom_landmarks) > 1
-        self.min_hand_size = _min_hand_size(decision.zoom_landmarks)
-
-        if has_secondary:
-            self.secondary_stable_frames += 1
-            self.secondary_lost_frames = 0
-        else:
-            self.secondary_lost_frames += 1
-            if self.secondary_lost_frames > self._lost_grace_frames:
-                self.secondary_stable_frames = 0
-
-        if not has_secondary and self.secondary_lost_frames <= self._lost_grace_frames:
-            self.precision_blocked_reason = "secondary_grace"
-            return
-
-        if self.secondary_stable_frames <= 0:
-            self.mode = "acquisition"
-            self.precision_blocked_reason = "no_secondary"
-        elif self.min_hand_size < self._precise_min_hand_size:
-            self.mode = "stabilizing"
-            self.precision_blocked_reason = "hand_too_small_for_precise"
-        elif self.secondary_stable_frames < self._secondary_stabilize_frames:
-            self.mode = "stabilizing"
-            self.precision_blocked_reason = "settling_secondary"
-        else:
-            self.mode = "precise"
-            self.precision_blocked_reason = "secondary_active"
-
-
-def _min_hand_size(landmarks_by_hand: list[list[Any]]) -> float:
-    sizes = []
-    for landmarks in landmarks_by_hand:
-        if not landmarks:
-            continue
-        min_x = min(landmark.x for landmark in landmarks)
-        min_y = min(landmark.y for landmark in landmarks)
-        max_x = max(landmark.x for landmark in landmarks)
-        max_y = max(landmark.y for landmark in landmarks)
-        sizes.append(max(max_x - min_x, max_y - min_y))
-    return min(sizes, default=0.0)
 
 
 class GestureRemoteService:
@@ -131,7 +64,6 @@ class GestureRemoteService:
         metrics = PipelineMetrics(self._config.tv.adapter)
         last_debug_time = 0.0
         last_debug_message = ""
-        detection_crop_mode = DetectionCropModeTracker()
         zoom_controller = CameraZoomController(self._config)
         frame_pipeline = FrameCapturePipeline(frame_source, metrics)
         detection_pipeline = DetectionPipeline(metrics)
@@ -172,11 +104,9 @@ class GestureRemoteService:
                 now = time.monotonic()
                 await self._reload_config_if_needed_async(now, zoom_controller, hand_tracker)
                 frame = frame_pipeline.flip_frame(frame)
-                detection_mode = detection_crop_mode.mode
                 detection_frame = frame_pipeline.detection_frame(
                     frame,
                     zoom_controller,
-                    detection_crop_mode.precise,
                 )
                 hand_states, detected_hands = detection_pipeline.detect_hands(
                     hand_tracker,
@@ -198,16 +128,10 @@ class GestureRemoteService:
                     voice_task,
                 )
 
-                detection_crop_mode.record_decision(decision, display_frame.crop)
                 debug_message = display_pipeline.debug_message(
                     decision.debug_message,
                     detection_frame.crop,
                     display_frame.crop,
-                    detection_mode,
-                    detection_crop_mode.secondary_stable_frames,
-                    detection_crop_mode.secondary_lost_frames,
-                    detection_crop_mode.min_hand_size,
-                    detection_crop_mode.precision_blocked_reason,
                     decision.freeze_zoom,
                 )
                 if (

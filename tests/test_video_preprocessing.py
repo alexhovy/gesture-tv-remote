@@ -151,7 +151,7 @@ class VideoPreprocessingTests(unittest.TestCase):
 
         self.assertEqual(controller.current_crop(), CropRect(0.5, 0.25, 0.5, 0.5))
 
-    def test_detection_crop_expands_current_crop_until_secondary_is_active(self) -> None:
+    def test_detection_crop_matches_current_crop(self) -> None:
         controller = CameraZoomController(
             app_config(
                 auto_zoom_enabled=True,
@@ -166,52 +166,7 @@ class VideoPreprocessingTests(unittest.TestCase):
             CropRect(0.0, 0.0, 1.0, 1.0),
         )
 
-        self._assert_crop_almost_equal(
-            controller.current_crop(),
-            CropRect(0.45, 0.45, 0.1, 0.1),
-        )
-        self._assert_crop_almost_equal(
-            controller.detection_crop(precise=False),
-            CropRect(0.10, 0.10, 0.8, 0.8),
-        )
-
-    def test_detection_crop_uses_configured_secondary_acquisition_zoom(self) -> None:
-        controller = CameraZoomController(
-            app_config(
-                auto_zoom_enabled=True,
-                auto_zoom_min=1.0,
-                auto_zoom_max=10.0,
-                auto_zoom_padding=0.0,
-                auto_zoom_smoothing=1.0,
-                secondary_acquisition_max_zoom=2.0,
-            )
-        )
-        controller.update(
-            [[_landmark(0.45, 0.45), _landmark(0.55, 0.55)]],
-            CropRect(0.0, 0.0, 1.0, 1.0),
-        )
-
-        self._assert_crop_almost_equal(
-            controller.detection_crop(precise=False),
-            CropRect(0.25, 0.25, 0.5, 0.5),
-        )
-
-    def test_detection_crop_matches_current_crop_when_secondary_is_active(self) -> None:
-        controller = CameraZoomController(
-            app_config(
-                auto_zoom_enabled=True,
-                auto_zoom_min=1.0,
-                auto_zoom_max=10.0,
-                auto_zoom_padding=0.0,
-                auto_zoom_smoothing=1.0,
-            )
-        )
-        controller.update(
-            [[_landmark(0.45, 0.45), _landmark(0.55, 0.55)]],
-            CropRect(0.0, 0.0, 1.0, 1.0),
-        )
-
-        self.assertEqual(controller.detection_crop(precise=True), controller.current_crop())
+        self.assertEqual(controller.detection_crop(), controller.current_crop())
 
     def _assert_crop_almost_equal(self, actual: CropRect, expected: CropRect) -> None:
         self.assertAlmostEqual(actual.x, expected.x)

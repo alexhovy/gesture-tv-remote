@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 
 from src.domain.constants import (
-    GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
     GESTURE_OPEN_PALM,
@@ -11,63 +10,46 @@ from src.domain.constants import (
 
 @dataclass
 class CommandDecision:
-    primary_close_time: float | None = None
-    secondary_close_time: float | None = None
-    primary_select_pending: bool = False
-    secondary_back_pending: bool = False
+    fist_started_at: float | None = None
+    home_emitted_for_fist: bool = False
 
     def reset(self) -> None:
-        self.primary_close_time = None
-        self.secondary_close_time = None
-        self.primary_select_pending = False
-        self.secondary_back_pending = False
+        self.fist_started_at = None
+        self.home_emitted_for_fist = False
 
     def evaluate(
         self,
-        primary_previous_gesture: str | None,
-        primary_gesture: str | None,
-        secondary_previous_gesture: str | None,
-        secondary_gesture: str | None,
+        previous_gesture: str | None,
+        gesture: str | None,
         now: float,
-        home_chord_seconds: float,
+        fist_hold_home_seconds: float,
     ) -> str | None:
-        primary_closed = (
-            primary_previous_gesture == GESTURE_OPEN_PALM
-            and primary_gesture == GESTURE_FIST
-        )
-        secondary_closed = (
-            secondary_previous_gesture == GESTURE_OPEN_PALM
-            and secondary_gesture == GESTURE_FIST
-        )
+        if previous_gesture == GESTURE_OPEN_PALM and gesture == GESTURE_FIST:
+            self.fist_started_at = now
+            self.home_emitted_for_fist = False
 
-        if primary_closed:
-            self.primary_close_time = now
-            self.primary_select_pending = True
-        if secondary_closed:
-            self.secondary_close_time = now
-            self.secondary_back_pending = True
-
-        both_closed = (
-            self.primary_close_time is not None
-            and self.secondary_close_time is not None
-            and abs(self.primary_close_time - self.secondary_close_time)
-            <= home_chord_seconds
+        current_or_missing_fist = gesture == GESTURE_FIST or (
+            gesture is None and previous_gesture == GESTURE_FIST
         )
-        if both_closed:
+        if current_or_missing_fist and self.fist_started_at is not None:
+            if (
+                not self.home_emitted_for_fist
+                and now - self.fist_started_at >= fist_hold_home_seconds
+            ):
+                self.home_emitted_for_fist = True
+                return GESTURE_HOME
+
+        if previous_gesture == GESTURE_FIST and gesture == GESTURE_OPEN_PALM:
+            should_select = (
+                self.fist_started_at is not None
+                and not self.home_emitted_for_fist
+            )
             self.reset()
-            return GESTURE_HOME
-
-        if self.primary_select_pending and self.primary_close_time is not None:
-            if now - self.primary_close_time > home_chord_seconds:
-                self.primary_select_pending = False
-                self.primary_close_time = None
+            if should_select:
                 return GESTURE_OPEN_TO_FIST
 
-        if self.secondary_back_pending and self.secondary_close_time is not None:
-            if now - self.secondary_close_time > home_chord_seconds:
-                self.secondary_back_pending = False
-                self.secondary_close_time = None
-                return GESTURE_BACK
+        if gesture not in {GESTURE_FIST, None} and previous_gesture != GESTURE_FIST:
+            self.reset()
 
         return None
 

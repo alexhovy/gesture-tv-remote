@@ -9,19 +9,19 @@ audio, or TV adapter libraries.
 2. `gesture_preprocessing.py` normalizes raw detected hands into center, size,
    upright status, and original landmarks.
 3. `gesture_classification.py` classifies static hand poses.
-4. `GestureSession` selects primary and secondary hands.
-5. `activation_tracker.py` maintains primary activation and identity matching.
-6. `motion_gesture.py` applies secondary motion grace and joystick state.
-7. `command_decision.py` decides close chords and emit debounce.
+4. `GestureSession` selects one active hand.
+5. `activation_tracker.py` maintains active-hand activation and identity
+   matching.
+6. `motion_gesture.py` applies motion grace and joystick state.
+7. `command_decision.py` decides fist select/home transitions and emit debounce.
 8. `commands.py` maps command gestures to TV commands.
 
 ## Activation
 
-An upright open palm activates the primary hand. Once active, the primary hand
-is matched by distance from its previous position, upright status, and
-primary-like gestures. Brief primary-hand dropouts stay active for
-`GESTURE_TV_PRIMARY_LOST_GRACE_SECONDS`; after that grace interval the session
-deactivates and clears pending command state.
+An upright open palm activates the session. Once active, the hand is matched by
+distance from its previous position while brief dropouts stay active for
+`GESTURE_TV_ACTIVE_HAND_LOST_GRACE_SECONDS`. After that grace interval the
+session deactivates and clears pending command state.
 
 ## Static Poses
 
@@ -38,17 +38,17 @@ enabled.
 
 ## Motion Gestures
 
-Secondary `POINT` controls DPAD movement. The index fingertip becomes the
+Active-hand `POINT` controls DPAD movement. The index fingertip becomes the
 tracked point when available; otherwise the hand center is used.
 
-Secondary `PINCH` controls volume movement. The hand center Y coordinate is the
-tracked point.
+Active-hand `PINCH` controls volume movement. The hand center Y coordinate is
+the tracked point.
 
 Pointer and volume gestures use joystick-style state:
 
 - first point/pinch frame establishes an anchor
-- the anchor stays fixed through unclassified secondary frames and brief hand
-  dropouts while the primary session remains active
+- the anchor stays fixed through unclassified frames and brief hand dropouts
+  while the session remains active
 - pointer radius is measured against the displayed crop size
 - motion must cross the activation margin outside the neutral circle or band
 - the dominant direction emits immediately after leaving neutral
@@ -62,12 +62,12 @@ memory over time.
 
 | Gesture event | Command gesture |
 | --- | --- |
-| Primary open palm closes to fist after chord window | `OPEN_TO_FIST` |
-| Secondary open palm closes to fist after chord window | `BACK` |
-| Primary and secondary close within chord window | `HOME` |
-| Secondary pinch moves up/down | `VOLUME_UP` / `VOLUME_DOWN` |
-| Secondary point moves left/right/up/down | `POINT_LEFT` / `POINT_RIGHT` / `POINT_UP` / `POINT_DOWN` |
-| Secondary two fingers | `MIC` |
+| Open palm closes to fist and opens before hold threshold | `OPEN_TO_FIST` |
+| Fist held through hold threshold | `HOME` |
+| Open palm horizontal wave | `BACK` |
+| Pinch moves up/down | `VOLUME_UP` / `VOLUME_DOWN` |
+| Point moves left/right/up/down | `POINT_LEFT` / `POINT_RIGHT` / `POINT_UP` / `POINT_DOWN` |
+| Two fingers up | `MIC` |
 
 `commands.py` maps command gestures to adapter-neutral TV commands. `MIC` is
 handled by voice capture instead of the key-command map.

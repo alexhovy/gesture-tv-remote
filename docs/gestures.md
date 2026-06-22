@@ -1,55 +1,52 @@
 # Gestures
 
-Show one open palm first to activate gesture controls. That hand becomes the
-primary hand. The other detected hand becomes the secondary hand.
+Show one upright open palm to activate gesture controls. That same active hand
+then performs every command gesture. An open palm is neutral.
 
 ## Commands
 
 | Gesture | Command |
 | --- | --- |
-| Primary hand closes from open palm to fist | SELECT / DPAD_CENTER |
-| Secondary hand closes from open palm to fist | BACK |
-| Both hands close from open palm to fists within the chord window | HOME |
-| Secondary pinch moves up | VOLUME_UP |
-| Secondary pinch moves down | VOLUME_DOWN |
-| Secondary pointing hand moves left | DPAD_LEFT |
-| Secondary pointing hand moves right | DPAD_RIGHT |
-| Secondary pointing hand moves up | DPAD_UP |
-| Secondary pointing hand moves down | DPAD_DOWN |
-| Secondary two-finger gesture | TV voice input |
+| Open palm closes to fist, then opens again | SELECT / DPAD_CENTER |
+| Fist held past the hold threshold | HOME |
+| Open palm horizontal wave | BACK |
+| Pinch moves up | VOLUME_UP |
+| Pinch moves down | VOLUME_DOWN |
+| Pointing hand moves left | DPAD_LEFT |
+| Pointing hand moves right | DPAD_RIGHT |
+| Pointing hand moves up | DPAD_UP |
+| Pointing hand moves down | DPAD_DOWN |
+| Two fingers up | TV voice input |
 
 ## Gesture Ownership
 
-The primary hand is used for activation, select, and the HOME chord. The
-secondary hand is used for navigation, back, volume, and voice input.
+The active hand is selected by the first upright open palm. While the session is
+active, that hand is matched by position and must remain upright when
+`GESTURE_TV_REQUIRE_UPRIGHT_HANDS` is enabled. Extra detected hands are ignored
+for command decisions and auto-zoom framing.
 
-Both primary and secondary gestures require upright hands when
-`GESTURE_TV_REQUIRE_UPRIGHT_HANDS` is enabled. The primary hand must be an
-upright open palm to activate controls.
-
-Secondary command poses are only commandable once the detected hand is large
-enough to classify reliably. Point and pinch keep a stricter size gate because
-small landmark changes can move a joystick anchor. Discrete secondary command
-poses such as fist and two fingers can be smaller, but very tiny detections
-still only keep the secondary hand present for zoom tracking and do not emit
-commands. Small point and pinch frames preserve any existing motion anchor
-instead of redefining the joystick center. Discrete secondary command poses must
-also remain stable for a few frames before BACK, HOME, or voice input can
-trigger.
+Point and pinch gestures are only commandable once the active hand is large
+enough to classify reliably. Small point and pinch frames preserve any existing
+motion anchor instead of redefining the joystick center.
 
 ## Debounce
 
 Most commands are emitted once per gesture change. DPAD and volume gestures use
-a joystick-style anchor. When the secondary hand first points or pinches, its
+a joystick-style anchor. When the active hand first points or pinches, its
 current position becomes the anchor for measuring motion.
 
-Primary select and secondary back wait for the HOME chord window before
-emitting. If the closing hand briefly drops out after the close is recognized,
-the pending command can still complete during the primary grace period instead
-of waiting for a later hand frame.
+Select emits when the active hand closes from open palm to fist and opens again
+before the HOME hold threshold. Holding the fist through
+`GESTURE_TV_FIST_HOLD_HOME_SECONDS` emits HOME once, then waits for the hand to
+open before another fist command can occur.
 
-Point navigation tracks the secondary index fingertip so left/right intent does
-not depend on moving the whole hand. The first point frame captures a fixed
+BACK emits from an open-palm horizontal wave. The wave requires clear
+side-to-side movement with one direction reversal inside a short window. Vertical-heavy
+movement is ignored, and point, pinch, fist, and two-finger poses do not trigger
+BACK.
+
+Point navigation tracks the active hand's index fingertip so left/right intent
+does not depend on moving the whole hand. The first point frame captures a fixed
 center and draws a crop-relative neutral circle around it, keeping the visible
 circle size stable while auto-zoom changes. Moving outside that circle emits the
 dominant direction only after crossing a small activation margin. Returning
@@ -65,17 +62,9 @@ the finger entered the center return area before attempting the next direction.
 While a pointer or volume anchor exists, the preview crop is locked so the
 neutral center does not move on screen during motion or grace.
 
-Auto-zoom has acquisition and stabilizing detection modes. When only the primary
-hand is active, MediaPipe uses a wider detection crop than the preview so the
-secondary hand can be lifted naturally beside the primary. Once the secondary
-hand first appears, detection stays wide only while stabilizing. After the
-secondary hand is active, MediaPipe detection uses the same precise crop as the
-preview for both pointer navigation and volume gestures. Brief secondary
-misreads, unclassified secondary frames, and secondary dropouts keep the
-existing pointer or volume anchor while the primary session remains active, but
-commands wait for a commandable point or pinch frame before emitting. Once
-pointer or volume owns the motion mode, opposite-mode reads do not switch modes
-or replace the anchor. A clear non-motion secondary pose, such as an open palm,
+Auto-zoom uses the same crop for MediaPipe detection and display. Brief
+dropouts and unclassified active-hand frames keep existing pointer or volume
+anchors during motion grace. A clear non-motion pose, such as an open palm,
 clears the motion anchor after grace because the user has stopped pointer or
 volume control. Otherwise the current anchor remains fixed until its matching
-point or pinch returns, the primary hand deactivates, or the session resets.
+point or pinch returns, the active hand deactivates, or the session resets.

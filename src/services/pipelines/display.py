@@ -29,20 +29,10 @@ class DisplayPipeline:
         decision_debug_message: str,
         detection_crop: CropRect,
         display_crop: CropRect,
-        detection_mode: str,
-        secondary_stable_frames: int,
-        secondary_lost_frames: int,
-        min_hand_size: float,
-        precision_blocked_reason: str,
         zoom_frozen: bool = False,
     ) -> str:
         return (
             f"{decision_debug_message} "
-            f"detection_mode={detection_mode} "
-            f"secondary_stable_frames={secondary_stable_frames} "
-            f"secondary_lost_frames={secondary_lost_frames} "
-            f"min_hand_size={min_hand_size:.2f} "
-            f"precision_blocked={precision_blocked_reason} "
             f"detection_crop={_debug_crop(detection_crop)} "
             f"display_crop={_debug_crop(display_crop)} "
             f"zoom_frozen={zoom_frozen}"

@@ -23,13 +23,12 @@ from src.domain.session_types import GestureDecision, HandState
 from src.shared.config import AppConfig
 
 
-SECONDARY_COMMAND_MIN_HAND_SIZE = 0.10
+SECONDARY_MOTION_COMMAND_MIN_HAND_SIZE = 0.10
+SECONDARY_DISCRETE_COMMAND_MIN_HAND_SIZE = 0.06
 SECONDARY_DISCRETE_COMMAND_STABLE_FRAMES = 3
-SECONDARY_SIZE_GATED_GESTURES = {
-    GESTURE_FIST,
+SECONDARY_MOTION_COMMAND_GESTURES = {
     GESTURE_PINCH,
     GESTURE_POINT,
-    GESTURE_TWO_FINGERS,
 }
 SECONDARY_DISCRETE_COMMAND_GESTURES = {
     GESTURE_FIST,
@@ -459,10 +458,8 @@ class GestureSession(GestureSessionDebugMixin):
             self._reset_secondary_pose_tracking()
             return None
 
-        if (
-            secondary_gesture in SECONDARY_SIZE_GATED_GESTURES
-            and secondary_size < SECONDARY_COMMAND_MIN_HAND_SIZE
-        ):
+        min_hand_size = self._secondary_command_min_hand_size(secondary_gesture)
+        if min_hand_size is not None and secondary_size < min_hand_size:
             self._reset_secondary_pose_tracking()
             self._secondary_pose_blocked_reason = "hand_too_small"
             return None
@@ -486,6 +483,14 @@ class GestureSession(GestureSessionDebugMixin):
             return None
 
         return secondary_gesture
+
+    @staticmethod
+    def _secondary_command_min_hand_size(secondary_gesture: str) -> float | None:
+        if secondary_gesture in SECONDARY_MOTION_COMMAND_GESTURES:
+            return SECONDARY_MOTION_COMMAND_MIN_HAND_SIZE
+        if secondary_gesture in SECONDARY_DISCRETE_COMMAND_GESTURES:
+            return SECONDARY_DISCRETE_COMMAND_MIN_HAND_SIZE
+        return None
 
     def _reset_secondary_pose_tracking(self) -> None:
         self._secondary_pose_candidate = None

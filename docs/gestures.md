@@ -28,12 +28,14 @@ Both primary and secondary gestures require upright hands when
 upright open palm to activate controls.
 
 Secondary command poses are only commandable once the detected hand is large
-enough to classify reliably. Very small secondary point, pinch, fist, and
-two-finger detections still keep the secondary hand present for zoom tracking,
-but they do not emit commands. Small point and pinch frames preserve any
-existing motion anchor instead of redefining the joystick center. Discrete
-secondary command poses such as fist and two fingers must also remain stable for
-a few frames before BACK, HOME, or voice input can trigger.
+enough to classify reliably. Point and pinch keep a stricter size gate because
+small landmark changes can move a joystick anchor. Discrete secondary command
+poses such as fist and two fingers can be smaller, but very tiny detections
+still only keep the secondary hand present for zoom tracking and do not emit
+commands. Small point and pinch frames preserve any existing motion anchor
+instead of redefining the joystick center. Discrete secondary command poses must
+also remain stable for a few frames before BACK, HOME, or voice input can
+trigger.
 
 ## Debounce
 

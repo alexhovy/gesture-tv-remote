@@ -164,6 +164,21 @@ class SessionActivationTests(unittest.TestCase):
         self.assertIsNone(decision.command_gesture)
         self.assertIn("secondary_pose_blocked=hand_too_small", decision.debug_message)
 
+    def test_small_stable_secondary_fist_can_emit_back(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        open_secondary = hand_state(GESTURE_OPEN_PALM, center=(0.70, 0.50), size=0.06)
+        fist_secondary = hand_state(GESTURE_FIST, center=(0.70, 0.50), size=0.06)
+
+        session.evaluate([primary, open_secondary], now=0.0)
+        session.evaluate([primary, fist_secondary], now=0.1)
+        session.evaluate([primary, fist_secondary], now=0.2)
+        session.evaluate([primary, fist_secondary], now=0.3)
+        decision = session.evaluate([primary, fist_secondary], now=0.7)
+
+        self.assertEqual(decision.command_gesture, GESTURE_BACK)
+        self.assertIn("secondary_pose_blocked=none", decision.debug_message)
+
     def test_secondary_fist_must_settle_before_back_command(self) -> None:
         session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)

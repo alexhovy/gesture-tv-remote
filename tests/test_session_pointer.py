@@ -136,7 +136,7 @@ class SessionPointerTests(unittest.TestCase):
         self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
         self.assertIn("anchor=(0.50,0.50)", right.debug_message)
 
-    def test_pointer_resets_when_secondary_hand_disappears(self) -> None:
+    def test_pointer_preserves_anchor_when_secondary_hand_disappears(self) -> None:
         session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
 
@@ -144,14 +144,37 @@ class SessionPointerTests(unittest.TestCase):
         self._point(session, primary, (0.71, 0.50), now=0.1)
         missing_secondary = session.evaluate([primary], now=0.2)
         expired = session.evaluate([primary], now=0.8)
+        right = self._point(session, primary, (0.71, 0.50), now=0.9)
 
         self.assertIsNone(missing_secondary.command_gesture)
         self.assertIn("secondary=none", missing_secondary.debug_message)
         self.assertIn("pointer_state=anchor=(0.50,0.50)", missing_secondary.debug_message)
         self.assertIn("blocked=secondary_grace", missing_secondary.debug_message)
         self.assertTrue(missing_secondary.anchor_locked)
-        self.assertIn("pointer_state=anchor=none:active=none", expired.debug_message)
-        self.assertFalse(expired.anchor_locked)
+        self.assertIsNone(expired.command_gesture)
+        self.assertIn("pointer_state=anchor=(0.50,0.50)", expired.debug_message)
+        self.assertIn("blocked=secondary_lost", expired.debug_message)
+        self.assertTrue(expired.anchor_locked)
+        self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIn("pointer_state=anchor=(0.50,0.50)", right.debug_message)
+        self.assertTrue(right.anchor_locked)
+
+    def test_pointer_preserves_anchor_during_primary_temporary_loss(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._point(session, primary, (0.50, 0.50), now=0.0)
+        missing_primary = session.evaluate([], now=0.2)
+        right = self._point(session, primary, (0.71, 0.50), now=0.3)
+
+        self.assertTrue(missing_primary.primary_temporarily_lost)
+        self.assertTrue(missing_primary.anchor_locked)
+        self.assertTrue(missing_primary.freeze_zoom)
+        self.assertIn("pointer_state=anchor=(0.50,0.50)", missing_primary.debug_message)
+        self.assertIn("blocked=primary_grace", missing_primary.debug_message)
+        self.assertIn("zoom_freeze_reason=motion_anchor", missing_primary.debug_message)
+        self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIn("pointer_state=anchor=(0.50,0.50)", right.debug_message)
 
     def test_pointer_preserves_anchor_through_brief_open_palm_misread(self) -> None:
         session = GestureSession(app_config())

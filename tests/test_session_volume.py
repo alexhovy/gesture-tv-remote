@@ -89,6 +89,27 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertIn("blocked=rearmed", neutral.debug_message)
         self.assertEqual(up.command_gesture, GESTURE_VOLUME_UP)
 
+    def test_volume_preserves_anchor_when_secondary_hand_disappears(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._pinch(session, primary, 0.50, now=0.0)
+        self._pinch(session, primary, 0.70, now=0.1)
+        missing_secondary = session.evaluate([primary], now=0.2)
+        expired = session.evaluate([primary], now=0.8)
+        down = self._pinch(session, primary, 0.70, now=0.9)
+
+        self.assertIsNone(missing_secondary.command_gesture)
+        self.assertIn("volume_state=anchor=0.50", missing_secondary.debug_message)
+        self.assertIn("blocked=secondary_grace", missing_secondary.debug_message)
+        self.assertTrue(missing_secondary.anchor_locked)
+        self.assertIsNone(expired.command_gesture)
+        self.assertIn("volume_state=anchor=0.50", expired.debug_message)
+        self.assertIn("blocked=secondary_lost", expired.debug_message)
+        self.assertTrue(expired.anchor_locked)
+        self.assertEqual(down.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIn("volume_state=anchor=0.50", down.debug_message)
+
     def test_volume_survives_brief_unknown_secondary_gesture(self) -> None:
         session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)

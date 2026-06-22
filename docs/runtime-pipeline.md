@@ -37,8 +37,9 @@ stabilization window, detection switches to the same precise crop as the preview
 so pointer and volume motion use the same visual frame that the user sees. Once
 pointer or volume motion has established an anchor, auto-zoom crop updates are
 paused until the anchor clears; this keeps the visual neutral center fixed
-during motion and grace. If the secondary hand drops out, detection widens again
-for reacquisition.
+during motion, grace, and secondary-hand reacquisition. If the secondary hand
+drops out, detection can widen again for reacquisition while the preview crop
+and motion anchor remain fixed.
 
 TV commands are sent by one bounded async dispatcher task. Slow TV network
 calls, reconnects, or adapter retries do not block camera capture, hand

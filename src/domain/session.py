@@ -88,7 +88,11 @@ class GestureSession(GestureSessionDebugMixin):
 
         if primary_hand is None:
             if self._primary_missing_within_grace(now):
-                self.reset_motion_tracking()
+                anchor_locked = self._motion_anchor_locked()
+                if anchor_locked:
+                    self._mark_motion_grace("primary_grace")
+                else:
+                    self.reset_motion_tracking()
                 return GestureDecision(
                     command_gesture=None,
                     activated=True,
@@ -96,9 +100,17 @@ class GestureSession(GestureSessionDebugMixin):
                         f"hands={len(hand_states)} activated=True "
                         f"gestures={debug_gestures} primary_temporarily_lost "
                         f"primary_index=none secondary_index=none "
-                        f"zoom_hands=0 {hand_debug}"
+                        f"zoom_hands=0 "
+                        f"pointer_state={self._debug_pointer_state(None)} "
+                        f"volume_state={self._debug_volume_state()} "
+                        f"zoom_freeze_reason={'motion_anchor' if anchor_locked else 'primary_grace'} "
+                        f"anchor_locked={anchor_locked} "
+                        f"{hand_debug}"
                     ),
                     primary_temporarily_lost=True,
+                    freeze_zoom=anchor_locked,
+                    anchor_locked=anchor_locked,
+                    pointer_debug=self._pointer_debug(None),
                 )
 
             self._reset_activation()
@@ -129,7 +141,8 @@ class GestureSession(GestureSessionDebugMixin):
         if secondary_hand is not None and not secondary_hand.upright:
             secondary_hand = None
             secondary_index = None
-            self.reset_motion_tracking()
+            if not self._motion_anchor_locked():
+                self.reset_motion_tracking()
 
         primary_gesture = primary_hand.gesture
         self._activation.update_seen(primary_hand, now)
@@ -178,10 +191,13 @@ class GestureSession(GestureSessionDebugMixin):
         if command_gesture == GESTURE_HOME:
             self.reset_motion_tracking()
 
-        if secondary_hand is None and not self._secondary_missing_within_grace(now):
-            self.reset_motion_tracking()
-        elif secondary_hand is None:
-            self._mark_motion_grace("secondary_grace")
+        if secondary_hand is None:
+            if self._secondary_missing_within_grace(now):
+                self._mark_motion_grace("secondary_grace")
+            elif self._motion_anchor_locked():
+                self._mark_motion_grace("secondary_lost")
+            else:
+                self.reset_motion_tracking()
 
         if command_gesture is None and secondary_hand is not None:
             pinch_commandable = (

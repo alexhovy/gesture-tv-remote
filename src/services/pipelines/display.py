@@ -1,3 +1,4 @@
+from types import SimpleNamespace
 from typing import Any
 
 import cv2
@@ -13,9 +14,14 @@ from src.infrastructure.hand_tracking.hand_tracking import DetectedHand
 from src.shared.logging import AppLogger
 
 
+OVERLAY_SMOOTHING_ALPHA = 0.45
+OVERLAY_MISSING_GRACE_FRAMES = 2
+
+
 class DisplayPipeline:
     def __init__(self, logger: AppLogger) -> None:
         self._logger = logger
+        self._overlay_smoother = OverlayLandmarkSmoother()
 
     def debug_message(
         self,
@@ -24,6 +30,8 @@ class DisplayPipeline:
         display_crop: CropRect,
         detection_mode: str,
         secondary_stable_frames: int,
+        secondary_lost_frames: int,
+        min_hand_size: float,
         precision_blocked_reason: str,
         zoom_frozen: bool = False,
     ) -> str:
@@ -31,6 +39,8 @@ class DisplayPipeline:
             f"{decision_debug_message} "
             f"detection_mode={detection_mode} "
             f"secondary_stable_frames={secondary_stable_frames} "
+            f"secondary_lost_frames={secondary_lost_frames} "
+            f"min_hand_size={min_hand_size:.2f} "
             f"precision_blocked={precision_blocked_reason} "
             f"detection_crop={_debug_crop(detection_crop)} "
             f"display_crop={_debug_crop(display_crop)} "
@@ -44,11 +54,11 @@ class DisplayPipeline:
         source_crop: CropRect,
         display_crop: CropRect,
     ) -> None:
-        for detected_hand in detected_hands:
-            original_landmarks = landmarks_to_original_space(
-                detected_hand.landmarks,
-                source_crop,
-            )
+        original_landmarks_by_hand = [
+            landmarks_to_original_space(detected_hand.landmarks, source_crop)
+            for detected_hand in detected_hands
+        ]
+        for original_landmarks in self._overlay_smoother.update(original_landmarks_by_hand):
             draw_simple_landmarks(
                 frame,
                 landmarks_to_crop_space(original_landmarks, display_crop),
@@ -72,3 +82,58 @@ def _debug_crop(crop: CropRect) -> str:
         f"({crop.x:.2f},{crop.y:.2f},"
         f"{crop.width:.2f},{crop.height:.2f})"
     )
+
+
+class OverlayLandmarkSmoother:
+    def __init__(
+        self,
+        alpha: float = OVERLAY_SMOOTHING_ALPHA,
+        missing_grace_frames: int = OVERLAY_MISSING_GRACE_FRAMES,
+    ) -> None:
+        self._alpha = max(0.0, min(alpha, 1.0))
+        self._missing_grace_frames = max(0, missing_grace_frames)
+        self._previous: list[list[Any]] = []
+        self._missing_frames = 0
+
+    def update(self, landmarks_by_hand: list[list[Any]]) -> list[list[Any]]:
+        if not landmarks_by_hand:
+            if self._previous and self._missing_frames < self._missing_grace_frames:
+                self._missing_frames += 1
+                return self._previous
+            self._previous = []
+            self._missing_frames = 0
+            return []
+
+        smoothed = []
+        for index, landmarks in enumerate(landmarks_by_hand):
+            previous = self._previous[index] if index < len(self._previous) else None
+            if previous is None or len(previous) != len(landmarks):
+                smoothed.append(landmarks)
+            else:
+                smoothed.append(_blend_landmarks(previous, landmarks, self._alpha))
+
+        self._previous = smoothed
+        self._missing_frames = 0
+        return smoothed
+
+
+def _blend_landmarks(previous: list[Any], current: list[Any], alpha: float) -> list[Any]:
+    return [
+        _blend_landmark(previous_landmark, current_landmark, alpha)
+        for previous_landmark, current_landmark in zip(previous, current, strict=True)
+    ]
+
+
+def _blend_landmark(previous: Any, current: Any, alpha: float) -> Any:
+    blended = SimpleNamespace(
+        x=previous.x + alpha * (current.x - previous.x),
+        y=previous.y + alpha * (current.y - previous.y),
+    )
+    for attribute in ("z", "visibility", "presence"):
+        if hasattr(current, attribute):
+            current_value = getattr(current, attribute)
+            if hasattr(previous, attribute):
+                previous_value = getattr(previous, attribute)
+                current_value = previous_value + alpha * (current_value - previous_value)
+            setattr(blended, attribute, current_value)
+    return blended

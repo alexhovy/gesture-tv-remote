@@ -33,13 +33,20 @@ current detection frame and consumes the latest completed result. While only the
 primary hand is active, the detection frame uses a wider acquisition crop than
 the preview. When a secondary hand first appears, detection remains wide only
 during stabilization. After the secondary hand is active for the configured
-stabilization window, detection switches to the same precise crop as the preview
-so pointer and volume motion use the same visual frame that the user sees. Once
-pointer or volume motion has established an anchor, auto-zoom crop updates are
-paused until the anchor clears; this keeps the visual neutral center fixed
-during motion, grace, and secondary-hand reacquisition. If the secondary hand
-drops out, detection can widen again for reacquisition while the preview crop
-and motion anchor remain fixed.
+stabilization window and the hands are large enough to track reliably, detection
+switches to the same precise crop as the preview so pointer and volume motion
+use the same visual frame that the user sees. Small far-away hands stay in the
+wider acquisition/stabilizing crop, with a short lost-frame grace, so the runtime
+does not flap between tight precision and reacquisition crops. Once pointer or
+volume motion has established an anchor, auto-zoom crop updates are paused until
+the anchor clears; this keeps the visual neutral center fixed during motion,
+grace, and secondary-hand reacquisition. If the secondary hand drops out,
+detection can widen again for reacquisition while the preview crop and motion
+anchor remain fixed.
+
+The preview smooths only the drawn landmark overlay in original-frame
+coordinates and holds it briefly through dropped detection frames. Gesture
+decisions still use the current MediaPipe result.
 
 TV commands are sent by one bounded async dispatcher task. Slow TV network
 calls, reconnects, or adapter retries do not block camera capture, hand

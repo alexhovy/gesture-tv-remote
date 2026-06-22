@@ -51,6 +51,7 @@ from src.services.pipelines import (  # noqa: E402
     FrameCapturePipeline,
     GestureDecisionPipeline,
 )
+import src.services.pipelines.display as display_module  # noqa: E402
 from src.services.remote_command_dispatcher import (  # noqa: E402
     MAX_PENDING_COMMANDS,
     RemoteCommandDispatcher,
@@ -240,6 +241,8 @@ class GestureRemoteServiceTests(unittest.TestCase):
             CropRect(0.25, 0.25, 0.5, 0.5),
             "acquisition",
             0,
+            0,
+            0.20,
             "no_secondary",
             zoom_frozen=True,
         )
@@ -250,6 +253,8 @@ class GestureRemoteServiceTests(unittest.TestCase):
                 "hands=2 activated=True "
                 "detection_mode=acquisition "
                 "secondary_stable_frames=0 "
+                "secondary_lost_frames=0 "
+                "min_hand_size=0.20 "
                 "precision_blocked=no_secondary "
                 "detection_crop=(0.00,0.00,1.00,1.00) "
                 "display_crop=(0.25,0.25,0.50,0.50) "
@@ -291,8 +296,11 @@ class DetectionCropModeTrackerTests(unittest.TestCase):
         self.assertEqual(tracker.secondary_stable_frames, 3)
         self.assertEqual(tracker.precision_blocked_reason, "secondary_active")
 
-    def test_secondary_miss_returns_to_acquisition_mode(self) -> None:
-        tracker = DetectionCropModeTracker(secondary_stabilize_frames=2)
+    def test_secondary_miss_uses_grace_before_returning_to_acquisition_mode(self) -> None:
+        tracker = DetectionCropModeTracker(
+            secondary_stabilize_frames=2,
+            lost_grace_frames=1,
+        )
         tracker.record_decision(
             _decision_with_hands(2),
             CropRect(0.20, 0.20, 0.60, 0.60),
@@ -307,12 +315,24 @@ class DetectionCropModeTrackerTests(unittest.TestCase):
             CropRect(0.20, 0.20, 0.60, 0.60),
         )
 
+        self.assertEqual(tracker.mode, "precise")
+        self.assertTrue(tracker.precise)
+        self.assertEqual(tracker.secondary_stable_frames, 2)
+        self.assertEqual(tracker.secondary_lost_frames, 1)
+        self.assertEqual(tracker.precision_blocked_reason, "secondary_grace")
+
+        tracker.record_decision(
+            _decision_with_hands(1, freeze_zoom=True),
+            CropRect(0.20, 0.20, 0.60, 0.60),
+        )
+
         self.assertEqual(tracker.mode, "acquisition")
         self.assertFalse(tracker.precise)
         self.assertEqual(tracker.secondary_stable_frames, 0)
+        self.assertEqual(tracker.secondary_lost_frames, 2)
         self.assertEqual(tracker.precision_blocked_reason, "no_secondary")
 
-    def test_precision_uses_display_crop_when_secondary_is_small(self) -> None:
+    def test_small_secondary_hand_blocks_precise_detection(self) -> None:
         tracker = DetectionCropModeTracker(secondary_stabilize_frames=1)
 
         tracker.record_decision(
@@ -320,9 +340,42 @@ class DetectionCropModeTrackerTests(unittest.TestCase):
             CropRect(0.20, 0.20, 0.60, 0.60),
         )
 
-        self.assertEqual(tracker.mode, "precise")
-        self.assertTrue(tracker.precise)
-        self.assertEqual(tracker.precision_blocked_reason, "secondary_active")
+        self.assertEqual(tracker.mode, "stabilizing")
+        self.assertFalse(tracker.precise)
+        self.assertEqual(tracker.precision_blocked_reason, "hand_too_small_for_precise")
+        self.assertAlmostEqual(tracker.min_hand_size, 0.05)
+
+
+class DisplayPipelineTests(unittest.TestCase):
+    def test_detected_hand_overlay_is_smoothed_and_held_through_brief_dropout(self) -> None:
+        drawn = []
+        original_draw = display_module.draw_simple_landmarks
+        display_module.draw_simple_landmarks = lambda frame, landmarks: drawn.append(landmarks)
+        try:
+            pipeline = DisplayPipeline(FakeLogger())
+            frame = FakeFrame(100, 100)
+            crop = CropRect(0.0, 0.0, 1.0, 1.0)
+
+            pipeline.draw_detected_hands(
+                frame,
+                [SimpleNamespace(landmarks=[_landmark(0.20, 0.20)], handedness="Right")],
+                crop,
+                crop,
+            )
+            pipeline.draw_detected_hands(
+                frame,
+                [SimpleNamespace(landmarks=[_landmark(0.60, 0.20)], handedness="Right")],
+                crop,
+                crop,
+            )
+            pipeline.draw_detected_hands(frame, [], crop, crop)
+        finally:
+            display_module.draw_simple_landmarks = original_draw
+
+        self.assertEqual(len(drawn), 3)
+        self.assertAlmostEqual(drawn[0][0].x, 0.20)
+        self.assertAlmostEqual(drawn[1][0].x, 0.38)
+        self.assertAlmostEqual(drawn[2][0].x, 0.38)
 
 
 class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
@@ -624,7 +677,7 @@ def _landmark(x: float, y: float):
 def _decision_with_hands(
     hand_count: int,
     freeze_zoom: bool = False,
-    hand_size: float = 0.12,
+    hand_size: float = 0.20,
 ) -> GestureDecision:
     centers = [(0.38, 0.50), (0.62, 0.50), (0.50, 0.70)]
     return GestureDecision(

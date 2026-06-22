@@ -154,6 +154,21 @@ class GestureRemoteServiceTests(unittest.TestCase):
             ([landmarks], CropRect(0.0, 0.0, 1.0, 1.0)),
         )
 
+    def test_decision_pipeline_passes_display_crop_size_for_pointer_radius(self) -> None:
+        session = FakeDecisionSession()
+
+        GestureDecisionPipeline(
+            session,
+            FakeZoomController(),
+        ).evaluate(
+            [],
+            CropRect(0.0, 0.0, 1.0, 1.0),
+            CropRect(0.20, 0.30, 0.50, 0.40),
+            now=0.0,
+        )
+
+        self.assertEqual(session.pointer_reference_size, 0.40)
+
     def test_update_zoom_holds_crop_during_temporary_primary_loss(self) -> None:
         zoom_controller = FakeZoomController()
 
@@ -570,7 +585,11 @@ class FakeGestureSession:
 
 
 class FakeDecisionSession:
-    def evaluate(self, hand_states, now):
+    def __init__(self) -> None:
+        self.pointer_reference_size = None
+
+    def evaluate(self, hand_states, now, pointer_reference_size=1.0):
+        self.pointer_reference_size = pointer_reference_size
         return GestureDecision(None, False, "")
 
 

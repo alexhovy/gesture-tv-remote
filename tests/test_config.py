@@ -48,7 +48,7 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.MODEL_DOWNLOAD_TIMEOUT_SECONDS: "3.5",
                 EnvVar.MODEL_DOWNLOAD_RETRIES: "4",
                 EnvVar.DEBOUNCE_SECONDS: "0.25",
-                EnvVar.POINTER_DISTANCE_RATIO: "0.5",
+                EnvVar.POINTER_SCREEN_RADIUS_RATIO: "0.12",
                 EnvVar.VOLUME_MAX_DISTANCE: "0.3",
                 EnvVar.REQUIRE_UPRIGHT_HANDS: "false",
                 EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO: "0.5",
@@ -86,7 +86,7 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.model.download_timeout_seconds, 3.5)
         self.assertEqual(config.model.download_retries, 4)
         self.assertEqual(config.gesture.debounce_seconds, 0.25)
-        self.assertEqual(config.gesture.pointer_distance_ratio, 0.5)
+        self.assertEqual(config.gesture.pointer_screen_radius_ratio, 0.12)
         self.assertEqual(config.gesture.volume_max_distance, 0.3)
         self.assertFalse(config.gesture.require_upright_hands)
         self.assertEqual(config.gesture.hand_upright_max_tilt_ratio, 0.5)

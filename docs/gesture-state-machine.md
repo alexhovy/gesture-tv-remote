@@ -48,7 +48,8 @@ Pointer and volume gestures use joystick-style state:
 
 - first point/pinch frame establishes an anchor
 - the anchor stays fixed until the point/pinch gesture ends
-- motion must leave the scaled neutral circle or band
+- pointer radius is measured against the displayed crop size
+- motion must cross the activation margin outside the neutral circle or band
 - the dominant direction emits immediately after leaving neutral
 - holding the same direction repeats after the debounce interval
 - changing direction requires returning inside neutral first

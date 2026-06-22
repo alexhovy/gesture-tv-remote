@@ -58,7 +58,12 @@ class GestureSession(GestureSessionDebugMixin):
     def update_config(self, config: AppConfig) -> None:
         self._config = config
 
-    def evaluate(self, hand_states: list[HandState], now: float) -> GestureDecision:
+    def evaluate(
+        self,
+        hand_states: list[HandState],
+        now: float,
+        pointer_reference_size: float = 1.0,
+    ) -> GestureDecision:
         primary_anchor = self._activation.position
         if self._activation.position is None:
             primary_index = next(
@@ -223,12 +228,7 @@ class GestureSession(GestureSessionDebugMixin):
                 pointer_position = self._pointer_position(secondary_hand)
                 if not isinstance(self._pointer.anchor, tuple):
                     self._pointer.anchor = pointer_position
-                pointer_distance = self._scaled_distance(
-                    secondary_size,
-                    self._config.gesture.pointer_distance_ratio,
-                    self._config.gesture.pointer_min_distance,
-                    self._config.gesture.pointer_max_distance,
-                )
+                pointer_distance = self._pointer_distance(pointer_reference_size)
                 pointer_candidate = classify_pointer_joystick(
                     self._pointer.anchor if isinstance(self._pointer.anchor, tuple) else None,
                     pointer_position,
@@ -451,3 +451,6 @@ class GestureSession(GestureSessionDebugMixin):
             return min_distance
 
         return min(max(hand_size * ratio, min_distance), max_distance)
+
+    def _pointer_distance(self, reference_size: float) -> float:
+        return max(0.0, reference_size) * self._config.gesture.pointer_screen_radius_ratio

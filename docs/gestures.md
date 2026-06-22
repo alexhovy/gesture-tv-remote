@@ -43,12 +43,13 @@ current position becomes the anchor for measuring motion.
 
 Point navigation tracks the secondary index fingertip so left/right intent does
 not depend on moving the whole hand. The first point frame captures a fixed
-center and draws a neutral circle around it. Moving outside that circle emits
-the dominant direction. Returning inside the circle re-arms pointer navigation
-without moving the center. Holding the same direction repeats after the command
-debounce interval, while changing direction requires returning to neutral first.
-Volume gestures use the same fixed-center idea as a vertical neutral band around
-the first pinch position.
+center and draws a crop-relative neutral circle around it, keeping the visible
+circle size stable while auto-zoom changes. Moving outside that circle emits the
+dominant direction only after crossing a small activation margin. Returning
+inside the circle re-arms pointer navigation without moving the center. Holding
+the same direction repeats after the command debounce interval, while changing
+direction requires returning to neutral first. Volume gestures use the same
+fixed-center idea as a vertical neutral band around the first pinch position.
 
 The camera preview draws pointer diagnostics while point navigation is active:
 the fixed joystick center, neutral area, directional boundaries, current

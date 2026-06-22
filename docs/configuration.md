@@ -152,9 +152,7 @@ will not override that environment value.
 | `GESTURE_TV_MAX_HANDS` | `2` |
 | `GESTURE_TV_DEBOUNCE_SECONDS` | `0.3` |
 | `GESTURE_TV_HOME_CHORD_SECONDS` | `0.35` |
-| `GESTURE_TV_POINTER_DISTANCE_RATIO` | `1.5` |
-| `GESTURE_TV_POINTER_MIN_DISTANCE` | `0.08` |
-| `GESTURE_TV_POINTER_MAX_DISTANCE` | `0.18` |
+| `GESTURE_TV_POINTER_SCREEN_RADIUS_RATIO` | `0.14` |
 | `GESTURE_TV_POINTER_DOMINANCE` | `1.0` |
 | `GESTURE_TV_VOLUME_DISTANCE_RATIO` | `1.0` |
 | `GESTURE_TV_VOLUME_MIN_DISTANCE` | `0.06` |
@@ -177,15 +175,16 @@ Example:
 GESTURE_TV_ADAPTER=samsung GESTURE_TV_HOST=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 python main.py
 ```
 
-Pointer and volume neutral zones are scaled from the detected secondary hand
-size, then clamped by their min/max distance settings. The first point frame
-captures the index fingertip as a fixed pointer center; the first pinch frame
-captures a fixed vertical volume center. Moving outside the fixed pointer
-circle emits the dominant direction. Moving above or below the fixed volume
-band emits volume up or down. Returning inside the neutral circle or band
-re-arms motion without moving the anchor. Holding outside neutral repeats the
-same command after `GESTURE_TV_DEBOUNCE_SECONDS`; changing direction requires
-returning to neutral first.
+The pointer neutral circle is a fixed fraction of the displayed camera crop, so
+the yellow circle stays visually stable as auto-zoom widens or tightens the
+preview. The first point frame captures the index fingertip as a fixed pointer
+center; moving beyond a small activation margin outside that circle emits the
+dominant direction. Volume uses a fixed vertical center from the first pinch
+frame, with its neutral band scaled from the detected secondary hand size and
+clamped by the volume min/max distance settings. Returning inside the neutral
+circle or band re-arms motion without moving the anchor. Holding outside the
+activation margin repeats the same command after `GESTURE_TV_DEBOUNCE_SECONDS`;
+changing direction requires returning to neutral first.
 
 `GESTURE_TV_CAMERA_ZOOM` is the starting digital center-crop zoom for MediaPipe
 hand tracking and display. Values above `1.0` make hands larger in the tracking
@@ -211,7 +210,8 @@ about `50%`.
 
 Numeric settings are validated at startup. Zoom values must be at least `1.0`,
 confidence values must be between `0.0` and `1.0`, max values must not be lower
-than their matching min values, and durations or distances cannot be negative.
+than their matching min values, and durations, distances, or ratios cannot be
+negative.
 Boolean settings accept `1`, `true`, `yes`, `on`, `0`, `false`, `no`, and `off`.
 
 `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` and

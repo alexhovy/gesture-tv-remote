@@ -11,6 +11,7 @@ from src.domain.constants import (
 )
 
 MOTION_EPSILON = 1e-9
+MOTION_ACTIVATION_HYSTERESIS = 1.15
 
 
 @dataclass(frozen=True)
@@ -32,7 +33,7 @@ def classify_pointer_joystick(
     prefix: str,
 ) -> JoystickDecision:
     neutral = max(0.0, distance)
-    activation = neutral
+    activation = neutral * MOTION_ACTIVATION_HYSTERESIS
     if anchor_position is None:
         return JoystickDecision(
             None, 0.0, activation, neutral, 0.0, True, "missing_anchor"
@@ -56,6 +57,17 @@ def classify_pointer_joystick(
             threshold_ratio,
             True,
             "neutral",
+        )
+
+    if magnitude <= activation + MOTION_EPSILON:
+        return JoystickDecision(
+            None,
+            magnitude,
+            activation,
+            neutral,
+            threshold_ratio,
+            False,
+            "inside_activation",
         )
 
     axis_dominance = max(0.0, dominance)
@@ -100,7 +112,7 @@ def classify_volume_joystick(
     distance: float,
 ) -> JoystickDecision:
     neutral = max(0.0, distance)
-    activation = neutral
+    activation = neutral * MOTION_ACTIVATION_HYSTERESIS
     if anchor_y is None:
         return JoystickDecision(
             None, 0.0, activation, neutral, 0.0, True, "missing_anchor"
@@ -119,6 +131,17 @@ def classify_volume_joystick(
             threshold_ratio,
             True,
             "neutral",
+        )
+
+    if magnitude <= activation + MOTION_EPSILON:
+        return JoystickDecision(
+            None,
+            magnitude,
+            activation,
+            neutral,
+            threshold_ratio,
+            False,
+            "inside_activation",
         )
 
     gesture = GESTURE_VOLUME_DOWN if dy > 0 else GESTURE_VOLUME_UP

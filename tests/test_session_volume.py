@@ -33,7 +33,7 @@ class SessionVolumeTests(unittest.TestCase):
 
         self.assertIsNone(inside.command_gesture)
         self.assertIn("anchor=0.50", inside.debug_message)
-        self.assertIn("activation=0.160", inside.debug_message)
+        self.assertIn("activation=0.184", inside.debug_message)
         self.assertIn("neutral=0.160", inside.debug_message)
         self.assertIn("in_neutral=True", inside.debug_message)
         self.assertEqual(outside.command_gesture, GESTURE_VOLUME_DOWN)

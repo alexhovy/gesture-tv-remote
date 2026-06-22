@@ -23,12 +23,14 @@ class GestureDecisionPipeline:
         self,
         hand_states: list[HandState],
         detection_crop: CropRect,
+        display_crop: CropRect,
         now: float,
     ) -> GestureDecision:
         started_at = time.monotonic()
         decision = self._gesture_session.evaluate(
             hand_states_to_original_space(hand_states, detection_crop),
             now,
+            pointer_reference_size=min(display_crop.width, display_crop.height),
         )
         if self._metrics is not None:
             self._metrics.record_decision(

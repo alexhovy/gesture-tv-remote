@@ -26,9 +26,7 @@ class EnvVar:
     MODEL_DOWNLOAD_RETRIES = "GESTURE_TV_MODEL_DOWNLOAD_RETRIES"
     DEBOUNCE_SECONDS = "GESTURE_TV_DEBOUNCE_SECONDS"
     HOME_CHORD_SECONDS = "GESTURE_TV_HOME_CHORD_SECONDS"
-    POINTER_DISTANCE_RATIO = "GESTURE_TV_POINTER_DISTANCE_RATIO"
-    POINTER_MIN_DISTANCE = "GESTURE_TV_POINTER_MIN_DISTANCE"
-    POINTER_MAX_DISTANCE = "GESTURE_TV_POINTER_MAX_DISTANCE"
+    POINTER_SCREEN_RADIUS_RATIO = "GESTURE_TV_POINTER_SCREEN_RADIUS_RATIO"
     POINTER_DOMINANCE = "GESTURE_TV_POINTER_DOMINANCE"
     VOLUME_DISTANCE_RATIO = "GESTURE_TV_VOLUME_DISTANCE_RATIO"
     VOLUME_MIN_DISTANCE = "GESTURE_TV_VOLUME_MIN_DISTANCE"
@@ -76,9 +74,7 @@ class TvConfig:
 class GestureConfig:
     debounce_seconds: float = 0.3
     home_chord_seconds: float = 0.35
-    pointer_distance_ratio: float = 1.5
-    pointer_min_distance: float = 0.08
-    pointer_max_distance: float = 0.18
+    pointer_screen_radius_ratio: float = 0.14
     pointer_dominance: float = 1.0
     volume_distance_ratio: float = 1.0
     volume_min_distance: float = 0.06
@@ -167,9 +163,7 @@ _SUPPORTED_TV_ADAPTERS = {"androidtv", "samsung", "webos", "roku"}
 RELOADABLE_CONFIG_FIELDS = (
     "debounce_seconds",
     "home_chord_seconds",
-    "pointer_distance_ratio",
-    "pointer_min_distance",
-    "pointer_max_distance",
+    "pointer_screen_radius_ratio",
     "pointer_dominance",
     "volume_distance_ratio",
     "volume_min_distance",
@@ -297,12 +291,10 @@ def validate_config(config: AppConfig) -> None:
         0.0,
         1.0,
     )
-    _require_at_least(config.gesture.pointer_distance_ratio, "pointer_distance_ratio", 0.0)
-    _require_at_least(config.gesture.pointer_min_distance, "pointer_min_distance", 0.0)
     _require_at_least(
-        config.gesture.pointer_max_distance,
-        "pointer_max_distance",
-        config.gesture.pointer_min_distance,
+        config.gesture.pointer_screen_radius_ratio,
+        "pointer_screen_radius_ratio",
+        0.0,
     )
     _require_at_least(config.gesture.pointer_dominance, "pointer_dominance", 0.0)
     _require_at_least(config.gesture.volume_distance_ratio, "volume_distance_ratio", 0.0)
@@ -444,14 +436,12 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
     ConfigField("debounce_seconds", EnvVar.DEBOUNCE_SECONDS, "gesture", "debounce_seconds", _float),
     ConfigField("home_chord_seconds", EnvVar.HOME_CHORD_SECONDS, "gesture", "home_chord_seconds", _float),
     ConfigField(
-        "pointer_distance_ratio",
-        EnvVar.POINTER_DISTANCE_RATIO,
+        "pointer_screen_radius_ratio",
+        EnvVar.POINTER_SCREEN_RADIUS_RATIO,
         "gesture",
-        "pointer_distance_ratio",
+        "pointer_screen_radius_ratio",
         _float,
     ),
-    ConfigField("pointer_min_distance", EnvVar.POINTER_MIN_DISTANCE, "gesture", "pointer_min_distance", _float),
-    ConfigField("pointer_max_distance", EnvVar.POINTER_MAX_DISTANCE, "gesture", "pointer_max_distance", _float),
     ConfigField("pointer_dominance", EnvVar.POINTER_DOMINANCE, "gesture", "pointer_dominance", _float),
     ConfigField(
         "volume_distance_ratio",

@@ -153,9 +153,11 @@ class GestureRemoteService:
                     detection_frame.frame,
                 )
 
+                display_frame = frame_pipeline.display_frame(frame, zoom_controller)
                 decision = gesture_pipeline.evaluate(
                     hand_states,
                     detection_frame.crop,
+                    display_frame.crop,
                     now,
                 )
 
@@ -166,7 +168,6 @@ class GestureRemoteService:
                     voice_task,
                 )
 
-                display_frame = frame_pipeline.display_frame(frame, zoom_controller)
                 detection_crop_mode.record_decision(decision, display_frame.crop)
                 debug_message = display_pipeline.debug_message(
                     decision.debug_message,

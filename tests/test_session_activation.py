@@ -122,6 +122,24 @@ class SessionActivationTests(unittest.TestCase):
 
         self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
 
+    def test_select_can_emit_during_primary_dropout_grace(self) -> None:
+        session = GestureSession(app_config(primary_lost_grace_seconds=0.60))
+        session.evaluate(
+            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
+            now=0.0,
+        )
+        pending = session.evaluate(
+            [hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
+            now=0.1,
+        )
+
+        decision = session.evaluate([], now=0.5)
+
+        self.assertIsNone(pending.command_gesture)
+        self.assertTrue(decision.primary_temporarily_lost)
+        self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
+        self.assertIn("command=OPEN_TO_FIST", decision.debug_message)
+
     def test_decision_reports_activation_alongside_command_gesture(self) -> None:
         session = GestureSession(app_config())
 

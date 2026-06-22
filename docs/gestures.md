@@ -43,6 +43,11 @@ Most commands are emitted once per gesture change. DPAD and volume gestures use
 a joystick-style anchor. When the secondary hand first points or pinches, its
 current position becomes the anchor for measuring motion.
 
+Primary select and secondary back wait for the HOME chord window before
+emitting. If the closing hand briefly drops out after the close is recognized,
+the pending command can still complete during the primary grace period instead
+of waiting for a later hand frame.
+
 Point navigation tracks the secondary index fingertip so left/right intent does
 not depend on moving the whole hand. The first point frame captures a fixed
 center and draws a crop-relative neutral circle around it, keeping the visible

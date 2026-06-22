@@ -163,6 +163,30 @@ class SessionActivationTests(unittest.TestCase):
 
         self.assertTrue(decision.active_temporarily_lost)
         self.assertEqual(decision.command_gesture, GESTURE_HOME)
+        self.assertTrue(decision.freeze_zoom)
+        self.assertFalse(decision.anchor_locked)
+        self.assertIn("zoom_freeze_reason=command_pose", decision.debug_message)
+
+    def test_fist_does_not_contribute_to_zoom(self) -> None:
+        session = GestureSession(app_config(active_hand_lost_grace_seconds=0.80))
+        session.evaluate(
+            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
+            now=0.0,
+        )
+
+        fist = session.evaluate(
+            [hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
+            now=0.1,
+        )
+        missing = session.evaluate([], now=0.2)
+
+        self.assertTrue(fist.freeze_zoom)
+        self.assertEqual(fist.zoom_landmarks, [])
+        self.assertIn("zoom_hands=0", fist.debug_message)
+        self.assertIn("zoom_freeze_reason=command_pose", fist.debug_message)
+        self.assertTrue(missing.freeze_zoom)
+        self.assertFalse(missing.anchor_locked)
+        self.assertIn("zoom_freeze_reason=command_pose", missing.debug_message)
 
     def test_extra_hands_do_not_contribute_to_zoom_or_commands(self) -> None:
         session = GestureSession(app_config(active_hand_match_max_distance=0.35))

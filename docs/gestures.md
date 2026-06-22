@@ -69,5 +69,7 @@ up only when the hand is safely inside view. Brief dropouts and unclassified
 active-hand frames keep existing pointer or volume anchors during motion grace.
 A clear pose outside that active motion, such as an open palm or fist, clears
 the motion anchor immediately because the user has stopped pointer or volume
-control. Switching between point and pinch also clears the previous motion
-anchor and starts the new motion mode.
+control. Fist also holds the current crop while the hand is visible or briefly
+lost, so select and HOME gestures do not zoom in on the smaller closed hand.
+Switching between point and pinch also clears the previous motion anchor and
+starts the new motion mode.

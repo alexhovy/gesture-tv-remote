@@ -154,9 +154,11 @@ class SessionVolumeTests(unittest.TestCase):
 
         self.assertIsNone(fist.command_gesture)
         self.assertFalse(fist.anchor_locked)
-        self.assertFalse(fist.freeze_zoom)
+        self.assertTrue(fist.freeze_zoom)
         self.assertIn("active=FIST effective_motion=none", fist.debug_message)
         self.assertIn("volume_state=anchor=none", fist.debug_message)
+        self.assertIn("zoom_hands=0", fist.debug_message)
+        self.assertIn("zoom_freeze_reason=command_pose", fist.debug_message)
 
     def test_volume_clears_anchor_after_extended_open_palm(self) -> None:
         session = GestureSession(app_config())

@@ -85,8 +85,15 @@ class GestureSession(GestureSessionDebugMixin):
                     self._config.gesture.fist_hold_home_seconds,
                 )
                 anchor_locked = self._motion_anchor_locked()
+                command_pose_locked = self._active.previous_gesture == GESTURE_FIST
+                freeze_zoom = anchor_locked or command_pose_locked
+                zoom_freeze_reason = "none"
                 if anchor_locked:
                     self._mark_motion_grace("active_hand_grace")
+                    zoom_freeze_reason = "motion_anchor"
+                elif command_pose_locked:
+                    self.reset_motion_tracking()
+                    zoom_freeze_reason = "command_pose"
                 else:
                     self.reset_motion_tracking()
                 return GestureDecision(
@@ -99,11 +106,11 @@ class GestureSession(GestureSessionDebugMixin):
                         f"active_index=none zoom_hands=0 "
                         f"pointer_state={self._debug_pointer_state(None)} "
                         f"volume_state={self._debug_volume_state()} "
-                        f"zoom_freeze_reason={'motion_anchor' if anchor_locked else 'active_hand_grace'} "
+                        f"zoom_freeze_reason={zoom_freeze_reason} "
                         f"anchor_locked={anchor_locked} {hand_debug}"
                     ),
                     active_temporarily_lost=True,
-                    freeze_zoom=anchor_locked,
+                    freeze_zoom=freeze_zoom,
                     anchor_locked=anchor_locked,
                     pointer_debug=self._pointer_debug(None),
                     volume_debug=self._volume_debug(None),
@@ -135,7 +142,10 @@ class GestureSession(GestureSessionDebugMixin):
         active_gesture = active_hand.gesture
         self._active.update_seen(active_hand, now)
         self._motion.record_seen(now)
-        zoom_landmarks = [self._zoom_landmarks_for_hand(active_hand)]
+        command_pose_locked = active_gesture == GESTURE_FIST
+        zoom_landmarks = (
+            [] if command_pose_locked else [self._zoom_landmarks_for_hand(active_hand)]
+        )
         active_size = active_hand.size
         active_center = active_hand.center
 
@@ -265,8 +275,12 @@ class GestureSession(GestureSessionDebugMixin):
 
         self._active.previous_gesture = active_gesture
         anchor_locked = self._motion_anchor_locked()
-        freeze_zoom = anchor_locked
-        zoom_freeze_reason = "motion_anchor" if anchor_locked else "none"
+        freeze_zoom = anchor_locked or command_pose_locked
+        zoom_freeze_reason = "none"
+        if anchor_locked:
+            zoom_freeze_reason = "motion_anchor"
+        elif command_pose_locked:
+            zoom_freeze_reason = "command_pose"
 
         return GestureDecision(
             command_gesture=command_gesture,

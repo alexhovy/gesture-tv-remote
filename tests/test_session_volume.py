@@ -36,6 +36,9 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertIn("activation=0.184", inside.debug_message)
         self.assertIn("neutral=0.160", inside.debug_message)
         self.assertIn("in_neutral=True", inside.debug_message)
+        self.assertTrue(inside.anchor_locked)
+        self.assertIn("zoom_freeze_reason=motion_anchor", inside.debug_message)
+        self.assertIn("anchor_locked=True", inside.debug_message)
         self.assertEqual(outside.command_gesture, GESTURE_VOLUME_DOWN)
         self.assertTrue(outside.freeze_zoom)
 

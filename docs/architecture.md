@@ -107,10 +107,11 @@ MediaPipe detection uses a wider acquisition crop than the preview so the second
 hand can enter without being forced into the primary-hand crop. After the
 secondary hand is detected for several consecutive frames, detection uses the
 precise preview crop for stable distance and motion math. If the secondary hand
-drops out, detection returns to acquisition for reacquisition. Landmarks are
-projected back to original frame space before gesture rules run. Camera capture
-keeps only the newest frame so slow processing cannot build a stale frame
-backlog.
+drops out, detection returns to acquisition for reacquisition. Pointer and
+volume anchors pause auto-zoom crop updates while active so the visual neutral
+center remains fixed. Landmarks are projected back to original frame space
+before gesture rules run. Camera capture keeps only the newest frame so slow
+processing cannot build a stale frame backlog.
 
 Hand tracking uses MediaPipe live-stream mode. The service submits frames and
 consumes the latest completed result, allowing MediaPipe to skip frames while it

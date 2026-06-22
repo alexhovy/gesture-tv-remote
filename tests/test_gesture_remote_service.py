@@ -187,6 +187,28 @@ class GestureRemoteServiceTests(unittest.TestCase):
         self.assertFalse(changed)
         self.assertIsNone(zoom_controller.updated_with)
 
+    def test_update_zoom_holds_crop_while_motion_anchor_is_locked(self) -> None:
+        zoom_controller = FakeZoomController()
+        landmarks = [_landmark(0.25, 0.50)]
+
+        changed = GestureDecisionPipeline(
+            FakeDecisionSession(),
+            zoom_controller,
+        ).update_zoom(
+            GestureDecision(
+                command_gesture=None,
+                activated=True,
+                debug_message="",
+                freeze_zoom=True,
+                anchor_locked=True,
+                zoom_landmarks=[landmarks],
+            )
+        )
+
+        self.assertFalse(changed)
+        self.assertIsNone(zoom_controller.updated_with)
+        self.assertIsNone(zoom_controller.conditional_update_with)
+
     def test_update_zoom_conditionally_frames_hands_when_motion_freezes_zoom(self) -> None:
         zoom_controller = FakeZoomController()
         landmarks = [_landmark(0.25, 0.50)]

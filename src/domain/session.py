@@ -263,6 +263,11 @@ class GestureSession(GestureSessionDebugMixin):
         elif secondary_hand is None:
             self.secondary_previous_gesture = None
 
+        anchor_locked = self._motion_anchor_locked()
+        freeze_zoom = freeze_zoom or anchor_locked
+        if anchor_locked:
+            zoom_freeze_reason = "motion_anchor"
+
         return GestureDecision(
             command_gesture=command_gesture,
             activated=True,
@@ -288,9 +293,11 @@ class GestureSession(GestureSessionDebugMixin):
                 f"secondary_index={secondary_index if secondary_index is not None else DEBUG_NONE} "
                 f"zoom_hands={len(zoom_landmarks)} "
                 f"zoom_freeze_reason={zoom_freeze_reason} "
+                f"anchor_locked={anchor_locked} "
                 f"{hand_debug}"
             ),
             freeze_zoom=freeze_zoom,
+            anchor_locked=anchor_locked,
             zoom_landmarks=zoom_landmarks,
             pointer_debug=self._pointer_debug(pointer_position),
         )
@@ -377,6 +384,9 @@ class GestureSession(GestureSessionDebugMixin):
             self._pointer.last_blocked_reason = reason
         if self._volume.anchor is not None:
             self._volume.last_blocked_reason = reason
+
+    def _motion_anchor_locked(self) -> bool:
+        return self._pointer.anchor is not None or self._volume.anchor is not None
 
     @staticmethod
     def _secondary_motion_gesture(

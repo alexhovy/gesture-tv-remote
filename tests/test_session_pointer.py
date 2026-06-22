@@ -55,6 +55,9 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("activation=0.161", inside.debug_message)
         self.assertIn("neutral=0.140", inside.debug_message)
         self.assertIn("in_neutral=True", inside.debug_message)
+        self.assertTrue(inside.anchor_locked)
+        self.assertIn("zoom_freeze_reason=motion_anchor", inside.debug_message)
+        self.assertIn("anchor_locked=True", inside.debug_message)
         self.assertIsNone(margin.command_gesture)
         self.assertIn("blocked=inside_activation", margin.debug_message)
         self.assertEqual(outside.command_gesture, GESTURE_POINT_DOWN)
@@ -145,7 +148,9 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("secondary=none", missing_secondary.debug_message)
         self.assertIn("pointer_state=anchor=(0.50,0.50)", missing_secondary.debug_message)
         self.assertIn("blocked=secondary_grace", missing_secondary.debug_message)
+        self.assertTrue(missing_secondary.anchor_locked)
         self.assertIn("pointer_state=anchor=none:active=none", expired.debug_message)
+        self.assertFalse(expired.anchor_locked)
 
     def test_pointer_preserves_anchor_through_brief_open_palm_misread(self) -> None:
         session = GestureSession(app_config())

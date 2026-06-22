@@ -55,6 +55,8 @@ The camera preview draws pointer diagnostics while point navigation is active:
 the fixed joystick center, neutral area, directional boundaries, current
 fingertip, and the active or blocked state. Use that overlay to verify whether
 the finger entered the center return area before attempting the next direction.
+While a pointer or volume anchor exists, the preview crop is locked so the
+neutral center does not move on screen during motion or grace.
 
 Auto-zoom has acquisition and stabilizing detection modes. When only the primary
 hand is active, MediaPipe uses a wider detection crop than the preview so the

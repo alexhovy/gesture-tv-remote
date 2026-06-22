@@ -130,6 +130,54 @@ class SessionPointerTests(unittest.TestCase):
         self.assertIn("blocked=motion_grace", undersized.debug_message)
         self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
 
+    def test_zoomed_small_original_frame_point_can_activate_pointer(self) -> None:
+        session = GestureSession(app_config())
+        self._activate(session, (0.50, 0.50))
+
+        session.evaluate(
+            [hand_state(
+                GESTURE_POINT,
+                center=(0.50, 0.50),
+                size=0.07,
+                index_position=(0.50, 0.50),
+            )],
+            now=0.1,
+            pointer_reference_size=0.15,
+        )
+        right = session.evaluate(
+            [hand_state(
+                GESTURE_POINT,
+                center=(0.53, 0.50),
+                size=0.07,
+                index_position=(0.53, 0.50),
+            )],
+            now=0.2,
+            pointer_reference_size=0.15,
+        )
+
+        self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
+        self.assertIn("pose_blocked=none", right.debug_message)
+        self.assertIn("pointer_distance=0.02", right.debug_message)
+
+    def test_small_full_frame_point_still_does_not_activate_pointer(self) -> None:
+        session = GestureSession(app_config())
+        self._activate(session, (0.50, 0.50))
+
+        decision = session.evaluate(
+            [hand_state(
+                GESTURE_POINT,
+                center=(0.50, 0.50),
+                size=0.07,
+                index_position=(0.50, 0.50),
+            )],
+            now=0.1,
+            pointer_reference_size=1.0,
+        )
+
+        self.assertIsNone(decision.command_gesture)
+        self.assertIn("pose_blocked=hand_too_small", decision.debug_message)
+        self.assertIn("pointer_state=anchor=none", decision.debug_message)
+
     def test_pointer_preserves_anchor_during_active_hand_temporary_loss(self) -> None:
         session = GestureSession(app_config())
         self._activate(session, (0.50, 0.50))

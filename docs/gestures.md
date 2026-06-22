@@ -25,8 +25,9 @@ active, that hand is matched by position and must remain upright when
 for command decisions and auto-zoom framing.
 
 Point and pinch gestures are only commandable once the active hand is large
-enough to classify reliably. Small point and pinch frames preserve any existing
-motion anchor instead of redefining the joystick center.
+enough relative to the active camera crop to classify reliably. Small point and
+pinch frames preserve any existing motion anchor instead of redefining the
+joystick center.
 
 ## Debounce
 

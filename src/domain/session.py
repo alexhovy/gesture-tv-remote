@@ -152,6 +152,7 @@ class GestureSession(GestureSessionDebugMixin):
         commandable_motion_gesture = self._commandable_motion_gesture(
             active_gesture,
             active_size,
+            pointer_reference_size,
         )
         motion_gesture = self._motion_gesture(
             active_gesture,
@@ -397,14 +398,24 @@ class GestureSession(GestureSessionDebugMixin):
         self,
         gesture: str | None,
         hand_size: float,
+        reference_size: float,
     ) -> str | None:
         self._pose_blocked_reason = None
         if gesture not in MOTION_COMMAND_GESTURES:
             return None
-        if hand_size < MOTION_COMMAND_MIN_HAND_SIZE:
+        if (
+            self._relative_hand_size(hand_size, reference_size)
+            < MOTION_COMMAND_MIN_HAND_SIZE
+        ):
             self._pose_blocked_reason = "hand_too_small"
             return None
         return gesture
+
+    @staticmethod
+    def _relative_hand_size(hand_size: float, reference_size: float) -> float:
+        if reference_size <= 0:
+            return hand_size
+        return hand_size / reference_size
 
     def _pointer_position(self, active_hand: HandState) -> tuple[float, float]:
         if len(active_hand.landmarks) > LANDMARK_INDEX_TIP:

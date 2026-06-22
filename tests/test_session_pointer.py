@@ -283,6 +283,34 @@ class SessionPointerTests(unittest.TestCase):
         self.assertTrue(unknown.freeze_zoom)
         self.assertIn("secondary=UNKNOWN effective_secondary=POINT", unknown.debug_message)
 
+    def test_pointer_preserves_anchor_through_extended_unknown_secondary(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._point(session, primary, (0.50, 0.50), now=0.0)
+        unknown = session.evaluate(
+            [
+                primary,
+                hand_state(
+                    DEBUG_UNKNOWN,
+                    center=(0.72, 0.50),
+                    size=0.20,
+                    index_position=(0.72, 0.50),
+                ),
+            ],
+            now=0.8,
+        )
+        neutral = self._point(session, primary, (0.50, 0.50), now=0.9)
+        right = self._point(session, primary, (0.67, 0.50), now=1.0)
+
+        self.assertIsNone(unknown.command_gesture)
+        self.assertTrue(unknown.anchor_locked)
+        self.assertIn("secondary=UNKNOWN effective_secondary=none", unknown.debug_message)
+        self.assertIn("pointer_state=anchor=(0.50,0.50)", unknown.debug_message)
+        self.assertIn("blocked=motion_lost", unknown.debug_message)
+        self.assertIn("pointer_state=anchor=(0.50,0.50)", neutral.debug_message)
+        self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
+
     def test_zoom_freezes_while_secondary_hand_is_unknown(self) -> None:
         session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)

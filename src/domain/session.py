@@ -237,7 +237,10 @@ class GestureSession(GestureSessionDebugMixin):
             elif effective_secondary_gesture == GESTURE_PINCH:
                 self._mark_motion_grace("motion_grace")
             elif effective_secondary_gesture != GESTURE_PINCH:
-                self._reset_volume_tracking()
+                if self._volume.anchor is not None:
+                    self._mark_motion_grace("motion_lost")
+                else:
+                    self._reset_volume_tracking()
 
             if (
                 command_gesture is None
@@ -265,7 +268,10 @@ class GestureSession(GestureSessionDebugMixin):
             elif command_gesture is None and effective_secondary_gesture == GESTURE_POINT:
                 self._mark_motion_grace("motion_grace")
             elif effective_secondary_gesture != GESTURE_POINT:
-                self._reset_pointer_tracking()
+                if self._pointer.anchor is not None:
+                    self._mark_motion_grace("motion_lost")
+                else:
+                    self._reset_pointer_tracking()
 
             if command_gesture is None and secondary_command_gesture == GESTURE_TWO_FINGERS:
                 mic_gesture = GESTURE_MIC

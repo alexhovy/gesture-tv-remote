@@ -127,6 +127,29 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertTrue(unknown.freeze_zoom)
         self.assertIn("secondary=UNKNOWN effective_secondary=PINCH", unknown.debug_message)
 
+    def test_volume_preserves_anchor_through_extended_unknown_secondary(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._pinch(session, primary, 0.50, now=0.0)
+        unknown = session.evaluate(
+            [
+                primary,
+                hand_state(DEBUG_UNKNOWN, center=(0.70, 0.70), size=0.20),
+            ],
+            now=0.8,
+        )
+        neutral = self._pinch(session, primary, 0.50, now=0.9)
+        down = self._pinch(session, primary, 0.70, now=1.0)
+
+        self.assertIsNone(unknown.command_gesture)
+        self.assertTrue(unknown.anchor_locked)
+        self.assertIn("secondary=UNKNOWN effective_secondary=none", unknown.debug_message)
+        self.assertIn("volume_state=anchor=0.50", unknown.debug_message)
+        self.assertIn("blocked=motion_lost", unknown.debug_message)
+        self.assertIn("volume_state=anchor=0.50", neutral.debug_message)
+        self.assertEqual(down.command_gesture, GESTURE_VOLUME_DOWN)
+
     def test_volume_preserves_anchor_through_brief_open_palm_misread(self) -> None:
         session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)

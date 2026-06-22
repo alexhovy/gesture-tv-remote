@@ -63,10 +63,10 @@ hand is active, MediaPipe uses a wider detection crop than the preview so the
 secondary hand can be lifted naturally beside the primary. Once the secondary
 hand first appears, detection stays wide only while stabilizing. After the
 secondary hand is active, MediaPipe detection uses the same precise crop as the
-preview for both pointer navigation and volume gestures. Brief secondary
-misreads and secondary dropouts keep the existing pointer or volume anchor while
-the primary session remains active, but commands wait for a commandable point or
-pinch frame before emitting. Once pointer or volume owns the motion mode,
-opposite-mode reads do not switch modes or replace the anchor. The current
-anchor remains fixed until its matching point or pinch returns, the primary hand
-deactivates, or the session resets.
+preview for both pointer navigation and volume gestures. Secondary misreads,
+unclassified secondary frames, and secondary dropouts keep the existing pointer
+or volume anchor while the primary session remains active, but commands wait for
+a commandable point or pinch frame before emitting. Once pointer or volume owns
+the motion mode, opposite-mode reads do not switch modes or replace the anchor.
+The current anchor remains fixed until its matching point or pinch returns, the
+primary hand deactivates, or the session resets.

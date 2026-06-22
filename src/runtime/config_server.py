@@ -46,9 +46,13 @@ class ConfigServerRunner:
 
     def stop(self) -> None:
         if self._thread is not None:
-            self._server.shutdown()
-            self._thread.join(timeout=5)
-            self._thread = None
+            try:
+                self._server.shutdown()
+                self._thread.join(timeout=5)
+            except KeyboardInterrupt:
+                self._logger.info("Config UI cleanup interrupted.")
+            finally:
+                self._thread = None
         self._server.server_close()
         if self._mdns_publisher is not None:
             try:

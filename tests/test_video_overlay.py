@@ -32,21 +32,18 @@ class VideoOverlayTests(unittest.TestCase):
                     phase="triggered",
                     armed=False,
                     activation_distance=0.05,
-                    neutral_distance=0.02,
-                    release_distance=0.08,
+                    neutral_distance=0.08,
                     threshold_ratio=2.0,
                     in_neutral=False,
-                    in_release=False,
-                    blocked_reason="awaiting_release",
+                    blocked_reason="holding",
                 ),
                 CropRect(0.0, 0.0, 1.0, 1.0),
             )
         finally:
             video_overlay.cv2 = original_cv2
 
-        self.assertGreaterEqual(len(cv2.circles), 4)
+        self.assertGreaterEqual(len(cv2.circles), 3)
         self.assertIn(((100, 50), 8, video_overlay.COLOR_RELEASE, 2), cv2.circles)
-        self.assertIn(((100, 50), 2, video_overlay.COLOR_NEUTRAL, 1), cv2.circles)
         self.assertIn(((100, 50), 5, video_overlay.COLOR_ACTIVE, -1), cv2.circles)
         self.assertIn(((120, 50), 6, video_overlay.COLOR_CURRENT, 2), cv2.circles)
         self.assertIn(((90, 0), (90, 100), video_overlay.COLOR_DIRECTION, 1), cv2.lines)
@@ -71,10 +68,8 @@ class VideoOverlayTests(unittest.TestCase):
                     armed=True,
                     activation_distance=0.05,
                     neutral_distance=0.02,
-                    release_distance=0.08,
                     threshold_ratio=0.0,
                     in_neutral=True,
-                    in_release=True,
                     blocked_reason=None,
                 ),
                 CropRect(0.0, 0.0, 1.0, 1.0),

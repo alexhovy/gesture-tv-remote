@@ -7,37 +7,32 @@ from src.domain.constants import (
     GESTURE_VOLUME_UP,
 )
 from src.domain.motion_filter import (
-    MOTION_ACTIVATION_RATIO,
-    MOTION_NEUTRAL_RATIO,
-    MOTION_RELEASE_RATIO,
     classify_pointer_joystick,
     classify_volume_joystick,
-    neutral_distance,
-    release_distance,
 )
 
 
 class MotionFilterTests(unittest.TestCase):
-    def test_pointer_uses_activation_threshold_from_anchor(self) -> None:
+    def test_pointer_uses_neutral_radius_from_anchor(self) -> None:
         decision = classify_pointer_joystick(
             anchor_position=(0.50, 0.50),
-            current_position=(0.50, 0.50 + 0.05 * MOTION_ACTIVATION_RATIO),
+            current_position=(0.50, 0.61),
             distance=0.05,
             dominance=1.0,
             prefix=GESTURE_POINT,
         )
 
         self.assertEqual(decision.gesture, GESTURE_POINT_DOWN)
-        self.assertAlmostEqual(decision.activation_distance, 0.05 * MOTION_ACTIVATION_RATIO)
-        self.assertAlmostEqual(decision.threshold_ratio, 1.0)
+        self.assertAlmostEqual(decision.activation_distance, 0.05)
+        self.assertAlmostEqual(decision.neutral_distance, 0.05)
+        self.assertAlmostEqual(decision.threshold_ratio, 2.2)
         self.assertFalse(decision.in_neutral)
         self.assertIsNone(decision.blocked_reason)
 
-    def test_pointer_reports_neutral_zone_before_threshold(self) -> None:
-        activation = 0.05 * MOTION_ACTIVATION_RATIO
+    def test_pointer_reports_inside_neutral_radius(self) -> None:
         decision = classify_pointer_joystick(
             anchor_position=(0.50, 0.50),
-            current_position=(0.50, 0.50 + activation * MOTION_NEUTRAL_RATIO),
+            current_position=(0.50, 0.54),
             distance=0.05,
             dominance=1.0,
             prefix=GESTURE_POINT,
@@ -47,70 +42,43 @@ class MotionFilterTests(unittest.TestCase):
         self.assertTrue(decision.in_neutral)
         self.assertEqual(decision.blocked_reason, "neutral")
 
-    def test_pointer_reports_below_threshold_near_miss(self) -> None:
+    def test_pointer_uses_euclidean_circle_for_neutral(self) -> None:
         decision = classify_pointer_joystick(
             anchor_position=(0.50, 0.50),
-            current_position=(0.50, 0.531),
+            current_position=(0.535, 0.535),
             distance=0.05,
             dominance=1.0,
             prefix=GESTURE_POINT,
         )
 
         self.assertIsNone(decision.gesture)
-        self.assertFalse(decision.in_neutral)
-        self.assertTrue(decision.in_release)
-        self.assertEqual(decision.blocked_reason, "below_threshold")
-        self.assertGreater(decision.threshold_ratio, 0.95)
-        self.assertLess(decision.threshold_ratio, 1.0)
-
-    def test_pointer_reports_release_zone_outside_neutral(self) -> None:
-        decision = classify_pointer_joystick(
-            anchor_position=(0.50, 0.50),
-            current_position=(0.50, 0.525),
-            distance=0.05,
-            dominance=1.0,
-            prefix=GESTURE_POINT,
-        )
-
-        self.assertIsNone(decision.gesture)
-        self.assertFalse(decision.in_neutral)
-        self.assertTrue(decision.in_release)
-        self.assertEqual(decision.blocked_reason, "below_threshold")
+        self.assertTrue(decision.in_neutral)
+        self.assertEqual(decision.blocked_reason, "neutral")
+        self.assertAlmostEqual(decision.threshold_ratio, 0.99, places=2)
 
     def test_pointer_uses_dominant_axis(self) -> None:
         decision = classify_pointer_joystick(
             anchor_position=(0.50, 0.50),
-            current_position=(0.56, 0.51),
+            current_position=(0.57, 0.51),
             distance=0.05,
             dominance=1.25,
             prefix=GESTURE_POINT,
         )
 
         self.assertEqual(decision.gesture, GESTURE_POINT_RIGHT)
-        self.assertAlmostEqual(decision.magnitude, 0.06)
+        self.assertAlmostEqual(decision.magnitude, 0.07)
 
-    def test_volume_uses_activation_threshold_from_anchor(self) -> None:
+    def test_volume_uses_neutral_band_from_anchor(self) -> None:
         decision = classify_volume_joystick(
             anchor_y=0.50,
-            current_y=0.50 - 0.05 * MOTION_ACTIVATION_RATIO,
+            current_y=0.44,
             distance=0.05,
         )
 
         self.assertEqual(decision.gesture, GESTURE_VOLUME_UP)
-        self.assertAlmostEqual(decision.activation_distance, 0.05 * MOTION_ACTIVATION_RATIO)
-        self.assertAlmostEqual(decision.threshold_ratio, 1.0)
-
-    def test_neutral_distance_is_smaller_than_activation_threshold(self) -> None:
-        activation = 0.08 * MOTION_ACTIVATION_RATIO
-
-        self.assertAlmostEqual(neutral_distance(activation), activation * MOTION_NEUTRAL_RATIO)
-
-    def test_release_distance_is_larger_than_activation_for_easy_return(self) -> None:
-        activation = 0.08 * MOTION_ACTIVATION_RATIO
-
-        self.assertAlmostEqual(release_distance(activation), activation * MOTION_RELEASE_RATIO)
-        self.assertGreater(release_distance(activation), neutral_distance(activation))
-        self.assertGreater(release_distance(activation), activation)
+        self.assertAlmostEqual(decision.activation_distance, 0.05)
+        self.assertAlmostEqual(decision.neutral_distance, 0.05)
+        self.assertAlmostEqual(decision.threshold_ratio, 1.2)
 
 
 if __name__ == "__main__":

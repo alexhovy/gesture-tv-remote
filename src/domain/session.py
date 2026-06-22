@@ -38,7 +38,6 @@ SECONDARY_DISCRETE_COMMAND_GESTURES = {
 
 
 class GestureSession(GestureSessionDebugMixin):
-    VOLUME_RELEASE_SETTLE_FRAMES = 2
     SECONDARY_MOTION_GRACE_SECONDS = 0.6
 
     def __init__(self, config: AppConfig) -> None:
@@ -241,6 +240,7 @@ class GestureSession(GestureSessionDebugMixin):
                 pointer_gesture = self._pointer_joystick_command(
                     pointer_candidate,
                     pointer_position,
+                    now,
                 )
                 command_gesture = pointer_gesture
             elif secondary_motion_gesture != GESTURE_POINT:
@@ -323,22 +323,24 @@ class GestureSession(GestureSessionDebugMixin):
         current_y: float,
         now: float,
     ) -> str | None:
-        del now
         return self._volume.command(
             decision,
             current_y,
-            self.VOLUME_RELEASE_SETTLE_FRAMES,
+            now,
+            self._config.gesture.debounce_seconds,
         )
 
     def _pointer_joystick_command(
         self,
         decision: JoystickDecision,
         current_position: tuple[float, float],
+        now: float,
     ) -> str | None:
         return self._pointer.command(
             decision,
             current_position,
-            self._config.gesture.pointer_release_settle_frames,
+            now,
+            self._config.gesture.debounce_seconds,
         )
 
     def _record_volume_decision(self, decision: JoystickDecision) -> None:

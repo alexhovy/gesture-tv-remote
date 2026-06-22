@@ -42,22 +42,18 @@ a joystick-style anchor. When the secondary hand first points or pinches, its
 current position becomes the anchor for measuring motion.
 
 Point navigation tracks the secondary index fingertip so left/right intent does
-not depend on moving the whole hand. Moving outside the activation distance
-emits the dominant direction immediately when the movement is decisive. Borderline
-motion must remain in the same direction for another frame before it emits, which
-keeps distant-hand landmark jitter from becoming commands. Holding the same
-direction does not repeat commands. Returning inside the release zone around the
-anchor for a short stable settle period re-arms motion and makes the returned
-position the new pointer joystick center. Volume gestures keep their vertical
-anchor fixed for the current pinch gesture. Pointer gestures re-arm after two
-release frames by default. Moving to a different direction before that release
-return is ignored so return strokes do not become accidental opposite commands.
+not depend on moving the whole hand. The first point frame captures a fixed
+center and draws a neutral circle around it. Moving outside that circle emits
+the dominant direction. Returning inside the circle re-arms pointer navigation
+without moving the center. Holding the same direction repeats after the command
+debounce interval, while changing direction requires returning to neutral first.
+Volume gestures use the same fixed-center idea as a vertical neutral band around
+the first pinch position.
 
 The camera preview draws pointer diagnostics while point navigation is active:
-the joystick center, neutral area, release/re-arm area, directional activation
-boundaries, current fingertip, and the active or blocked state. Use that overlay
-to verify whether the finger entered the center return area before attempting
-the next direction.
+the fixed joystick center, neutral area, directional boundaries, current
+fingertip, and the active or blocked state. Use that overlay to verify whether
+the finger entered the center return area before attempting the next direction.
 
 Auto-zoom has acquisition and stabilizing detection modes. When only the primary
 hand is active, MediaPipe uses a wider detection crop than the preview so the

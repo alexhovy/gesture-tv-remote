@@ -58,25 +58,19 @@ class SecondaryGestureInterpreter:
 
 @dataclass
 class MotionJoystickState:
-    EMIT_STABLE_FRAMES = 2
-    IMMEDIATE_EMIT_THRESHOLD_RATIO = 1.5
-
     anchor: float | tuple[float, float] | None = None
     active_gesture: str | None = None
     armed: bool = True
-    release_frames: int = 0
-    stable_candidate_frames: int = 0
-    pending_candidate_gesture: str | None = None
+    neutral_frames: int = 0
+    last_emit_time: float | None = None
     phase: str = "idle"
     last_blocked_reason: str | None = None
     candidate_gesture: str | None = None
     candidate_magnitude: float = 0.0
     activation_distance: float = 0.0
     neutral_distance: float = 0.0
-    release_distance: float = 0.0
     threshold_ratio: float = 0.0
     in_neutral: bool = True
-    in_release: bool = True
     position_source: str = "none"
     recent_anchors: BoundedHistory[float | tuple[float, float]] = field(
         default_factory=lambda: BoundedHistory[float | tuple[float, float]](8)
@@ -86,99 +80,74 @@ class MotionJoystickState:
         self.anchor = None
         self.position_source = "none"
         self.recent_anchors.clear()
-        self.reset_candidate_stability()
         self.reset_motion_state()
 
     def reset_motion_state(self) -> None:
         self.active_gesture = None
         self.armed = True
-        self.release_frames = 0
-        self.reset_candidate_stability()
+        self.neutral_frames = 0
+        self.last_emit_time = None
         self.phase = "armed"
-
-    def reset_candidate_stability(self) -> None:
-        self.stable_candidate_frames = 0
-        self.pending_candidate_gesture = None
 
     def reset_diagnostics(self) -> None:
         self.candidate_gesture = None
         self.candidate_magnitude = 0.0
         self.activation_distance = 0.0
         self.neutral_distance = 0.0
-        self.release_distance = 0.0
         self.threshold_ratio = 0.0
         self.in_neutral = True
-        self.in_release = True
 
     def record_decision(self, decision: JoystickDecision) -> None:
         self.candidate_gesture = decision.gesture
         self.candidate_magnitude = decision.magnitude
         self.activation_distance = decision.activation_distance
         self.neutral_distance = decision.neutral_distance
-        self.release_distance = decision.release_distance
         self.threshold_ratio = decision.threshold_ratio
         self.in_neutral = decision.in_neutral
-        self.in_release = decision.in_release
         self.last_blocked_reason = decision.blocked_reason
 
     def command(
         self,
         decision: JoystickDecision,
         current_anchor: float | tuple[float, float],
-        release_settle_frames: int,
+        now: float,
+        repeat_seconds: float,
     ) -> str | None:
         self.recent_anchors.append(current_anchor)
-        if decision.in_release and (not self.armed or decision.in_neutral):
-            return self._settle_release(current_anchor, release_settle_frames)
-
-        self.release_frames = 0
-        if decision.gesture is None:
-            self.reset_candidate_stability()
-            if self.armed:
-                self.phase = "armed"
-            else:
-                self.phase = "triggered"
-                self.last_blocked_reason = "awaiting_release"
+        if decision.in_neutral:
+            self.neutral_frames += 1
+            self.active_gesture = None
+            self.armed = True
+            self.last_emit_time = None
+            self.phase = "armed"
+            self.last_blocked_reason = "rearmed"
             return None
 
-        if not self.armed and decision.magnitude <= decision.release_distance:
-            return self._settle_release(current_anchor, release_settle_frames)
+        self.neutral_frames = 0
+        if decision.gesture is None:
+            self.phase = "armed" if self.armed else "triggered"
+            self.last_blocked_reason = decision.blocked_reason
+            return None
 
         if self.armed:
-            if decision.threshold_ratio < self.IMMEDIATE_EMIT_THRESHOLD_RATIO:
-                if decision.gesture == self.pending_candidate_gesture:
-                    self.stable_candidate_frames += 1
-                else:
-                    self.pending_candidate_gesture = decision.gesture
-                    self.stable_candidate_frames = 1
-                if self.stable_candidate_frames < self.EMIT_STABLE_FRAMES:
-                    self.phase = "arming"
-                    self.last_blocked_reason = "settling_candidate"
-                    return None
-
             self.active_gesture = decision.gesture
             self.armed = False
-            self.reset_candidate_stability()
+            self.last_emit_time = now
             self.phase = "triggered"
             return decision.gesture
 
         self.phase = "triggered"
-        self.reset_candidate_stability()
-        self.last_blocked_reason = "awaiting_release"
-        return None
+        if decision.gesture != self.active_gesture:
+            self.last_blocked_reason = "awaiting_neutral"
+            return None
 
-    def _settle_release(
-        self,
-        current_anchor: float | tuple[float, float],
-        release_settle_frames: int,
-    ) -> str | None:
-        self.release_frames += 1
-        self.reset_candidate_stability()
-        self.phase = "settling"
-        self.last_blocked_reason = "settling_release"
-        if self.release_frames >= release_settle_frames:
-            if isinstance(current_anchor, tuple):
-                self.anchor = current_anchor
-            self.reset_motion_state()
-            self.last_blocked_reason = "rearmed"
+        if (
+            self.last_emit_time is not None
+            and now - self.last_emit_time >= repeat_seconds
+        ):
+            self.last_emit_time = now
+            self.last_blocked_reason = "repeat"
+            return decision.gesture
+
+        self.last_blocked_reason = "holding"
         return None

@@ -63,18 +63,15 @@ class GestureSessionDebugMixin:
             f"anchor={anchor}:active={pointer.active_gesture or DEBUG_NONE}"
             f":phase={pointer.phase}"
             f":armed={pointer.armed}"
-            f":release_frames={pointer.release_frames}"
-            f":stable_candidate_frames={pointer.stable_candidate_frames}"
+            f":neutral_frames={pointer.neutral_frames}"
             f":source={pointer.position_source}"
             f":current={current}:dx={dx}:dy={dy}"
             f":candidate={pointer.candidate_gesture or DEBUG_NONE}"
             f":magnitude={pointer.candidate_magnitude:.3f}"
             f":activation={pointer.activation_distance:.3f}"
             f":neutral={pointer.neutral_distance:.3f}"
-            f":release={pointer.release_distance:.3f}"
             f":threshold_ratio={pointer.threshold_ratio:.2f}"
             f":in_neutral={pointer.in_neutral}"
-            f":in_release={pointer.in_release}"
             f":blocked={pointer.last_blocked_reason or DEBUG_NONE}"
         )
 
@@ -90,10 +87,8 @@ class GestureSessionDebugMixin:
             armed=pointer.armed,
             activation_distance=pointer.activation_distance,
             neutral_distance=pointer.neutral_distance,
-            release_distance=pointer.release_distance,
             threshold_ratio=pointer.threshold_ratio,
             in_neutral=pointer.in_neutral,
-            in_release=pointer.in_release,
             blocked_reason=pointer.last_blocked_reason,
         )
 
@@ -105,16 +100,13 @@ class GestureSessionDebugMixin:
             f"anchor={anchor}:active={volume.active_gesture or DEBUG_NONE}"
             f":phase={volume.phase}"
             f":armed={volume.armed}"
-            f":release_frames={volume.release_frames}"
-            f":stable_candidate_frames={volume.stable_candidate_frames}"
+            f":neutral_frames={volume.neutral_frames}"
             f":candidate={volume.candidate_gesture or DEBUG_NONE}"
             f":magnitude={volume.candidate_magnitude:.3f}"
             f":activation={volume.activation_distance:.3f}"
             f":neutral={volume.neutral_distance:.3f}"
-            f":release={volume.release_distance:.3f}"
             f":threshold_ratio={volume.threshold_ratio:.2f}"
             f":in_neutral={volume.in_neutral}"
-            f":in_release={volume.in_release}"
             f":blocked={volume.last_blocked_reason or DEBUG_NONE}"
         )
 

@@ -43,12 +43,6 @@ def draw_pointer_zones(
         else None
     )
 
-    release_radius = _distance_to_pixels(
-        pointer.release_distance,
-        display_crop,
-        width,
-        height,
-    )
     neutral_radius = _distance_to_pixels(
         pointer.neutral_distance,
         display_crop,
@@ -59,10 +53,8 @@ def draw_pointer_zones(
     activation_y = _y_distance_to_pixels(pointer.activation_distance, display_crop, height)
     color = _state_color(pointer)
 
-    if release_radius > 0:
-        cv2.circle(frame, anchor, release_radius, COLOR_RELEASE, 2)
     if neutral_radius > 0:
-        cv2.circle(frame, anchor, neutral_radius, COLOR_NEUTRAL, 1)
+        cv2.circle(frame, anchor, neutral_radius, COLOR_RELEASE, 2)
 
     left_x = anchor[0] - activation_x
     right_x = anchor[0] + activation_x
@@ -123,7 +115,7 @@ def _draw_pointer_labels(
 def _state_color(pointer: PointerDebug) -> tuple[int, int, int]:
     if pointer.active_gesture is not None:
         return COLOR_ACTIVE
-    if pointer.blocked_reason in {"settling_release", "rearmed"}:
+    if pointer.blocked_reason == "rearmed":
         return COLOR_RELEASE
     if pointer.blocked_reason is not None:
         return COLOR_BLOCKED

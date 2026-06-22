@@ -52,7 +52,6 @@ SECTIONS: tuple[ConfigSection, ...] = (
             "pointer_min_distance",
             "pointer_max_distance",
             "pointer_dominance",
-            "pointer_release_settle_frames",
             "volume_distance_ratio",
             "volume_min_distance",
             "volume_max_distance",
@@ -123,7 +122,6 @@ FIELD_HELP: dict[str, str] = {
     "debounce_seconds": "Minimum delay between repeated commands.",
     "home_chord_seconds": "How long the HOME chord must be held.",
     "pointer_distance_ratio": "Pointer movement threshold scaled by hand size.",
-    "pointer_release_settle_frames": "Release frames required before pointer commands can emit again.",
     "volume_distance_ratio": "Volume movement threshold scaled by hand size.",
     "pinch_distance_ratio": "Finger pinch threshold scaled by hand size.",
     "require_upright_hands": "Blocks sideways or upside-down hands from activating controls.",
@@ -179,8 +177,6 @@ def input_constraints(name: str) -> str:
     }:
         return ' min="1"'
     if name == "max_hands":
-        return ' min="1"'
-    if name == "pointer_release_settle_frames":
         return ' min="1"'
     if name == "webcam_index":
         return ' min="0"'

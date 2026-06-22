@@ -1,3 +1,4 @@
+import math
 from dataclasses import dataclass
 
 from src.domain.constants import (
@@ -9,9 +10,6 @@ from src.domain.constants import (
     GESTURE_VOLUME_UP,
 )
 
-MOTION_ACTIVATION_RATIO = 0.65
-MOTION_NEUTRAL_RATIO = 0.45
-MOTION_RELEASE_RATIO = 1.50
 MOTION_EPSILON = 1e-9
 
 
@@ -21,23 +19,9 @@ class JoystickDecision:
     magnitude: float
     activation_distance: float
     neutral_distance: float
-    release_distance: float
     threshold_ratio: float
     in_neutral: bool
-    in_release: bool
     blocked_reason: str | None = None
-
-
-def activation_distance(distance: float) -> float:
-    return distance * MOTION_ACTIVATION_RATIO
-
-
-def neutral_distance(activation_distance: float) -> float:
-    return activation_distance * MOTION_NEUTRAL_RATIO
-
-
-def release_distance(activation_distance: float) -> float:
-    return activation_distance * MOTION_RELEASE_RATIO
 
 
 def classify_pointer_joystick(
@@ -47,12 +31,11 @@ def classify_pointer_joystick(
     dominance: float,
     prefix: str,
 ) -> JoystickDecision:
-    activation = activation_distance(distance)
-    neutral = neutral_distance(activation)
-    release = release_distance(activation)
+    neutral = max(0.0, distance)
+    activation = neutral
     if anchor_position is None:
         return JoystickDecision(
-            None, 0.0, activation, neutral, release, 0.0, True, True, "missing_anchor"
+            None, 0.0, activation, neutral, 0.0, True, "missing_anchor"
         )
 
     anchor_x, anchor_y = anchor_position
@@ -61,7 +44,7 @@ def classify_pointer_joystick(
     dy = current_y - anchor_y
     abs_dx = abs(dx)
     abs_dy = abs(dy)
-    magnitude = max(abs_dx, abs_dy)
+    magnitude = math.hypot(dx, dy)
     threshold_ratio = _threshold_ratio(magnitude, activation)
 
     if magnitude <= neutral + MOTION_EPSILON:
@@ -70,29 +53,13 @@ def classify_pointer_joystick(
             magnitude,
             activation,
             neutral,
-            release,
             threshold_ratio,
-            True,
             True,
             "neutral",
         )
 
-    in_release = magnitude <= release + MOTION_EPSILON
-
-    if abs_dx + MOTION_EPSILON < activation and abs_dy + MOTION_EPSILON < activation:
-        return JoystickDecision(
-            None,
-            magnitude,
-            activation,
-            neutral,
-            release,
-            threshold_ratio,
-            False,
-            in_release,
-            "below_threshold",
-        )
-
-    if abs_dx + MOTION_EPSILON >= activation and abs_dx >= dominance * abs_dy:
+    axis_dominance = max(0.0, dominance)
+    if abs_dx >= abs_dy and abs_dx >= axis_dominance * abs_dy:
         direction = GESTURE_POINT_RIGHT if dx > 0 else GESTURE_POINT_LEFT
         magnitude = abs_dx
         return JoystickDecision(
@@ -100,13 +67,11 @@ def classify_pointer_joystick(
             magnitude,
             activation,
             neutral,
-            release,
             _threshold_ratio(magnitude, activation),
-            False,
             False,
         )
 
-    if abs_dy + MOTION_EPSILON >= activation and abs_dy >= dominance * abs_dx:
+    if abs_dy >= abs_dx and abs_dy >= axis_dominance * abs_dx:
         direction = GESTURE_POINT_DOWN if dy > 0 else GESTURE_POINT_UP
         magnitude = abs_dy
         return JoystickDecision(
@@ -114,9 +79,7 @@ def classify_pointer_joystick(
             magnitude,
             activation,
             neutral,
-            release,
             _threshold_ratio(magnitude, activation),
-            False,
             False,
         )
 
@@ -125,10 +88,8 @@ def classify_pointer_joystick(
         magnitude,
         activation,
         neutral,
-        release,
         threshold_ratio,
         False,
-        in_release,
         "axis_ambiguous",
     )
 
@@ -138,12 +99,11 @@ def classify_volume_joystick(
     current_y: float,
     distance: float,
 ) -> JoystickDecision:
-    activation = activation_distance(distance)
-    neutral = neutral_distance(activation)
-    release = release_distance(activation)
+    neutral = max(0.0, distance)
+    activation = neutral
     if anchor_y is None:
         return JoystickDecision(
-            None, 0.0, activation, neutral, release, 0.0, True, True, "missing_anchor"
+            None, 0.0, activation, neutral, 0.0, True, "missing_anchor"
         )
 
     dy = current_y - anchor_y
@@ -156,26 +116,9 @@ def classify_volume_joystick(
             magnitude,
             activation,
             neutral,
-            release,
             threshold_ratio,
-            True,
             True,
             "neutral",
-        )
-
-    in_release = magnitude <= release + MOTION_EPSILON
-
-    if magnitude + MOTION_EPSILON < activation:
-        return JoystickDecision(
-            None,
-            magnitude,
-            activation,
-            neutral,
-            release,
-            threshold_ratio,
-            False,
-            in_release,
-            "below_threshold",
         )
 
     gesture = GESTURE_VOLUME_DOWN if dy > 0 else GESTURE_VOLUME_UP
@@ -184,9 +127,7 @@ def classify_volume_joystick(
         magnitude,
         activation,
         neutral,
-        release,
         threshold_ratio,
-        False,
         False,
     )
 

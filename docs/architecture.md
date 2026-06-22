@@ -63,8 +63,8 @@ The session transition model remains:
    brief primary dropouts stay active for the configured grace interval.
 3. A valid secondary hand can produce BACK, HOME chord, pointer, volume, or
    microphone gestures.
-4. Pointer and volume gestures arm from an anchor, emit once after crossing the
-   activation threshold, then require a stable release return before re-arming.
+4. Pointer and volume gestures arm from a fixed anchor, emit after leaving the
+   neutral area, repeat while held, and re-arm after returning to neutral.
 5. Loss of activation clears pending chords and motion anchors.
 
 ### Infrastructure

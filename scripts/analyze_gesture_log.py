@@ -40,7 +40,7 @@ def analyze_log(path: Path, near_miss_min_ratio: float) -> str:
                 neutral[kind] += 1
             if (
                 candidate == "none"
-                and blocked_reason == "below_threshold"
+                and in_neutral
                 and ratio >= near_miss_min_ratio
             ):
                 near_misses.append(

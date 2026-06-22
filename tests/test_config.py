@@ -49,7 +49,6 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.MODEL_DOWNLOAD_RETRIES: "4",
                 EnvVar.DEBOUNCE_SECONDS: "0.25",
                 EnvVar.POINTER_DISTANCE_RATIO: "0.5",
-                EnvVar.POINTER_RELEASE_SETTLE_FRAMES: "4",
                 EnvVar.VOLUME_MAX_DISTANCE: "0.3",
                 EnvVar.REQUIRE_UPRIGHT_HANDS: "false",
                 EnvVar.HAND_UPRIGHT_MAX_TILT_RATIO: "0.5",
@@ -88,7 +87,6 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.model.download_retries, 4)
         self.assertEqual(config.gesture.debounce_seconds, 0.25)
         self.assertEqual(config.gesture.pointer_distance_ratio, 0.5)
-        self.assertEqual(config.gesture.pointer_release_settle_frames, 4)
         self.assertEqual(config.gesture.volume_max_distance, 0.3)
         self.assertFalse(config.gesture.require_upright_hands)
         self.assertEqual(config.gesture.hand_upright_max_tilt_ratio, 0.5)
@@ -190,10 +188,6 @@ class ConfigTests(unittest.TestCase):
     def test_load_config_rejects_invalid_metrics_log_seconds(self) -> None:
         with self.assertRaisesRegex(ValueError, "metrics_log_seconds"):
             load_config_from_env({EnvVar.METRICS_LOG_SECONDS: "-1"})
-
-    def test_load_config_rejects_invalid_pointer_release_settle_frames(self) -> None:
-        with self.assertRaisesRegex(ValueError, "pointer_release_settle_frames"):
-            load_config_from_env({EnvVar.POINTER_RELEASE_SETTLE_FRAMES: "0"})
 
 
 if __name__ == "__main__":

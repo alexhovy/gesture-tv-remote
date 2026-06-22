@@ -152,14 +152,13 @@ will not override that environment value.
 | `GESTURE_TV_MAX_HANDS` | `2` |
 | `GESTURE_TV_DEBOUNCE_SECONDS` | `0.3` |
 | `GESTURE_TV_HOME_CHORD_SECONDS` | `0.35` |
-| `GESTURE_TV_POINTER_DISTANCE_RATIO` | `0.25` |
-| `GESTURE_TV_POINTER_MIN_DISTANCE` | `0.02` |
-| `GESTURE_TV_POINTER_MAX_DISTANCE` | `0.08` |
+| `GESTURE_TV_POINTER_DISTANCE_RATIO` | `1.5` |
+| `GESTURE_TV_POINTER_MIN_DISTANCE` | `0.08` |
+| `GESTURE_TV_POINTER_MAX_DISTANCE` | `0.18` |
 | `GESTURE_TV_POINTER_DOMINANCE` | `1.0` |
-| `GESTURE_TV_POINTER_RELEASE_SETTLE_FRAMES` | `2` |
-| `GESTURE_TV_VOLUME_DISTANCE_RATIO` | `0.25` |
-| `GESTURE_TV_VOLUME_MIN_DISTANCE` | `0.02` |
-| `GESTURE_TV_VOLUME_MAX_DISTANCE` | `0.08` |
+| `GESTURE_TV_VOLUME_DISTANCE_RATIO` | `1.0` |
+| `GESTURE_TV_VOLUME_MIN_DISTANCE` | `0.06` |
+| `GESTURE_TV_VOLUME_MAX_DISTANCE` | `0.16` |
 | `GESTURE_TV_PINCH_DISTANCE_RATIO` | `0.22` |
 | `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` | `True` |
 | `GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` | `0.75` |
@@ -178,22 +177,15 @@ Example:
 GESTURE_TV_ADAPTER=samsung GESTURE_TV_HOST=10.0.0.25 GESTURE_TV_WEBCAM_INDEX=1 python main.py
 ```
 
-Pointer and volume movement thresholds are scaled from the detected secondary
-hand size, then clamped by their min/max distance settings. This keeps gestures
-more consistent when the user moves closer to or farther from the camera. The
-runtime applies activation hysteresis below that scaled distance. Decisive
-movement emits immediately; borderline movement must stay in the same direction
-for another frame before a pointer or volume command emits. The anchor stays
-fixed while a direction is active, while a larger release zone around that
-anchor re-arms motion after a return stroke. Pointer re-arming recenters the
-anchor at the returned position; volume keeps its vertical anchor fixed for the
-current pinch gesture. Holding outside the activation distance does not repeat
-commands; another command requires returning inside the release zone long enough
-to re-arm the motion state.
-Pointer gestures use
-`GESTURE_TV_POINTER_RELEASE_SETTLE_FRAMES` for that release return; increasing
-it makes accidental repeats less likely, while decreasing it makes directional
-navigation more responsive.
+Pointer and volume neutral zones are scaled from the detected secondary hand
+size, then clamped by their min/max distance settings. The first point frame
+captures the index fingertip as a fixed pointer center; the first pinch frame
+captures a fixed vertical volume center. Moving outside the fixed pointer
+circle emits the dominant direction. Moving above or below the fixed volume
+band emits volume up or down. Returning inside the neutral circle or band
+re-arms motion without moving the anchor. Holding outside neutral repeats the
+same command after `GESTURE_TV_DEBOUNCE_SECONDS`; changing direction requires
+returning to neutral first.
 
 `GESTURE_TV_CAMERA_ZOOM` is the starting digital center-crop zoom for MediaPipe
 hand tracking and display. Values above `1.0` make hands larger in the tracking

@@ -47,12 +47,11 @@ tracked point.
 Pointer and volume gestures use joystick-style state:
 
 - first point/pinch frame establishes an anchor
-- motion must cross a scaled activation distance
-- a command emits once
-- holding outside the release zone does not repeat
-- the hand must return inside the release zone for a stable settle period before re-arming
-- the returned point becomes the new anchor when the pointer joystick re-arms
-- volume keeps its vertical anchor fixed for the current pinch gesture
+- the anchor stays fixed until the point/pinch gesture ends
+- motion must leave the scaled neutral circle or band
+- the dominant direction emits immediately after leaving neutral
+- holding the same direction repeats after the debounce interval
+- changing direction requires returning inside neutral first
 
 Recent motion data is stored in bounded histories so unstable input cannot grow
 memory over time.

@@ -191,6 +191,11 @@ class GestureRemoteService:
                     detection_frame.crop,
                     display_frame.crop,
                 )
+                display_pipeline.draw_pointer_zones(
+                    display_frame.frame,
+                    decision.pointer_debug,
+                    display_frame.crop,
+                )
                 if display_pipeline.render(self._config.app_name, display_frame.frame):
                     break
 

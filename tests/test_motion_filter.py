@@ -58,7 +58,7 @@ class MotionFilterTests(unittest.TestCase):
 
         self.assertIsNone(decision.gesture)
         self.assertFalse(decision.in_neutral)
-        self.assertFalse(decision.in_release)
+        self.assertTrue(decision.in_release)
         self.assertEqual(decision.blocked_reason, "below_threshold")
         self.assertGreater(decision.threshold_ratio, 0.95)
         self.assertLess(decision.threshold_ratio, 1.0)
@@ -105,12 +105,12 @@ class MotionFilterTests(unittest.TestCase):
 
         self.assertAlmostEqual(neutral_distance(activation), activation * MOTION_NEUTRAL_RATIO)
 
-    def test_release_distance_is_larger_than_neutral_and_below_activation(self) -> None:
+    def test_release_distance_is_larger_than_activation_for_easy_return(self) -> None:
         activation = 0.08 * MOTION_ACTIVATION_RATIO
 
         self.assertAlmostEqual(release_distance(activation), activation * MOTION_RELEASE_RATIO)
         self.assertGreater(release_distance(activation), neutral_distance(activation))
-        self.assertLess(release_distance(activation), activation)
+        self.assertGreater(release_distance(activation), activation)
 
 
 if __name__ == "__main__":

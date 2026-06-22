@@ -51,7 +51,8 @@ Pointer and volume gestures use joystick-style state:
 - a command emits once
 - holding outside the release zone does not repeat
 - the hand must return inside the release zone for a stable settle period before re-arming
-- the anchor remains fixed until point/pinch tracking resets
+- the returned point becomes the new anchor when the pointer joystick re-arms
+- volume keeps its vertical anchor fixed for the current pinch gesture
 
 Recent motion data is stored in bounded histories so unstable input cannot grow
 memory over time.

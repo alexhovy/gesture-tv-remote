@@ -128,15 +128,8 @@ class MotionJoystickState:
         release_settle_frames: int,
     ) -> str | None:
         self.recent_anchors.append(current_anchor)
-        if decision.in_release:
-            self.release_frames += 1
-            self.reset_candidate_stability()
-            self.phase = "settling"
-            self.last_blocked_reason = "settling_release"
-            if self.release_frames >= release_settle_frames:
-                self.reset_motion_state()
-                self.last_blocked_reason = "rearmed"
-            return None
+        if decision.in_release and (not self.armed or decision.in_neutral):
+            return self._settle_release(current_anchor, release_settle_frames)
 
         self.release_frames = 0
         if decision.gesture is None:
@@ -147,6 +140,9 @@ class MotionJoystickState:
                 self.phase = "triggered"
                 self.last_blocked_reason = "awaiting_release"
             return None
+
+        if not self.armed and decision.magnitude <= decision.release_distance:
+            return self._settle_release(current_anchor, release_settle_frames)
 
         if self.armed:
             if decision.threshold_ratio < self.IMMEDIATE_EMIT_THRESHOLD_RATIO:
@@ -169,4 +165,20 @@ class MotionJoystickState:
         self.phase = "triggered"
         self.reset_candidate_stability()
         self.last_blocked_reason = "awaiting_release"
+        return None
+
+    def _settle_release(
+        self,
+        current_anchor: float | tuple[float, float],
+        release_settle_frames: int,
+    ) -> str | None:
+        self.release_frames += 1
+        self.reset_candidate_stability()
+        self.phase = "settling"
+        self.last_blocked_reason = "settling_release"
+        if self.release_frames >= release_settle_frames:
+            if isinstance(current_anchor, tuple):
+                self.anchor = current_anchor
+            self.reset_motion_state()
+            self.last_blocked_reason = "rearmed"
         return None

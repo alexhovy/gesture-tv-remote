@@ -142,8 +142,13 @@ class GestureSession(GestureSessionDebugMixin):
             secondary_gesture,
             secondary_size,
         )
+        secondary_motion_gesture = (
+            secondary_gesture
+            if secondary_gesture in {DEBUG_UNKNOWN, GESTURE_PINCH, GESTURE_POINT}
+            else None
+        )
         effective_secondary_gesture = self._effective_secondary_motion_gesture(
-            secondary_command_gesture,
+            secondary_motion_gesture,
             now,
         )
 
@@ -170,11 +175,23 @@ class GestureSession(GestureSessionDebugMixin):
         if command_gesture == GESTURE_HOME:
             self.reset_motion_tracking()
 
-        if secondary_hand is None and not self._secondary_missing_within_grace(now):
+        if secondary_hand is None:
             self.reset_motion_tracking()
 
         if command_gesture is None and secondary_hand is not None:
-            if effective_secondary_gesture == GESTURE_PINCH and secondary_center is not None:
+            pinch_commandable = (
+                secondary_command_gesture == GESTURE_PINCH
+                or secondary_gesture == DEBUG_UNKNOWN
+            )
+            point_commandable = (
+                secondary_command_gesture == GESTURE_POINT
+                or secondary_gesture == DEBUG_UNKNOWN
+            )
+            if (
+                effective_secondary_gesture == GESTURE_PINCH
+                and pinch_commandable
+                and secondary_center is not None
+            ):
                 self._reset_pointer_tracking()
                 if not isinstance(self._volume.anchor, float):
                     self._volume.anchor = secondary_center[1]
@@ -196,12 +213,13 @@ class GestureSession(GestureSessionDebugMixin):
                     now,
                 )
                 command_gesture = volume_gesture
-            elif effective_secondary_gesture != GESTURE_PINCH:
+            elif secondary_motion_gesture != GESTURE_PINCH:
                 self._reset_volume_tracking()
 
             if (
                 command_gesture is None
                 and effective_secondary_gesture == GESTURE_POINT
+                and point_commandable
             ):
                 pointer_position = self._pointer_position(secondary_hand)
                 if not isinstance(self._pointer.anchor, tuple):
@@ -225,7 +243,7 @@ class GestureSession(GestureSessionDebugMixin):
                     pointer_position,
                 )
                 command_gesture = pointer_gesture
-            elif effective_secondary_gesture != GESTURE_POINT:
+            elif secondary_motion_gesture != GESTURE_POINT:
                 self._reset_pointer_tracking()
 
             if command_gesture is None and secondary_command_gesture == GESTURE_TWO_FINGERS:
@@ -269,6 +287,7 @@ class GestureSession(GestureSessionDebugMixin):
             ),
             freeze_zoom=freeze_zoom,
             zoom_landmarks=zoom_landmarks,
+            pointer_debug=self._pointer_debug(pointer_position),
         )
 
     def should_emit(self, command_gesture: str, command: str | None, now: float) -> bool:

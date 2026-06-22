@@ -184,10 +184,12 @@ more consistent when the user moves closer to or farther from the camera. The
 runtime applies activation hysteresis below that scaled distance. Decisive
 movement emits immediately; borderline movement must stay in the same direction
 for another frame before a pointer or volume command emits. The anchor stays
-fixed for the current pointer or volume motion gesture, while a larger release
-zone around that anchor re-arms motion after a return stroke. Holding outside
-the activation distance does not repeat commands; another command requires
-returning inside the release zone long enough to re-arm the motion state.
+fixed while a direction is active, while a larger release zone around that
+anchor re-arms motion after a return stroke. Pointer re-arming recenters the
+anchor at the returned position; volume keeps its vertical anchor fixed for the
+current pinch gesture. Holding outside the activation distance does not repeat
+commands; another command requires returning inside the release zone long enough
+to re-arm the motion state.
 Pointer gestures use
 `GESTURE_TV_POINTER_RELEASE_SETTLE_FRAMES` for that release return; increasing
 it makes accidental repeats less likely, while decreasing it makes directional

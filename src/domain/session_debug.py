@@ -2,7 +2,7 @@ import math
 
 from src.domain.constants import DEBUG_NONE, DEBUG_UNKNOWN
 from src.domain.landmarks import hand_upright_metrics, hand_upright_reason
-from src.domain.session_types import HandState
+from src.domain.session_types import HandState, PointerDebug
 
 
 class GestureSessionDebugMixin:
@@ -76,6 +76,25 @@ class GestureSessionDebugMixin:
             f":in_neutral={pointer.in_neutral}"
             f":in_release={pointer.in_release}"
             f":blocked={pointer.last_blocked_reason or DEBUG_NONE}"
+        )
+
+    def _pointer_debug(self, current_position: tuple[float, float] | None) -> PointerDebug:
+        pointer = self._pointer
+        anchor_position = pointer.anchor if isinstance(pointer.anchor, tuple) else None
+        return PointerDebug(
+            anchor=anchor_position,
+            current=current_position,
+            active_gesture=pointer.active_gesture,
+            candidate_gesture=pointer.candidate_gesture,
+            phase=pointer.phase,
+            armed=pointer.armed,
+            activation_distance=pointer.activation_distance,
+            neutral_distance=pointer.neutral_distance,
+            release_distance=pointer.release_distance,
+            threshold_ratio=pointer.threshold_ratio,
+            in_neutral=pointer.in_neutral,
+            in_release=pointer.in_release,
+            blocked_reason=pointer.last_blocked_reason,
         )
 
     def _debug_volume_state(self) -> str:

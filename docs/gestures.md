@@ -30,16 +30,16 @@ upright open palm to activate controls.
 Secondary command poses are only commandable once the detected hand is large
 enough to classify reliably. Very small secondary point, pinch, fist, and
 two-finger detections still keep the secondary hand present for zoom tracking,
-but they do not emit commands. Discrete secondary command poses such as fist and
-two fingers must also remain stable for a few frames before BACK, HOME, or voice
-input can trigger.
+but they do not emit commands. Small point and pinch frames preserve any
+existing motion anchor instead of redefining the joystick center. Discrete
+secondary command poses such as fist and two fingers must also remain stable for
+a few frames before BACK, HOME, or voice input can trigger.
 
 ## Debounce
 
 Most commands are emitted once per gesture change. DPAD and volume gestures use
 a joystick-style anchor. When the secondary hand first points or pinches, its
-current position becomes the anchor and remains fixed until that point or pinch
-gesture ends.
+current position becomes the anchor for measuring motion.
 
 Point navigation tracks the secondary index fingertip so left/right intent does
 not depend on moving the whole hand. Moving outside the activation distance
@@ -47,10 +47,17 @@ emits the dominant direction immediately when the movement is decisive. Borderli
 motion must remain in the same direction for another frame before it emits, which
 keeps distant-hand landmark jitter from becoming commands. Holding the same
 direction does not repeat commands. Returning inside the release zone around the
-fixed anchor for a short stable settle period re-arms motion. Pointer gestures
-re-arm after two release frames by default. Moving to a different direction
-before that release return is ignored so return strokes do not become accidental
-opposite commands.
+anchor for a short stable settle period re-arms motion and makes the returned
+position the new pointer joystick center. Volume gestures keep their vertical
+anchor fixed for the current pinch gesture. Pointer gestures re-arm after two
+release frames by default. Moving to a different direction before that release
+return is ignored so return strokes do not become accidental opposite commands.
+
+The camera preview draws pointer diagnostics while point navigation is active:
+the joystick center, neutral area, release/re-arm area, directional activation
+boundaries, current fingertip, and the active or blocked state. Use that overlay
+to verify whether the finger entered the center return area before attempting
+the next direction.
 
 Auto-zoom has acquisition and stabilizing detection modes. When only the primary
 hand is active, MediaPipe uses a wider detection crop than the preview so the

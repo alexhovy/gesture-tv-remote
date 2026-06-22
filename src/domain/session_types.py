@@ -19,3 +19,21 @@ class GestureDecision:
     primary_temporarily_lost: bool = False
     freeze_zoom: bool = False
     zoom_landmarks: list[list[Any]] = field(default_factory=list)
+    pointer_debug: "PointerDebug | None" = None
+
+
+@dataclass(frozen=True)
+class PointerDebug:
+    anchor: tuple[float, float] | None
+    current: tuple[float, float] | None
+    active_gesture: str | None
+    candidate_gesture: str | None
+    phase: str
+    armed: bool
+    activation_distance: float
+    neutral_distance: float
+    release_distance: float
+    threshold_ratio: float
+    in_neutral: bool
+    in_release: bool
+    blocked_reason: str | None

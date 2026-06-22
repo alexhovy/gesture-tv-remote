@@ -96,6 +96,7 @@ class GestureSession(GestureSessionDebugMixin):
                     freeze_zoom=anchor_locked,
                     anchor_locked=anchor_locked,
                     pointer_debug=self._pointer_debug(None),
+                    volume_debug=self._volume_debug(None),
                 )
 
             self._reset_activation()
@@ -134,6 +135,7 @@ class GestureSession(GestureSessionDebugMixin):
         two_finger_back_gesture = None
         volume_distance = 0.0
         pointer_distance = 0.0
+        volume_position = None
         pointer_position = None
         self._pointer.last_blocked_reason = None
         self._volume.last_blocked_reason = None
@@ -174,8 +176,10 @@ class GestureSession(GestureSessionDebugMixin):
                 and pinch_commandable
             ):
                 self._reset_pointer_tracking()
+                volume_position = active_center
                 if not isinstance(self._volume.anchor, float):
                     self._volume.anchor = active_center[1]
+                    self._volume.visual_anchor = active_center
                 volume_distance = self._scaled_distance(
                     active_size,
                     self._config.gesture.volume_distance_ratio,
@@ -277,6 +281,7 @@ class GestureSession(GestureSessionDebugMixin):
             anchor_locked=anchor_locked,
             zoom_landmarks=zoom_landmarks,
             pointer_debug=self._pointer_debug(pointer_position),
+            volume_debug=self._volume_debug(volume_position),
         )
 
     def should_emit(self, command_gesture: str, command: str | None, now: float) -> bool:

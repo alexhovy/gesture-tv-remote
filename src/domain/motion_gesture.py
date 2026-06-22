@@ -61,6 +61,7 @@ class MotionGestureInterpreter:
 @dataclass
 class MotionJoystickState:
     anchor: float | tuple[float, float] | None = None
+    visual_anchor: tuple[float, float] | None = None
     active_gesture: str | None = None
     armed: bool = True
     neutral_frames: int = 0
@@ -80,6 +81,7 @@ class MotionJoystickState:
 
     def reset_tracking(self) -> None:
         self.anchor = None
+        self.visual_anchor = None
         self.position_source = "none"
         self.recent_anchors.clear()
         self.reset_motion_state()

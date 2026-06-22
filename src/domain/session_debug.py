@@ -2,7 +2,7 @@ import math
 
 from src.domain.constants import DEBUG_NONE, DEBUG_UNKNOWN
 from src.domain.landmarks import hand_upright_metrics, hand_upright_reason
-from src.domain.session_types import HandState, PointerDebug
+from src.domain.session_types import HandState, PointerDebug, VolumeDebug
 
 
 class GestureSessionDebugMixin:
@@ -108,6 +108,24 @@ class GestureSessionDebugMixin:
             f":threshold_ratio={volume.threshold_ratio:.2f}"
             f":in_neutral={volume.in_neutral}"
             f":blocked={volume.last_blocked_reason or DEBUG_NONE}"
+        )
+
+    def _volume_debug(self, current_position: tuple[float, float] | None) -> VolumeDebug:
+        volume = self._volume
+        anchor_y = volume.anchor if isinstance(volume.anchor, float) else None
+        return VolumeDebug(
+            anchor=volume.visual_anchor if anchor_y is not None else None,
+            anchor_y=anchor_y,
+            current=current_position,
+            active_gesture=volume.active_gesture,
+            candidate_gesture=volume.candidate_gesture,
+            phase=volume.phase,
+            armed=volume.armed,
+            activation_distance=volume.activation_distance,
+            neutral_distance=volume.neutral_distance,
+            threshold_ratio=volume.threshold_ratio,
+            in_neutral=volume.in_neutral,
+            blocked_reason=volume.last_blocked_reason,
         )
 
     @staticmethod

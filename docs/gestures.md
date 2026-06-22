@@ -55,10 +55,11 @@ the same direction repeats after the command debounce interval, while changing
 direction requires returning to neutral first. Volume gestures use the same
 fixed-center idea as a vertical neutral band around the first pinch position.
 
-The camera preview draws pointer diagnostics while point navigation is active:
-the fixed joystick center, neutral area, directional boundaries, current
-fingertip, and the active or blocked state. Use that overlay to verify whether
-the finger entered the center return area before attempting the next direction.
+The camera preview draws joystick diagnostics while point navigation or pinch
+volume is active: the fixed joystick center, neutral area, directional
+boundaries, current hand position, and the active or blocked state. Use that
+overlay to verify whether the hand entered the center return area before
+attempting the next direction.
 While a pointer or volume anchor exists, the preview crop is locked so the
 neutral center does not move on screen during motion or grace.
 

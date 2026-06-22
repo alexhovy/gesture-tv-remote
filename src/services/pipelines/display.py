@@ -8,8 +8,12 @@ from src.infrastructure.camera.landmark_projection import (
     landmarks_to_crop_space,
     landmarks_to_original_space,
 )
-from src.domain.session_types import PointerDebug
-from src.infrastructure.camera.video_overlay import draw_pointer_zones, draw_simple_landmarks
+from src.domain.session_types import PointerDebug, VolumeDebug
+from src.infrastructure.camera.video_overlay import (
+    draw_pointer_zones,
+    draw_simple_landmarks,
+    draw_volume_zones,
+)
 from src.infrastructure.camera.video_preprocessing import CropRect
 from src.infrastructure.hand_tracking.hand_tracking import DetectedHand
 from src.shared.logging import AppLogger
@@ -62,6 +66,14 @@ class DisplayPipeline:
         display_crop: CropRect,
     ) -> None:
         draw_pointer_zones(frame, pointer_debug, display_crop)
+
+    def draw_volume_zones(
+        self,
+        frame: Any,
+        volume_debug: VolumeDebug | None,
+        display_crop: CropRect,
+    ) -> None:
+        draw_volume_zones(frame, volume_debug, display_crop)
 
     def render(self, app_name: str, frame: Any) -> bool:
         cv2.imshow(app_name, frame)

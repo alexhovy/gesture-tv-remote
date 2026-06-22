@@ -1,7 +1,7 @@
 import cv2
 
 from src.domain.landmarks import HAND_CONNECTIONS
-from src.domain.session_types import PointerDebug
+from src.domain.session_types import PointerDebug, VolumeDebug
 from src.infrastructure.camera.video_preprocessing import CropRect
 
 
@@ -76,6 +76,94 @@ def draw_pointer_zones(
     _draw_pointer_labels(frame, anchor, activation_x, activation_y, width, height, pointer)
 
 
+def draw_volume_zones(
+    frame,
+    volume: VolumeDebug | None,
+    display_crop: CropRect,
+) -> None:
+    if volume is None or volume.anchor_y is None:
+        return
+
+    height, width = frame.shape[:2]
+    anchor_y = _y_to_pixels(volume.anchor_y, display_crop, height)
+    visual_anchor = (
+        _point_to_pixels(volume.anchor, display_crop, width, height)
+        if volume.anchor is not None
+        else None
+    )
+    current = (
+        _point_to_pixels(volume.current, display_crop, width, height)
+        if volume.current is not None
+        else None
+    )
+    anchor_x = visual_anchor[0] if visual_anchor is not None else width // 2
+    anchor = (anchor_x, anchor_y)
+    neutral_y = _y_distance_to_pixels(volume.neutral_distance, display_crop, height)
+    activation_y = _y_distance_to_pixels(volume.activation_distance, display_crop, height)
+    color = _state_color(volume)
+
+    if neutral_y > 0:
+        cv2.line(
+            frame,
+            (0, anchor_y - neutral_y),
+            (width, anchor_y - neutral_y),
+            COLOR_RELEASE,
+            2,
+        )
+        cv2.line(
+            frame,
+            (0, anchor_y + neutral_y),
+            (width, anchor_y + neutral_y),
+            COLOR_RELEASE,
+            2,
+        )
+
+    up_y = anchor_y - activation_y
+    down_y = anchor_y + activation_y
+    cv2.line(frame, (0, up_y), (width, up_y), COLOR_DIRECTION, 1)
+    cv2.line(frame, (0, down_y), (width, down_y), COLOR_DIRECTION, 1)
+    cv2.line(frame, (0, anchor_y), (width, anchor_y), COLOR_NEUTRAL, 1)
+    cv2.circle(frame, anchor, 5, color, -1)
+
+    if current is not None:
+        cv2.line(frame, anchor, current, color, 2)
+        cv2.circle(frame, current, 6, COLOR_CURRENT, 2)
+
+    _draw_volume_labels(frame, anchor, activation_y, height, volume)
+
+
+def _draw_volume_labels(
+    frame,
+    anchor: tuple[int, int],
+    activation_y: int,
+    height: int,
+    volume: VolumeDebug,
+) -> None:
+    put_text = getattr(cv2, "putText", None)
+    if put_text is None:
+        return
+
+    font = getattr(cv2, "FONT_HERSHEY_SIMPLEX", 0)
+    label_color = _state_color(volume)
+    labels = [
+        ("UP", (anchor[0] + 8, max(16, anchor[1] - activation_y - 8))),
+        ("DOWN", (anchor[0] + 8, min(height - 8, anchor[1] + activation_y + 18))),
+    ]
+    for text, position in labels:
+        put_text(frame, text, position, font, 0.45, COLOR_DIRECTION, 1)
+
+    state = volume.active_gesture or volume.candidate_gesture or volume.phase
+    put_text(
+        frame,
+        f"{state} {volume.blocked_reason or ''}".strip(),
+        (8, max(18, height - 12)),
+        font,
+        0.5,
+        label_color,
+        1,
+    )
+
+
 def _draw_pointer_labels(
     frame,
     anchor: tuple[int, int],
@@ -112,14 +200,14 @@ def _draw_pointer_labels(
     )
 
 
-def _state_color(pointer: PointerDebug) -> tuple[int, int, int]:
-    if pointer.active_gesture is not None:
+def _state_color(debug: PointerDebug | VolumeDebug) -> tuple[int, int, int]:
+    if debug.active_gesture is not None:
         return COLOR_ACTIVE
-    if pointer.blocked_reason == "rearmed":
+    if debug.blocked_reason == "rearmed":
         return COLOR_RELEASE
-    if pointer.blocked_reason is not None:
+    if debug.blocked_reason is not None:
         return COLOR_BLOCKED
-    if pointer.armed:
+    if debug.armed:
         return COLOR_ARMED
     return COLOR_NEUTRAL
 
@@ -135,6 +223,10 @@ def _point_to_pixels(
         int(round((x - crop.x) / crop.width * width)),
         int(round((y - crop.y) / crop.height * height)),
     )
+
+
+def _y_to_pixels(y: float, crop: CropRect, height: int) -> int:
+    return int(round((y - crop.y) / crop.height * height))
 
 
 def _distance_to_pixels(

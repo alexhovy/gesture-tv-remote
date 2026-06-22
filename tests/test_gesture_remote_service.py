@@ -41,6 +41,7 @@ _install_service_import_stubs()
 
 from src.services.gesture_remote_service import (  # noqa: E402
     CONFIG_RELOAD_INTERVAL_SECONDS,
+    DetectionCropModeTracker,
     GestureRemoteService,
 )
 from src.services.pipeline_metrics import PipelineMetrics  # noqa: E402
@@ -201,6 +202,8 @@ class GestureRemoteServiceTests(unittest.TestCase):
             CropRect(0.0, 0.0, 1.0, 1.0),
             CropRect(0.25, 0.25, 0.5, 0.5),
             "acquisition",
+            0,
+            "no_secondary",
             zoom_frozen=True,
         )
 
@@ -209,11 +212,92 @@ class GestureRemoteServiceTests(unittest.TestCase):
             (
                 "hands=2 activated=True "
                 "detection_mode=acquisition "
+                "secondary_stable_frames=0 "
+                "precision_blocked=no_secondary "
                 "detection_crop=(0.00,0.00,1.00,1.00) "
                 "display_crop=(0.25,0.25,0.50,0.50) "
                 "zoom_frozen=True"
             ),
         )
+
+
+class DetectionCropModeTrackerTests(unittest.TestCase):
+    def test_secondary_stays_wide_after_stabilizing(self) -> None:
+        tracker = DetectionCropModeTracker(secondary_stabilize_frames=3)
+
+        self.assertEqual(tracker.mode, "acquisition")
+        self.assertFalse(tracker.precise)
+
+        tracker.record_decision(
+            _decision_with_hands(2),
+            CropRect(0.20, 0.20, 0.60, 0.60),
+        )
+        self.assertEqual(tracker.mode, "stabilizing")
+        self.assertFalse(tracker.precise)
+        self.assertEqual(tracker.secondary_stable_frames, 1)
+        self.assertEqual(tracker.precision_blocked_reason, "settling_secondary")
+
+        tracker.record_decision(
+            _decision_with_hands(2),
+            CropRect(0.20, 0.20, 0.60, 0.60),
+        )
+        self.assertEqual(tracker.mode, "stabilizing")
+        self.assertFalse(tracker.precise)
+        self.assertEqual(tracker.secondary_stable_frames, 2)
+
+        tracker.record_decision(
+            _decision_with_hands(2),
+            CropRect(0.20, 0.20, 0.60, 0.60),
+        )
+        self.assertEqual(tracker.mode, "stabilizing")
+        self.assertFalse(tracker.precise)
+        self.assertEqual(tracker.secondary_stable_frames, 3)
+        self.assertEqual(tracker.precision_blocked_reason, "wide_tracking")
+
+    def test_secondary_miss_returns_to_acquisition_mode(self) -> None:
+        tracker = DetectionCropModeTracker(secondary_stabilize_frames=2)
+        tracker.record_decision(
+            _decision_with_hands(2),
+            CropRect(0.20, 0.20, 0.60, 0.60),
+        )
+        tracker.record_decision(
+            _decision_with_hands(2),
+            CropRect(0.20, 0.20, 0.60, 0.60),
+        )
+
+        tracker.record_decision(
+            _decision_with_hands(1, freeze_zoom=True),
+            CropRect(0.20, 0.20, 0.60, 0.60),
+        )
+
+        self.assertEqual(tracker.mode, "acquisition")
+        self.assertFalse(tracker.precise)
+        self.assertEqual(tracker.secondary_stable_frames, 0)
+        self.assertEqual(tracker.precision_blocked_reason, "no_secondary")
+
+    def test_precision_waits_when_current_crop_is_too_tight_for_hands(self) -> None:
+        tracker = DetectionCropModeTracker(secondary_stabilize_frames=1)
+
+        tracker.record_decision(
+            _decision_with_hands(2),
+            CropRect(0.38, 0.38, 0.20, 0.20),
+        )
+
+        self.assertEqual(tracker.mode, "stabilizing")
+        self.assertFalse(tracker.precise)
+        self.assertEqual(tracker.precision_blocked_reason, "crop_too_tight")
+
+    def test_precision_waits_when_hands_are_too_small(self) -> None:
+        tracker = DetectionCropModeTracker(secondary_stabilize_frames=1)
+
+        tracker.record_decision(
+            _decision_with_hands(2, hand_size=0.05),
+            CropRect(0.20, 0.20, 0.60, 0.60),
+        )
+
+        self.assertEqual(tracker.mode, "stabilizing")
+        self.assertFalse(tracker.precise)
+        self.assertEqual(tracker.precision_blocked_reason, "hand_too_small")
 
 
 class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
@@ -506,6 +590,33 @@ class FakeCommandDispatcher:
 
 def _landmark(x: float, y: float):
     return SimpleNamespace(x=x, y=y)
+
+
+def _decision_with_hands(
+    hand_count: int,
+    freeze_zoom: bool = False,
+    hand_size: float = 0.12,
+) -> GestureDecision:
+    centers = [(0.38, 0.50), (0.62, 0.50), (0.50, 0.70)]
+    return GestureDecision(
+        command_gesture=None,
+        activated=True,
+        debug_message="",
+        freeze_zoom=freeze_zoom,
+        zoom_landmarks=[
+            _hand_landmarks(centers[index], hand_size)
+            for index in range(hand_count)
+        ],
+    )
+
+
+def _hand_landmarks(center: tuple[float, float], size: float):
+    center_x, center_y = center
+    half_size = size / 2
+    return [
+        _landmark(center_x - half_size, center_y - half_size),
+        _landmark(center_x + half_size, center_y + half_size),
+    ]
 
 
 if __name__ == "__main__":

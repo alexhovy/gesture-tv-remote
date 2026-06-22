@@ -27,6 +27,13 @@ Both primary and secondary gestures require upright hands when
 `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` is enabled. The primary hand must be an
 upright open palm to activate controls.
 
+Secondary command poses are only commandable once the detected hand is large
+enough to classify reliably. Very small secondary point, pinch, fist, and
+two-finger detections still keep the secondary hand present for zoom tracking,
+but they do not emit commands. Discrete secondary command poses such as fist and
+two fingers must also remain stable for a few frames before BACK, HOME, or voice
+input can trigger.
+
 ## Debounce
 
 Most commands are emitted once per gesture change. DPAD and volume gestures use
@@ -45,12 +52,11 @@ re-arm after two release frames by default. Moving to a different direction
 before that release return is ignored so return strokes do not become accidental
 opposite commands.
 
-Auto-zoom has acquisition and precision tracking modes. When only the primary
+Auto-zoom has acquisition and stabilizing detection modes. When only the primary
 hand is active, MediaPipe uses a wider detection crop than the preview so the
 secondary hand can be lifted naturally beside the primary. Once the secondary
-hand is present, including brief classification flicker during pointing or
-pinching, detection switches to the precise preview crop and landmarks are
-projected back to original frame space for gesture decisions. This keeps both
-hands easy to acquire before stabilizing tracking and visual feedback for
-navigation or volume changes; auto-zoom resumes when the secondary motion
-gesture is released.
+hand first appears, detection stays wide while the secondary hand remains active
+or in grace. The preview can still show the tighter zoom crop, but MediaPipe
+detection does not switch to that tight crop during two-hand tracking. This
+keeps both hands easy to acquire and prevents the preview crop from making
+far-away hands flicker in and out of detection.

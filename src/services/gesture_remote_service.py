@@ -6,9 +6,11 @@ from typing import Any
 
 import cv2
 
+from src.domain.landmarks import hand_center
 from src.domain.session import GestureSession
 from src.infrastructure.camera.camera_zoom import CameraZoomController
 from src.infrastructure.camera.frame_source import LatestFrameSource
+from src.infrastructure.camera.video_preprocessing import CropRect
 from src.infrastructure.hand_tracking.hand_model import download_model_if_missing
 from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
 from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
@@ -28,6 +30,42 @@ from src.shared.logging import AppLogger
 
 CLEANUP_TIMEOUT_SECONDS = 1.0
 CONFIG_RELOAD_INTERVAL_SECONDS = 1.0
+SECONDARY_STABILIZE_FRAMES = 4
+PRECISION_MIN_HAND_SIZE = 0.10
+PRECISION_CROP_MARGIN = 0.08
+
+
+class DetectionCropModeTracker:
+    def __init__(self, secondary_stabilize_frames: int = SECONDARY_STABILIZE_FRAMES) -> None:
+        self._secondary_stabilize_frames = max(1, secondary_stabilize_frames)
+        self.secondary_stable_frames = 0
+        self.mode = "acquisition"
+        self.precision_blocked_reason = "no_secondary"
+
+    @property
+    def precise(self) -> bool:
+        return False
+
+    def record_decision(self, decision: Any, current_crop: CropRect) -> None:
+        if decision.activated and len(decision.zoom_landmarks) > 1:
+            self.secondary_stable_frames += 1
+        else:
+            self.secondary_stable_frames = 0
+
+        if self.secondary_stable_frames <= 0:
+            self.mode = "acquisition"
+            self.precision_blocked_reason = "no_secondary"
+        elif self.secondary_stable_frames < self._secondary_stabilize_frames:
+            self.mode = "stabilizing"
+            self.precision_blocked_reason = "settling_secondary"
+        else:
+            self.precision_blocked_reason = _precision_blocked_reason(
+                decision.zoom_landmarks,
+                current_crop,
+            )
+            if self.precision_blocked_reason == "none":
+                self.precision_blocked_reason = "wide_tracking"
+            self.mode = "stabilizing"
 
 
 class GestureRemoteService:
@@ -63,7 +101,7 @@ class GestureRemoteService:
         metrics = PipelineMetrics(self._config.tv.adapter)
         last_debug_time = 0.0
         last_debug_message = ""
-        precise_detection_crop = False
+        detection_crop_mode = DetectionCropModeTracker()
         zoom_controller = CameraZoomController(self._config)
         frame_pipeline = FrameCapturePipeline(frame_source, metrics)
         detection_pipeline = DetectionPipeline(metrics)
@@ -104,11 +142,11 @@ class GestureRemoteService:
                 now = time.monotonic()
                 await self._reload_config_if_needed_async(now, zoom_controller, hand_tracker)
                 frame = frame_pipeline.flip_frame(frame)
-                detection_mode = "precision" if precise_detection_crop else "acquisition"
+                detection_mode = detection_crop_mode.mode
                 detection_frame = frame_pipeline.detection_frame(
                     frame,
                     zoom_controller,
-                    precise_detection_crop,
+                    detection_crop_mode.precise,
                 )
                 hand_states, detected_hands = detection_pipeline.detect_hands(
                     hand_tracker,
@@ -129,11 +167,14 @@ class GestureRemoteService:
                 )
 
                 display_frame = frame_pipeline.display_frame(frame, zoom_controller)
+                detection_crop_mode.record_decision(decision, display_frame.crop)
                 debug_message = display_pipeline.debug_message(
                     decision.debug_message,
                     detection_frame.crop,
                     display_frame.crop,
                     detection_mode,
+                    detection_crop_mode.secondary_stable_frames,
+                    detection_crop_mode.precision_blocked_reason,
                     decision.freeze_zoom,
                 )
                 if (
@@ -152,8 +193,6 @@ class GestureRemoteService:
                 )
                 if display_pipeline.render(self._config.app_name, display_frame.frame):
                     break
-
-                precise_detection_crop = decision.freeze_zoom
 
                 command_pipeline.record_dispatch_metrics()
                 metrics.log_if_due(
@@ -288,3 +327,54 @@ class GestureRemoteService:
             method()
         except Exception as error:
             self._logger.error(f"Error while cleaning up {name}: {error}")
+
+
+def _precision_blocked_reason(
+    landmarks_by_hand: list[list[Any]],
+    current_crop: CropRect,
+) -> str:
+    hand_landmarks = [landmarks for landmarks in landmarks_by_hand if landmarks]
+    if len(hand_landmarks) < 2:
+        return "no_secondary"
+
+    hand_sizes = [hand_center(landmarks)[2] for landmarks in hand_landmarks]
+    if any(size < PRECISION_MIN_HAND_SIZE for size in hand_sizes):
+        return "hand_too_small"
+
+    hand_bounds = [_landmark_bounds(landmarks) for landmarks in hand_landmarks]
+    if not _bounds_fit_crop(hand_bounds, current_crop, PRECISION_CROP_MARGIN):
+        return "crop_too_tight"
+
+    return "none"
+
+
+def _landmark_bounds(landmarks: list[Any]) -> CropRect:
+    min_x = min(landmark.x for landmark in landmarks)
+    min_y = min(landmark.y for landmark in landmarks)
+    max_x = max(landmark.x for landmark in landmarks)
+    max_y = max(landmark.y for landmark in landmarks)
+    return CropRect(min_x, min_y, max_x - min_x, max_y - min_y)
+
+
+def _bounds_fit_crop(
+    hand_bounds: list[CropRect],
+    crop: CropRect,
+    margin: float,
+) -> bool:
+    if crop.width <= 0 or crop.height <= 0:
+        return False
+
+    min_x = min(bounds.x for bounds in hand_bounds)
+    min_y = min(bounds.y for bounds in hand_bounds)
+    max_x = max(bounds.x + bounds.width for bounds in hand_bounds)
+    max_y = max(bounds.y + bounds.height for bounds in hand_bounds)
+    left = (min_x - crop.x) / crop.width
+    right = (max_x - crop.x) / crop.width
+    top = (min_y - crop.y) / crop.height
+    bottom = (max_y - crop.y) / crop.height
+    return (
+        left >= margin
+        and right <= 1 - margin
+        and top >= margin
+        and bottom <= 1 - margin
+    )

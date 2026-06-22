@@ -1,7 +1,9 @@
 import unittest
 
 from src.domain.constants import (
+    GESTURE_BACK,
     GESTURE_FIST,
+    GESTURE_MIC,
     GESTURE_OPEN_PALM,
     GESTURE_OPEN_TO_FIST,
     GESTURE_POINT,
@@ -123,16 +125,15 @@ class SessionActivationTests(unittest.TestCase):
     def test_decision_reports_activation_alongside_command_gesture(self) -> None:
         session = GestureSession(app_config())
 
-        decision = session.evaluate(
-            [
-                hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20),
-                hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.20),
-            ],
-            now=0.0,
-        )
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        secondary = hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.20)
+
+        session.evaluate([primary, secondary], now=0.0)
+        session.evaluate([primary, secondary], now=0.1)
+        decision = session.evaluate([primary, secondary], now=0.2)
 
         self.assertTrue(decision.activated)
-        self.assertIsNotNone(decision.command_gesture)
+        self.assertEqual(decision.command_gesture, GESTURE_MIC)
         self.assertIn("primary_index=0 secondary_index=1", decision.debug_message)
         self.assertIn("zoom_hands=2", decision.debug_message)
         self.assertIn(
@@ -151,6 +152,35 @@ class SessionActivationTests(unittest.TestCase):
             ":center=(0.70,0.50):size=0.20",
             decision.debug_message,
         )
+
+    def test_tiny_secondary_command_pose_is_blocked(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        secondary = hand_state(GESTURE_TWO_FINGERS, center=(0.70, 0.50), size=0.05)
+
+        decision = session.evaluate([primary, secondary], now=0.0)
+
+        self.assertTrue(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+        self.assertIn("secondary_pose_blocked=hand_too_small", decision.debug_message)
+
+    def test_secondary_fist_must_settle_before_back_command(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        open_secondary = hand_state(GESTURE_OPEN_PALM, center=(0.70, 0.50), size=0.20)
+        fist_secondary = hand_state(GESTURE_FIST, center=(0.70, 0.50), size=0.20)
+
+        session.evaluate([primary, open_secondary], now=0.0)
+        settling = session.evaluate([primary, fist_secondary], now=0.1)
+        still_settling = session.evaluate([primary, fist_secondary], now=0.2)
+        pending = session.evaluate([primary, fist_secondary], now=0.3)
+        decision = session.evaluate([primary, fist_secondary], now=0.7)
+
+        self.assertIsNone(settling.command_gesture)
+        self.assertIn("secondary_pose_blocked=settling_pose", settling.debug_message)
+        self.assertIsNone(still_settling.command_gesture)
+        self.assertIsNone(pending.command_gesture)
+        self.assertEqual(decision.command_gesture, GESTURE_BACK)
 
     def test_zoom_landmarks_include_valid_primary_and_secondary_hands(self) -> None:
         session = GestureSession(app_config())

@@ -205,9 +205,10 @@ the runtime maps detected landmarks back into original frame coordinates before
 gesture decisions run. While only the primary hand is active, detection uses a
 wider acquisition crop than the preview so the secondary hand can be detected
 without being placed inside the primary-hand crop. After the secondary hand is
-present, including brief secondary-hand classification flicker, detection uses
-the precise preview crop so navigation and volume gestures have stable distance
-math and visual feedback.
+detected for several consecutive frames, detection uses the precise preview crop
+so navigation and volume gestures have stable distance math and visual
+feedback. If the secondary hand drops out, detection widens again for
+reacquisition.
 
 `GESTURE_TV_SECONDARY_ACQUISITION_MAX_ZOOM` controls how wide the acquisition
 crop remains while waiting for the secondary hand. Lower values are wider:

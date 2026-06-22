@@ -23,6 +23,20 @@ from src.domain.session_types import GestureDecision, HandState
 from src.shared.config import AppConfig
 
 
+SECONDARY_COMMAND_MIN_HAND_SIZE = 0.10
+SECONDARY_DISCRETE_COMMAND_STABLE_FRAMES = 3
+SECONDARY_SIZE_GATED_GESTURES = {
+    GESTURE_FIST,
+    GESTURE_PINCH,
+    GESTURE_POINT,
+    GESTURE_TWO_FINGERS,
+}
+SECONDARY_DISCRETE_COMMAND_GESTURES = {
+    GESTURE_FIST,
+    GESTURE_TWO_FINGERS,
+}
+
+
 class GestureSession(GestureSessionDebugMixin):
     VOLUME_RELEASE_SETTLE_FRAMES = 2
     SECONDARY_MOTION_GRACE_SECONDS = 0.6
@@ -38,6 +52,9 @@ class GestureSession(GestureSessionDebugMixin):
         self._volume = MotionJoystickState()
         self._pointer = MotionJoystickState()
         self.secondary_previous_gesture: str | None = None
+        self._secondary_pose_candidate: str | None = None
+        self._secondary_pose_candidate_frames = 0
+        self._secondary_pose_blocked_reason: str | None = None
 
     def update_config(self, config: AppConfig) -> None:
         self._config = config
@@ -121,8 +138,12 @@ class GestureSession(GestureSessionDebugMixin):
             self._secondary.record_seen(now)
         freeze_zoom = secondary_hand is not None or self._secondary_missing_within_grace(now)
         zoom_freeze_reason = self._zoom_freeze_reason(secondary_hand, now)
-        effective_secondary_gesture = self._effective_secondary_motion_gesture(
+        secondary_command_gesture = self._secondary_command_gesture(
             secondary_gesture,
+            secondary_size,
+        )
+        effective_secondary_gesture = self._effective_secondary_motion_gesture(
+            secondary_command_gesture,
             now,
         )
 
@@ -142,7 +163,7 @@ class GestureSession(GestureSessionDebugMixin):
             self._activation.previous_gesture,
             primary_gesture,
             self.secondary_previous_gesture,
-            secondary_gesture,
+            secondary_command_gesture,
             now,
             self._config.gesture.home_chord_seconds,
         )
@@ -207,14 +228,17 @@ class GestureSession(GestureSessionDebugMixin):
             elif effective_secondary_gesture != GESTURE_POINT:
                 self._reset_pointer_tracking()
 
-            if command_gesture is None and secondary_gesture == GESTURE_TWO_FINGERS:
+            if command_gesture is None and secondary_command_gesture == GESTURE_TWO_FINGERS:
                 mic_gesture = GESTURE_MIC
                 command_gesture = mic_gesture
-            elif secondary_gesture != GESTURE_TWO_FINGERS:
+            elif secondary_command_gesture != GESTURE_TWO_FINGERS:
                 mic_gesture = None
 
         self._activation.previous_gesture = primary_gesture
-        self.secondary_previous_gesture = secondary_gesture
+        if secondary_command_gesture is not None:
+            self.secondary_previous_gesture = secondary_command_gesture
+        elif secondary_hand is None:
+            self.secondary_previous_gesture = None
 
         return GestureDecision(
             command_gesture=command_gesture,
@@ -225,6 +249,9 @@ class GestureSession(GestureSessionDebugMixin):
                 f"primary={primary_gesture or DEBUG_UNKNOWN} "
                 f"secondary={secondary_gesture or DEBUG_NONE} "
                 f"effective_secondary={effective_secondary_gesture or DEBUG_NONE} "
+                f"secondary_command={secondary_command_gesture or DEBUG_NONE} "
+                f"secondary_pose_frames={self._secondary_pose_candidate_frames} "
+                f"secondary_pose_blocked={self._secondary_pose_blocked_reason or DEBUG_NONE} "
                 f"volume={volume_gesture or DEBUG_NONE} "
                 f"pointer={pointer_gesture or DEBUG_NONE} "
                 f"mic={mic_gesture or DEBUG_NONE} "
@@ -264,6 +291,7 @@ class GestureSession(GestureSessionDebugMixin):
     def _reset_activation(self) -> None:
         self._activation.reset()
         self.secondary_previous_gesture = None
+        self._reset_secondary_pose_tracking()
         self._secondary.reset()
         self._emit.record_idle()
         self._command_decision.reset()
@@ -324,6 +352,49 @@ class GestureSession(GestureSessionDebugMixin):
         now: float,
     ) -> str | None:
         return self._secondary.effective_motion_gesture(secondary_gesture, now)
+
+    def _secondary_command_gesture(
+        self,
+        secondary_gesture: str | None,
+        secondary_size: float,
+    ) -> str | None:
+        self._secondary_pose_blocked_reason = None
+
+        if secondary_gesture is None:
+            self._reset_secondary_pose_tracking()
+            return None
+
+        if (
+            secondary_gesture in SECONDARY_SIZE_GATED_GESTURES
+            and secondary_size < SECONDARY_COMMAND_MIN_HAND_SIZE
+        ):
+            self._reset_secondary_pose_tracking()
+            self._secondary_pose_blocked_reason = "hand_too_small"
+            return None
+
+        if secondary_gesture not in SECONDARY_DISCRETE_COMMAND_GESTURES:
+            self._secondary_pose_candidate = secondary_gesture
+            self._secondary_pose_candidate_frames = 1
+            return secondary_gesture
+
+        if secondary_gesture == self._secondary_pose_candidate:
+            self._secondary_pose_candidate_frames += 1
+        else:
+            self._secondary_pose_candidate = secondary_gesture
+            self._secondary_pose_candidate_frames = 1
+
+        if (
+            self._secondary_pose_candidate_frames
+            < SECONDARY_DISCRETE_COMMAND_STABLE_FRAMES
+        ):
+            self._secondary_pose_blocked_reason = "settling_pose"
+            return None
+
+        return secondary_gesture
+
+    def _reset_secondary_pose_tracking(self) -> None:
+        self._secondary_pose_candidate = None
+        self._secondary_pose_candidate_frames = 0
 
     def _secondary_missing_within_grace(self, now: float) -> bool:
         return self._secondary.missing_within_grace(now)

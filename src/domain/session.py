@@ -238,7 +238,10 @@ class GestureSession(GestureSessionDebugMixin):
                 self._mark_motion_grace("motion_grace")
             elif effective_secondary_gesture != GESTURE_PINCH:
                 if self._volume.anchor is not None:
-                    self._mark_motion_grace("motion_lost")
+                    if self._explicit_non_motion_secondary(secondary_gesture):
+                        self._reset_volume_tracking()
+                    else:
+                        self._mark_motion_grace("motion_lost")
                 else:
                     self._reset_volume_tracking()
 
@@ -269,7 +272,10 @@ class GestureSession(GestureSessionDebugMixin):
                 self._mark_motion_grace("motion_grace")
             elif effective_secondary_gesture != GESTURE_POINT:
                 if self._pointer.anchor is not None:
-                    self._mark_motion_grace("motion_lost")
+                    if self._explicit_non_motion_secondary(secondary_gesture):
+                        self._reset_pointer_tracking()
+                    else:
+                        self._mark_motion_grace("motion_lost")
                 else:
                     self._reset_pointer_tracking()
 
@@ -426,6 +432,14 @@ class GestureSession(GestureSessionDebugMixin):
                 return secondary_gesture
             return DEBUG_UNKNOWN
         return DEBUG_UNKNOWN
+
+    @staticmethod
+    def _explicit_non_motion_secondary(secondary_gesture: str | None) -> bool:
+        return (
+            secondary_gesture is not None
+            and secondary_gesture != DEBUG_UNKNOWN
+            and secondary_gesture not in {GESTURE_PINCH, GESTURE_POINT}
+        )
 
     def _effective_secondary_motion_gesture(
         self,

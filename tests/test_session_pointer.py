@@ -202,6 +202,29 @@ class SessionPointerTests(unittest.TestCase):
         self.assertEqual(right.command_gesture, GESTURE_POINT_RIGHT)
         self.assertIn("anchor=(0.50,0.50)", right.debug_message)
 
+    def test_pointer_clears_anchor_after_extended_open_palm_secondary(self) -> None:
+        session = GestureSession(app_config())
+        primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+
+        self._point(session, primary, (0.50, 0.50), now=0.0)
+        open_palm = session.evaluate(
+            [
+                primary,
+                hand_state(
+                    GESTURE_OPEN_PALM,
+                    center=(0.67, 0.50),
+                    size=0.20,
+                    index_position=(0.67, 0.50),
+                ),
+            ],
+            now=0.8,
+        )
+
+        self.assertIsNone(open_palm.command_gesture)
+        self.assertFalse(open_palm.anchor_locked)
+        self.assertIn("secondary=OPEN_PALM effective_secondary=none", open_palm.debug_message)
+        self.assertIn("pointer_state=anchor=none", open_palm.debug_message)
+
     def test_pointer_preserves_anchor_through_brief_pinch_misread(self) -> None:
         session = GestureSession(app_config())
         primary = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)

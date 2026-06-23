@@ -112,30 +112,48 @@ FIELD_HELP: dict[str, str] = {
     "voice_capture_seconds": "Android TV voice capture duration in seconds.",
     "webcam_index": "Usually 0 for the default webcam.",
     "camera_zoom": "Digital tracking crop. Start near 1.5 if hands appear small.",
-    "auto_zoom_enabled": "Keeps the active hand larger in the tracking and display crop.",
+    "auto_zoom_enabled": (
+        "Keeps the active hand larger in the tracking and display crop."
+    ),
     "auto_zoom_min": "Smallest automatic tracking zoom.",
     "auto_zoom_max": "Largest automatic tracking zoom.",
     "debounce_seconds": "Minimum delay between repeated commands.",
     "fist_hold_home_seconds": "How long a fist must be held before HOME is emitted.",
-    "pointer_screen_radius_ratio": "Pointer neutral radius as a fraction of the displayed crop.",
+    "pointer_screen_radius_ratio": (
+        "Pointer neutral radius as a fraction of the displayed crop."
+    ),
     "volume_distance_ratio": "Volume movement threshold scaled by hand size.",
     "pinch_distance_ratio": "Finger pinch threshold scaled by hand size.",
-    "require_upright_hands": "Blocks sideways or upside-down hands from activating controls.",
+    "require_upright_hands": (
+        "Blocks sideways or upside-down hands from activating controls."
+    ),
     "hand_upright_max_tilt_ratio": "Higher values allow more hand tilt.",
-    "active_hand_lost_grace_seconds": "Keeps a session active through brief active-hand dropouts.",
-    "active_hand_match_max_distance": "Maximum movement allowed when matching the active hand.",
+    "active_hand_lost_grace_seconds": (
+        "Keeps a session active through brief active-hand dropouts."
+    ),
+    "active_hand_match_max_distance": (
+        "Maximum movement allowed when matching the active hand."
+    ),
     "model_file": "Downloaded automatically on first run when missing.",
     "model_url": "Source URL used for model downloads.",
-    "max_hands": "Maximum hands MediaPipe tracks. One hand is enough for the full gesture set.",
+    "max_hands": (
+        "Maximum hands MediaPipe tracks. One hand is enough for the full gesture set."
+    ),
     "min_hand_detection_confidence": "MediaPipe detection confidence from 0.0 to 1.0.",
-    "min_hand_presence_confidence": "MediaPipe hand presence confidence from 0.0 to 1.0.",
+    "min_hand_presence_confidence": (
+        "MediaPipe hand presence confidence from 0.0 to 1.0."
+    ),
     "min_tracking_confidence": "MediaPipe tracking confidence from 0.0 to 1.0.",
     "config_db_file": "Saved settings database. Set by environment during bootstrap.",
     "config_web_host": "Bind address for the config UI.",
-    "config_web_port": "Port for the config UI. Port 80 may require elevated permissions.",
+    "config_web_port": (
+        "Port for the config UI. Port 80 may require elevated permissions."
+    ),
     "config_web_mdns_enabled": "Advertises the UI on the local network when available.",
     "config_web_mdns_name": "Name used for the .local address.",
-    "verbose_pipeline_diagnostics": "Logs detailed camera, detection, command, and queue metrics.",
+    "verbose_pipeline_diagnostics": (
+        "Logs detailed camera, detection, command, and queue metrics."
+    ),
 }
 
 

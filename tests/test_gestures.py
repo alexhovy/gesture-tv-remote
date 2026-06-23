@@ -54,7 +54,9 @@ class GestureRuleTests(unittest.TestCase):
             )
         )
 
-    def test_static_pose_classifier_allows_non_upright_hand_when_requirement_disabled(self) -> None:
+    def test_static_pose_classifier_allows_non_upright_hand_when_requirement_disabled(
+        self,
+    ) -> None:
         self.assertEqual(
             classify_static_hand_pose(
                 _open_palm_landmarks(wrist=(0.40, 0.80), middle_mcp=(0.80, 0.70)),
@@ -102,7 +104,9 @@ class GestureRuleTests(unittest.TestCase):
             GESTURE_FIST,
         )
 
-    def test_static_pose_classifier_treats_thumb_touching_closed_index_as_fist(self) -> None:
+    def test_static_pose_classifier_treats_thumb_touching_closed_index_as_fist(
+        self,
+    ) -> None:
         self.assertEqual(
             classify_static_hand_pose(
                 _fist_landmarks(thumb_tip=(0.43, 0.62)),
@@ -112,7 +116,9 @@ class GestureRuleTests(unittest.TestCase):
             GESTURE_FIST,
         )
 
-    def test_static_pose_classifier_detects_pinch_when_index_is_not_closed(self) -> None:
+    def test_static_pose_classifier_detects_pinch_when_index_is_not_closed(
+        self,
+    ) -> None:
         self.assertEqual(
             classify_static_hand_pose(_pinch_landmarks(), HANDEDNESS_RIGHT, 0.22),
             GESTURE_PINCH,

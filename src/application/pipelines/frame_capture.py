@@ -1,8 +1,8 @@
 from typing import Any
 
-from src.application.services.pipeline_metrics import PipelineMetrics
 from src.application.ports.camera import CameraPort, FrameProcessorPort
 from src.application.ports.frame_source import FrameSourcePort
+from src.application.services.pipeline_metrics import PipelineMetrics
 from src.domain.camera_geometry import CroppedFrame
 
 
@@ -26,7 +26,9 @@ class FrameCapturePipeline:
         if self._frame_source is None:
             return None
         version, frame = self._frame_source.latest_versioned()
-        if self._metrics is not None and not self._metrics.record_frame_version(version):
+        if self._metrics is not None and not self._metrics.record_frame_version(
+            version
+        ):
             return None
         return frame
 

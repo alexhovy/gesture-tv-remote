@@ -6,7 +6,6 @@ from pathlib import Path
 
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
-from src.shared.config import AppConfig
 from tests.config_helpers import app_config
 
 
@@ -75,8 +74,7 @@ class ConfigRepositoryTests(unittest.TestCase):
                     row[1]: row[2]
                     for row in connection.execute("PRAGMA table_info(app_config)")
                 }
-                stored_types = connection.execute(
-                    """
+                stored_types = connection.execute("""
                     SELECT
                         typeof(app_name),
                         typeof(webcam_index),
@@ -84,8 +82,7 @@ class ConfigRepositoryTests(unittest.TestCase):
                         typeof(auto_zoom_enabled)
                     FROM app_config
                     WHERE id = 1
-                    """
-                ).fetchone()
+                    """).fetchone()
 
             self.assertEqual(column_types["app_name"], "TEXT")
             self.assertEqual(column_types["webcam_index"], "INTEGER")
@@ -98,8 +95,7 @@ class ConfigRepositoryTests(unittest.TestCase):
             db_file = Path(temp_dir) / "config.sqlite3"
             with closing(sqlite3.connect(db_file)) as connection:
                 with connection:
-                    connection.execute(
-                        """
+                    connection.execute("""
                         CREATE TABLE app_config (
                             id INTEGER PRIMARY KEY,
                             app_name TEXT NOT NULL,
@@ -107,10 +103,8 @@ class ConfigRepositoryTests(unittest.TestCase):
                             tv_host TEXT NOT NULL,
                             updated_at TEXT NOT NULL
                         )
-                        """
-                    )
-                    connection.execute(
-                        """
+                        """)
+                    connection.execute("""
                         INSERT INTO app_config (
                             id,
                             app_name,
@@ -119,8 +113,7 @@ class ConfigRepositoryTests(unittest.TestCase):
                             updated_at
                         )
                         VALUES (1, 'Old Config', 'roku', '10.0.0.63', 'now')
-                        """
-                    )
+                        """)
 
             config = _repository(db_file).get_config()
 

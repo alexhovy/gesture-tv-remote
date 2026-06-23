@@ -4,7 +4,6 @@ from src.domain.camera_geometry import CropRect
 from src.domain.landmarks import HAND_CONNECTIONS
 from src.domain.session_types import PointerDebug, VolumeDebug
 
-
 COLOR_ACTIVE = (0, 165, 255)
 COLOR_ARMED = (0, 220, 0)
 COLOR_BLOCKED = (0, 0, 255)
@@ -18,7 +17,10 @@ def draw_simple_landmarks(frame, landmarks) -> None:
     height, width = frame.shape[:2]
 
     for start, end in HAND_CONNECTIONS:
-        start_point = (int(landmarks[start].x * width), int(landmarks[start].y * height))
+        start_point = (
+            int(landmarks[start].x * width),
+            int(landmarks[start].y * height),
+        )
         end_point = (int(landmarks[end].x * width), int(landmarks[end].y * height))
         cv2.line(frame, start_point, end_point, (0, 255, 0), 2)
 
@@ -49,8 +51,12 @@ def draw_pointer_zones(
         width,
         height,
     )
-    activation_x = _x_distance_to_pixels(pointer.activation_distance, display_crop, width)
-    activation_y = _y_distance_to_pixels(pointer.activation_distance, display_crop, height)
+    activation_x = _x_distance_to_pixels(
+        pointer.activation_distance, display_crop, width
+    )
+    activation_y = _y_distance_to_pixels(
+        pointer.activation_distance, display_crop, height
+    )
     color = _state_color(pointer)
 
     if neutral_radius > 0:
@@ -73,7 +79,9 @@ def draw_pointer_zones(
         cv2.line(frame, anchor, current, color, 2)
         cv2.circle(frame, current, 6, COLOR_CURRENT, 2)
 
-    _draw_pointer_labels(frame, anchor, activation_x, activation_y, width, height, pointer)
+    _draw_pointer_labels(
+        frame, anchor, activation_x, activation_y, width, height, pointer
+    )
 
 
 def draw_volume_zones(
@@ -99,7 +107,9 @@ def draw_volume_zones(
     anchor_x = visual_anchor[0] if visual_anchor is not None else width // 2
     anchor = (anchor_x, anchor_y)
     neutral_y = _y_distance_to_pixels(volume.neutral_distance, display_crop, height)
-    activation_y = _y_distance_to_pixels(volume.activation_distance, display_crop, height)
+    activation_y = _y_distance_to_pixels(
+        volume.activation_distance, display_crop, height
+    )
     color = _state_color(volume)
 
     if neutral_y > 0:

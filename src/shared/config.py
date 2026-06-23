@@ -293,7 +293,9 @@ def validate_config(config: AppConfig) -> None:
         0.0,
     )
     _require_at_least(config.gesture.pointer_dominance, "pointer_dominance", 0.0)
-    _require_at_least(config.gesture.volume_distance_ratio, "volume_distance_ratio", 0.0)
+    _require_at_least(
+        config.gesture.volume_distance_ratio, "volume_distance_ratio", 0.0
+    )
     _require_at_least(config.gesture.volume_min_distance, "volume_min_distance", 0.0)
     _require_at_least(
         config.gesture.volume_max_distance,
@@ -311,7 +313,9 @@ def validate_config(config: AppConfig) -> None:
 def apply_reloadable_config(current: AppConfig, latest: AppConfig) -> AppConfig:
     config = current
     for field_name in RELOADABLE_CONFIG_FIELDS:
-        config = replace_config_value(config, field_name, get_config_value(latest, field_name))
+        config = replace_config_value(
+            config, field_name, get_config_value(latest, field_name)
+        )
     validate_config(config)
     return config
 
@@ -328,7 +332,9 @@ def replace_config_value(config: AppConfig, field_name: str, value: Any) -> AppC
     if field.section is None:
         return replace(config, **{field.attribute: value})
     section = getattr(config, field.section)
-    return replace(config, **{field.section: replace(section, **{field.attribute: value})})
+    return replace(
+        config, **{field.section: replace(section, **{field.attribute: value})}
+    )
 
 
 def config_field_default(field: ConfigField) -> Any:
@@ -371,7 +377,9 @@ def _bool(values: dict[str, str], name: str, default: object) -> bool:
     raise ValueError(f"{name} must be a boolean value")
 
 
-def _require_at_least(value: float | int, field_name: str, minimum: float | int) -> None:
+def _require_at_least(
+    value: float | int, field_name: str, minimum: float | int
+) -> None:
     if value < minimum:
         raise ValueError(f"{field_name} must be at least {minimum}")
 
@@ -398,12 +406,24 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         "mdns_enabled",
         _bool,
     ),
-    ConfigField("config_web_mdns_name", EnvVar.CONFIG_WEB_MDNS_NAME, "web", "mdns_name", _str),
+    ConfigField(
+        "config_web_mdns_name", EnvVar.CONFIG_WEB_MDNS_NAME, "web", "mdns_name", _str
+    ),
     ConfigField("tv_adapter", EnvVar.TV_ADAPTER, "tv", "adapter", _str),
     ConfigField("tv_host", EnvVar.TV_HOST, "tv", "host", _str),
-    ConfigField("android_cert_file", EnvVar.ANDROID_CERT_FILE, "tv", "android_cert_file", _path),
-    ConfigField("android_key_file", EnvVar.ANDROID_KEY_FILE, "tv", "android_key_file", _path),
-    ConfigField("samsung_token_file", EnvVar.SAMSUNG_TOKEN_FILE, "tv", "samsung_token_file", _path),
+    ConfigField(
+        "android_cert_file", EnvVar.ANDROID_CERT_FILE, "tv", "android_cert_file", _path
+    ),
+    ConfigField(
+        "android_key_file", EnvVar.ANDROID_KEY_FILE, "tv", "android_key_file", _path
+    ),
+    ConfigField(
+        "samsung_token_file",
+        EnvVar.SAMSUNG_TOKEN_FILE,
+        "tv",
+        "samsung_token_file",
+        _path,
+    ),
     ConfigField("samsung_port", EnvVar.SAMSUNG_PORT, "tv", "samsung_port", _int),
     ConfigField(
         "webos_client_key_file",
@@ -429,7 +449,13 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         "download_retries",
         _int,
     ),
-    ConfigField("debounce_seconds", EnvVar.DEBOUNCE_SECONDS, "gesture", "debounce_seconds", _float),
+    ConfigField(
+        "debounce_seconds",
+        EnvVar.DEBOUNCE_SECONDS,
+        "gesture",
+        "debounce_seconds",
+        _float,
+    ),
     ConfigField(
         "fist_hold_home_seconds",
         EnvVar.FIST_HOLD_HOME_SECONDS,
@@ -444,7 +470,13 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         "pointer_screen_radius_ratio",
         _float,
     ),
-    ConfigField("pointer_dominance", EnvVar.POINTER_DOMINANCE, "gesture", "pointer_dominance", _float),
+    ConfigField(
+        "pointer_dominance",
+        EnvVar.POINTER_DOMINANCE,
+        "gesture",
+        "pointer_dominance",
+        _float,
+    ),
     ConfigField(
         "volume_distance_ratio",
         EnvVar.VOLUME_DISTANCE_RATIO,
@@ -452,9 +484,27 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         "volume_distance_ratio",
         _float,
     ),
-    ConfigField("volume_min_distance", EnvVar.VOLUME_MIN_DISTANCE, "gesture", "volume_min_distance", _float),
-    ConfigField("volume_max_distance", EnvVar.VOLUME_MAX_DISTANCE, "gesture", "volume_max_distance", _float),
-    ConfigField("pinch_distance_ratio", EnvVar.PINCH_DISTANCE_RATIO, "gesture", "pinch_distance_ratio", _float),
+    ConfigField(
+        "volume_min_distance",
+        EnvVar.VOLUME_MIN_DISTANCE,
+        "gesture",
+        "volume_min_distance",
+        _float,
+    ),
+    ConfigField(
+        "volume_max_distance",
+        EnvVar.VOLUME_MAX_DISTANCE,
+        "gesture",
+        "volume_max_distance",
+        _float,
+    ),
+    ConfigField(
+        "pinch_distance_ratio",
+        EnvVar.PINCH_DISTANCE_RATIO,
+        "gesture",
+        "pinch_distance_ratio",
+        _float,
+    ),
     ConfigField(
         "require_upright_hands",
         EnvVar.REQUIRE_UPRIGHT_HANDS,
@@ -476,7 +526,9 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         "voice_capture_seconds",
         _float,
     ),
-    ConfigField("debug_log_seconds", EnvVar.DEBUG_LOG_SECONDS, "debug", "log_seconds", _float),
+    ConfigField(
+        "debug_log_seconds", EnvVar.DEBUG_LOG_SECONDS, "debug", "log_seconds", _float
+    ),
     ConfigField(
         "verbose_pipeline_diagnostics",
         EnvVar.VERBOSE_PIPELINE_DIAGNOSTICS,
@@ -507,11 +559,33 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
     ),
     ConfigField("webcam_index", EnvVar.WEBCAM_INDEX, "camera", "webcam_index", _int),
     ConfigField("camera_zoom", EnvVar.CAMERA_ZOOM, "camera", "zoom", _float),
-    ConfigField("auto_zoom_enabled", EnvVar.AUTO_ZOOM_ENABLED, "camera", "auto_zoom_enabled", _bool),
-    ConfigField("auto_zoom_min", EnvVar.AUTO_ZOOM_MIN, "camera", "auto_zoom_min", _float),
-    ConfigField("auto_zoom_max", EnvVar.AUTO_ZOOM_MAX, "camera", "auto_zoom_max", _float),
-    ConfigField("auto_zoom_padding", EnvVar.AUTO_ZOOM_PADDING, "camera", "auto_zoom_padding", _float),
-    ConfigField("auto_zoom_smoothing", EnvVar.AUTO_ZOOM_SMOOTHING, "camera", "auto_zoom_smoothing", _float),
+    ConfigField(
+        "auto_zoom_enabled",
+        EnvVar.AUTO_ZOOM_ENABLED,
+        "camera",
+        "auto_zoom_enabled",
+        _bool,
+    ),
+    ConfigField(
+        "auto_zoom_min", EnvVar.AUTO_ZOOM_MIN, "camera", "auto_zoom_min", _float
+    ),
+    ConfigField(
+        "auto_zoom_max", EnvVar.AUTO_ZOOM_MAX, "camera", "auto_zoom_max", _float
+    ),
+    ConfigField(
+        "auto_zoom_padding",
+        EnvVar.AUTO_ZOOM_PADDING,
+        "camera",
+        "auto_zoom_padding",
+        _float,
+    ),
+    ConfigField(
+        "auto_zoom_smoothing",
+        EnvVar.AUTO_ZOOM_SMOOTHING,
+        "camera",
+        "auto_zoom_smoothing",
+        _float,
+    ),
     ConfigField(
         "auto_zoom_position_deadband",
         EnvVar.AUTO_ZOOM_POSITION_DEADBAND,

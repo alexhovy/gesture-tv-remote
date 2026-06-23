@@ -17,7 +17,6 @@ from src.infrastructure.tv.tv_remote import (
     TvRemoteCommandError,
 )
 
-
 ANDROIDTV_COMMANDS = {
     TV_COMMAND_HOME: "HOME",
     TV_COMMAND_BACK: "BACK",

@@ -27,7 +27,9 @@ class ActiveHandTracker:
         grace_seconds = max(0.0, config.gesture.active_hand_lost_grace_seconds)
         return now - self.last_seen_time <= grace_seconds
 
-    def find_active_index(self, hands: list[HandState], config: AppConfig) -> int | None:
+    def find_active_index(
+        self, hands: list[HandState], config: AppConfig
+    ) -> int | None:
         if not hands:
             return None
         if self.position is None:
@@ -42,7 +44,8 @@ class ActiveHandTracker:
 
         max_distance = max(0.0, config.gesture.active_hand_match_max_distance)
         candidates = [
-            index for index, hand in enumerate(hands)
+            index
+            for index, hand in enumerate(hands)
             if self.distance_from_active(hand) <= max_distance
         ]
         if not candidates:
@@ -50,7 +53,9 @@ class ActiveHandTracker:
 
         upright_candidates = [index for index in candidates if hands[index].upright]
         if not upright_candidates:
-            return min(candidates, key=lambda index: self.distance_from_active(hands[index]))
+            return min(
+                candidates, key=lambda index: self.distance_from_active(hands[index])
+            )
 
         if self.previous_gesture is None:
             return min(
@@ -64,9 +69,14 @@ class ActiveHandTracker:
             if hands[index].gesture == self.previous_gesture
         ]
         if same_gesture:
-            return min(same_gesture, key=lambda index: self.distance_from_active(hands[index]))
+            return min(
+                same_gesture, key=lambda index: self.distance_from_active(hands[index])
+            )
 
-        return min(upright_candidates, key=lambda index: self.distance_from_active(hands[index]))
+        return min(
+            upright_candidates,
+            key=lambda index: self.distance_from_active(hands[index]),
+        )
 
     def distance_from_active(self, hand: HandState) -> float:
         if self.position is None:

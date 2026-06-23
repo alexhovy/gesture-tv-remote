@@ -28,7 +28,8 @@ def _download_with_retries(config: AppConfig, logger: AppLogger) -> None:
             _temp_path(config.model.file).unlink(missing_ok=True)
             if attempt < attempts:
                 logger.info(
-                    f"Model download failed ({error}); retrying {attempt}/{attempts - 1}."
+                    f"Model download failed ({error}); "
+                    f"retrying {attempt}/{attempts - 1}."
                 )
 
     raise RuntimeError(f"Could not download model: {last_error}") from last_error

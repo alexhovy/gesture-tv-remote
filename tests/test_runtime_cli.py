@@ -1,8 +1,7 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from src.runtime import cli
-from src.runtime import gesture_app
+from src.runtime import cli, gesture_app
 
 
 class RuntimeCliTests(unittest.TestCase):
@@ -56,7 +55,9 @@ class RuntimeCliTests(unittest.TestCase):
                 return_value=policy,
                 create=True,
             ) as policy_factory,
-            patch("src.runtime.gesture_app.asyncio.set_event_loop_policy") as set_policy,
+            patch(
+                "src.runtime.gesture_app.asyncio.set_event_loop_policy"
+            ) as set_policy,
         ):
             gesture_app._configure_windows_event_loop_policy()
 

@@ -87,6 +87,8 @@ class MediaPipeHandTracker:
             handedness = HANDEDNESS_RIGHT
             if index < len(handedness_results) and handedness_results[index]:
                 handedness = handedness_results[index][0].category_name
-            detected_hands.append(DetectedHand(landmarks=landmarks, handedness=handedness))
+            detected_hands.append(
+                DetectedHand(landmarks=landmarks, handedness=handedness)
+            )
 
         return detected_hands

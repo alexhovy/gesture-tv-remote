@@ -1,12 +1,9 @@
 import asyncio
 
+from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
-from src.infrastructure.tv.tv_remote import (
-    TV_ADAPTER_ANDROIDTV,
-    CapabilityStatus,
-    TvAdapterCapabilities,
-)
+from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -31,7 +28,8 @@ class AndroidTvRemoteClient:
             connection_type="androidtvremote2 TLS remote protocol",
             known_limitations=(
                 "Only key commands and voice capture are implemented.",
-                "Power, text input, source selection, and media controls are not mapped.",
+                "Power, text input, source selection, and media controls are "
+                "not mapped.",
             ),
         )
 
@@ -55,7 +53,8 @@ class AndroidTvRemoteClient:
         if await remote.async_generate_cert_if_missing():
             self._logger.info(
                 "Generated "
-                f"{self._config.tv.android_cert_file} and {self._config.tv.android_key_file}"
+                f"{self._config.tv.android_cert_file} and "
+                f"{self._config.tv.android_key_file}"
             )
 
         try:

@@ -1,12 +1,12 @@
 import asyncio
 
-from src.domain.commands import GESTURE_TO_COMMAND
-from src.domain.constants import GESTURE_MIC
-from src.domain.session import GestureSession
-from src.application.services.pipeline_metrics import PipelineMetrics
 from src.application.ports.command_dispatcher import CommandDispatcherPort
 from src.application.ports.logger import LoggerPort
 from src.application.ports.voice_capture import VoiceCapturePort
+from src.application.services.pipeline_metrics import PipelineMetrics
+from src.domain.commands import GESTURE_TO_COMMAND
+from src.domain.constants import GESTURE_MIC
+from src.domain.session import GestureSession
 
 
 class CommandDispatchPipeline:
@@ -62,7 +62,9 @@ class CommandDispatchPipeline:
             self._command_dispatcher.dropped_commands,
         )
 
-    def _ensure_voice_task(self, voice_task: asyncio.Task | None) -> asyncio.Task | None:
+    def _ensure_voice_task(
+        self, voice_task: asyncio.Task | None
+    ) -> asyncio.Task | None:
         if voice_task is None or voice_task.done():
             self._logger.debug("starting microphone capture")
             return asyncio.create_task(self._voice_capture.capture())

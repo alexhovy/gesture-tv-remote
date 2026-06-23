@@ -1,7 +1,7 @@
 [project]
 name = "gesture-tv-remote"
 version = "0.1.0"
-description = "Python MVP for controlling a TV with webcam hand gestures."
+description = "Gesture-controlled smart TV remote built with webcam hand tracking."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [

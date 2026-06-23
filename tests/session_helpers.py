@@ -22,32 +22,38 @@ def evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> str
 
     session.evaluate([open_hand], now=0.0)
     session.evaluate(
-        [hand_state(
-            GESTURE_POINT,
-            center=(start_x, 0.50),
-            size=hand_size,
-            index_position=(start_x, 0.50),
-        )],
+        [
+            hand_state(
+                GESTURE_POINT,
+                center=(start_x, 0.50),
+                size=hand_size,
+                index_position=(start_x, 0.50),
+            )
+        ],
         now=0.1,
     )
     first = session.evaluate(
-        [hand_state(
-            GESTURE_POINT,
-            center=(end_x, 0.50),
-            size=hand_size,
-            index_position=(end_x, 0.50),
-        )],
+        [
+            hand_state(
+                GESTURE_POINT,
+                center=(end_x, 0.50),
+                size=hand_size,
+                index_position=(end_x, 0.50),
+            )
+        ],
         now=0.2,
     ).command_gesture
     if first is not None:
         return first
     return session.evaluate(
-        [hand_state(
-            GESTURE_POINT,
-            center=(end_x, 0.50),
-            size=hand_size,
-            index_position=(end_x, 0.50),
-        )],
+        [
+            hand_state(
+                GESTURE_POINT,
+                center=(end_x, 0.50),
+                size=hand_size,
+                index_position=(end_x, 0.50),
+            )
+        ],
         now=0.3,
     ).command_gesture
 

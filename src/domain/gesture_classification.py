@@ -39,7 +39,9 @@ def classify_static_hand_pose(
     middle_up = finger_is_extended(landmarks, LANDMARK_MIDDLE_TIP, LANDMARK_MIDDLE_PIP)
     ring_up = finger_is_extended(landmarks, LANDMARK_RING_TIP, LANDMARK_RING_PIP)
     pinky_up = finger_is_extended(landmarks, LANDMARK_PINKY_TIP, LANDMARK_PINKY_PIP)
-    pinch_distance = landmark_distance(landmarks, LANDMARK_THUMB_TIP, LANDMARK_INDEX_TIP)
+    pinch_distance = landmark_distance(
+        landmarks, LANDMARK_THUMB_TIP, LANDMARK_INDEX_TIP
+    )
 
     fingers_up = [index_up, middle_up, ring_up, pinky_up]
 

@@ -1,9 +1,9 @@
 from dataclasses import dataclass
-from enum import Enum
+from enum import StrEnum
 from typing import Protocol
 
 
-class CapabilityStatus(str, Enum):
+class CapabilityStatus(StrEnum):
     IMPLEMENTED = "implemented"
     NOT_IMPLEMENTED = "not_implemented"
     UNSUPPORTED = "unsupported"

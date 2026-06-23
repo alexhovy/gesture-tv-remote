@@ -1,6 +1,3 @@
-from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
-
-
 TV_ADAPTER_ANDROIDTV = "androidtv"
 TV_ADAPTER_SAMSUNG = "samsung"
 TV_ADAPTER_WEBOS = "webos"

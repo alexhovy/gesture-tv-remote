@@ -7,6 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
+from src.application.ports.tv_remote import CapabilityStatus
 from src.domain.constants import (
     TV_COMMAND_BACK,
     TV_COMMAND_DPAD_CENTER,
@@ -18,8 +19,8 @@ from src.domain.constants import (
     TV_COMMAND_VOLUME_DOWN,
     TV_COMMAND_VOLUME_UP,
 )
-from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.androidtv_remote import AndroidTvRemoteClient
+from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.roku_remote import RokuRemoteClient
 from src.infrastructure.tv.samsung_remote import SamsungTvRemoteClient
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
@@ -28,12 +29,10 @@ from src.infrastructure.tv.tv_remote import (
     TV_ADAPTER_ROKU,
     TV_ADAPTER_SAMSUNG,
     TV_ADAPTER_WEBOS,
-    CapabilityStatus,
     TvRemoteCommandError,
 )
 from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
 from src.infrastructure.tv.webos_remote import WebOsRemoteClient
-from src.shared.config import AppConfig
 from tests.config_helpers import app_config
 
 
@@ -71,7 +70,9 @@ class TvRemoteTests(unittest.TestCase):
                 self.assertEqual(capabilities.volume, CapabilityStatus.IMPLEMENTED)
                 self.assertTrue(capabilities.known_limitations)
 
-    def test_capability_status_distinguishes_unsupported_from_not_implemented(self) -> None:
+    def test_capability_status_distinguishes_unsupported_from_not_implemented(
+        self,
+    ) -> None:
         android_capabilities = create_tv_remote_client(
             app_config(tv_adapter=TV_ADAPTER_ANDROIDTV)
         ).capabilities()
@@ -79,7 +80,9 @@ class TvRemoteTests(unittest.TestCase):
             app_config(tv_adapter=TV_ADAPTER_ROKU)
         ).capabilities()
 
-        self.assertEqual(android_capabilities.voice_capture, CapabilityStatus.IMPLEMENTED)
+        self.assertEqual(
+            android_capabilities.voice_capture, CapabilityStatus.IMPLEMENTED
+        )
         self.assertEqual(roku_capabilities.voice_capture, CapabilityStatus.UNSUPPORTED)
         self.assertEqual(roku_capabilities.power, CapabilityStatus.NOT_IMPLEMENTED)
         self.assertEqual(roku_capabilities.pairing, CapabilityStatus.UNSUPPORTED)
@@ -109,8 +112,7 @@ class TvRemoteTests(unittest.TestCase):
         ]:
             with self.subTest(adapter=adapter):
                 translated = [
-                    translate_tv_command(adapter, command)
-                    for command in commands
+                    translate_tv_command(adapter, command) for command in commands
                 ]
                 self.assertTrue(all(translated))
 
@@ -130,7 +132,9 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
         def sync_method(command: str) -> str:
             return command
 
-        with patch("src.infrastructure.tv.async_call.asyncio.to_thread", fake_to_thread):
+        with patch(
+            "src.infrastructure.tv.async_call.asyncio.to_thread", fake_to_thread
+        ):
             result = await call_remote_method(sync_method, "KEY_HOME")
 
         self.assertEqual(result, "KEY_HOME")
@@ -153,7 +157,9 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
         async def result() -> str:
             return "ok"
 
-        with patch("src.infrastructure.tv.async_call.asyncio.to_thread", fake_to_thread):
+        with patch(
+            "src.infrastructure.tv.async_call.asyncio.to_thread", fake_to_thread
+        ):
             self.assertEqual(await call_remote_method(lambda: result()), "ok")
 
 

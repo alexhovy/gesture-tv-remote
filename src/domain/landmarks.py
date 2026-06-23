@@ -3,7 +3,6 @@ from typing import Any
 
 from src.domain.constants import HANDEDNESS_LEFT
 
-
 LANDMARK_WRIST = 0
 LANDMARK_THUMB_CMC = 1
 LANDMARK_THUMB_MCP = 2
@@ -102,8 +101,10 @@ def hand_center(landmarks: list[Any]) -> tuple[float, float, float]:
     x = sum(landmark.x for landmark in landmarks) / len(landmarks)
     y = sum(landmark.y for landmark in landmarks) / len(landmarks)
     size = max(
-        max(landmark.x for landmark in landmarks) - min(landmark.x for landmark in landmarks),
-        max(landmark.y for landmark in landmarks) - min(landmark.y for landmark in landmarks),
+        max(landmark.x for landmark in landmarks)
+        - min(landmark.x for landmark in landmarks),
+        max(landmark.y for landmark in landmarks)
+        - min(landmark.y for landmark in landmarks),
     )
     return x, y, size
 

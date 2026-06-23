@@ -1,10 +1,7 @@
+from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
-from src.infrastructure.tv.tv_remote import (
-    TV_ADAPTER_WEBOS,
-    CapabilityStatus,
-    TvAdapterCapabilities,
-)
+from src.infrastructure.tv.tv_remote import TV_ADAPTER_WEBOS
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -31,7 +28,8 @@ class WebOsRemoteClient:
             connection_type="aiowebostv websocket",
             known_limitations=(
                 "Only input-control navigation and volume commands are implemented.",
-                "Voice capture, text input, source selection, and Wake-on-LAN are not implemented.",
+                "Voice capture, text input, source selection, and Wake-on-LAN "
+                "are not implemented.",
             ),
         )
 
@@ -40,7 +38,9 @@ class WebOsRemoteClient:
             from aiowebostv import WebOsClient
             from aiowebostv.controls import InputControl, MediaControl
 
-            self._config.tv.webos_client_key_file.parent.mkdir(parents=True, exist_ok=True)
+            self._config.tv.webos_client_key_file.parent.mkdir(
+                parents=True, exist_ok=True
+            )
             client_key = self._read_client_key()
             client = WebOsClient(self._config.tv.host)
             await client.connect()

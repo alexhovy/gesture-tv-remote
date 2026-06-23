@@ -35,7 +35,9 @@ def build_gesture_remote_service(config_provider=None) -> GestureRemoteService:
     import cv2
 
     from src.application.services.pipeline_metrics import PipelineMetrics
-    from src.application.services.remote_command_dispatcher import RemoteCommandDispatcher
+    from src.application.services.remote_command_dispatcher import (
+        RemoteCommandDispatcher,
+    )
     from src.infrastructure.audio.voice_capture import MicrophoneVoiceCapture
     from src.infrastructure.camera.camera_zoom import CameraZoomController
     from src.infrastructure.camera.display import OpenCvDisplay

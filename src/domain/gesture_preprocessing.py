@@ -26,9 +26,8 @@ def normalize_hand_landmarks(
     config: GestureConfig,
 ) -> NormalizedLandmarkData:
     center_x, center_y, hand_size = hand_center(raw_hand.landmarks)
-    upright = (
-        not config.require_upright_hands
-        or hand_is_upright(raw_hand.landmarks, config.hand_upright_max_tilt_ratio)
+    upright = not config.require_upright_hands or hand_is_upright(
+        raw_hand.landmarks, config.hand_upright_max_tilt_ratio
     )
     return NormalizedLandmarkData(
         landmarks=raw_hand.landmarks,
@@ -38,7 +37,9 @@ def normalize_hand_landmarks(
     )
 
 
-def raw_hand_to_state(raw_hand: RawDetectedHandState, config: GestureConfig) -> HandState:
+def raw_hand_to_state(
+    raw_hand: RawDetectedHandState, config: GestureConfig
+) -> HandState:
     normalized = normalize_hand_landmarks(raw_hand, config)
     return HandState(
         landmarks=normalized.landmarks,

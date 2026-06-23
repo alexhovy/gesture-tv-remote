@@ -2,8 +2,8 @@ import unittest
 
 from src.domain.constants import (
     DEBUG_UNKNOWN,
-    GESTURE_OPEN_PALM,
     GESTURE_FIST,
+    GESTURE_OPEN_PALM,
     GESTURE_PINCH,
     GESTURE_POINT,
     GESTURE_POINT_DOWN,
@@ -115,12 +115,14 @@ class SessionPointerTests(unittest.TestCase):
 
         self._point(session, (0.50, 0.50), now=0.1)
         undersized = session.evaluate(
-            [hand_state(
-                GESTURE_POINT,
-                center=(0.67, 0.50),
-                size=0.09,
-                index_position=(0.67, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_POINT,
+                    center=(0.67, 0.50),
+                    size=0.09,
+                    index_position=(0.67, 0.50),
+                )
+            ],
             now=0.2,
         )
         right = self._point(session, (0.67, 0.50), now=0.3)
@@ -136,22 +138,26 @@ class SessionPointerTests(unittest.TestCase):
         self._activate(session, (0.50, 0.50))
 
         session.evaluate(
-            [hand_state(
-                GESTURE_POINT,
-                center=(0.50, 0.50),
-                size=0.07,
-                index_position=(0.50, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_POINT,
+                    center=(0.50, 0.50),
+                    size=0.07,
+                    index_position=(0.50, 0.50),
+                )
+            ],
             now=0.1,
             pointer_reference_size=0.15,
         )
         right = session.evaluate(
-            [hand_state(
-                GESTURE_POINT,
-                center=(0.53, 0.50),
-                size=0.07,
-                index_position=(0.53, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_POINT,
+                    center=(0.53, 0.50),
+                    size=0.07,
+                    index_position=(0.53, 0.50),
+                )
+            ],
             now=0.2,
             pointer_reference_size=0.15,
         )
@@ -165,12 +171,14 @@ class SessionPointerTests(unittest.TestCase):
         self._activate(session, (0.50, 0.50))
 
         decision = session.evaluate(
-            [hand_state(
-                GESTURE_POINT,
-                center=(0.50, 0.50),
-                size=0.07,
-                index_position=(0.50, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_POINT,
+                    center=(0.50, 0.50),
+                    size=0.07,
+                    index_position=(0.50, 0.50),
+                )
+            ],
             now=0.1,
             pointer_reference_size=1.0,
         )
@@ -200,12 +208,14 @@ class SessionPointerTests(unittest.TestCase):
 
         self._point(session, (0.50, 0.50), now=0.1)
         open_palm = session.evaluate(
-            [hand_state(
-                GESTURE_OPEN_PALM,
-                center=(0.67, 0.50),
-                size=0.20,
-                index_position=(0.67, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_OPEN_PALM,
+                    center=(0.67, 0.50),
+                    size=0.20,
+                    index_position=(0.67, 0.50),
+                )
+            ],
             now=0.2,
         )
 
@@ -221,12 +231,14 @@ class SessionPointerTests(unittest.TestCase):
 
         self._point(session, (0.50, 0.50), now=0.1)
         fist = session.evaluate(
-            [hand_state(
-                GESTURE_FIST,
-                center=(0.67, 0.50),
-                size=0.20,
-                index_position=(0.67, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_FIST,
+                    center=(0.67, 0.50),
+                    size=0.20,
+                    index_position=(0.67, 0.50),
+                )
+            ],
             now=0.2,
         )
 
@@ -244,12 +256,14 @@ class SessionPointerTests(unittest.TestCase):
 
         self._point(session, (0.50, 0.50), now=0.1)
         open_palm = session.evaluate(
-            [hand_state(
-                GESTURE_OPEN_PALM,
-                center=(0.67, 0.50),
-                size=0.20,
-                index_position=(0.67, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_OPEN_PALM,
+                    center=(0.67, 0.50),
+                    size=0.20,
+                    index_position=(0.67, 0.50),
+                )
+            ],
             now=0.8,
         )
 
@@ -264,12 +278,14 @@ class SessionPointerTests(unittest.TestCase):
 
         self._point(session, (0.50, 0.50), now=0.1)
         pinch = session.evaluate(
-            [hand_state(
-                GESTURE_PINCH,
-                center=(0.67, 0.50),
-                size=0.20,
-                index_position=(0.67, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_PINCH,
+                    center=(0.67, 0.50),
+                    size=0.20,
+                    index_position=(0.67, 0.50),
+                )
+            ],
             now=0.2,
         )
 
@@ -283,21 +299,25 @@ class SessionPointerTests(unittest.TestCase):
         self._activate(session, (0.50, 0.50))
 
         session.evaluate(
-            [hand_state(
-                GESTURE_POINT,
-                center=(0.50, 0.50),
-                size=0.20,
-                index_position=(0.50, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_POINT,
+                    center=(0.50, 0.50),
+                    size=0.20,
+                    index_position=(0.50, 0.50),
+                )
+            ],
             now=0.1,
         )
         left = session.evaluate(
-            [hand_state(
-                GESTURE_POINT,
-                center=(0.49, 0.50),
-                size=0.20,
-                index_position=(0.33, 0.50),
-            )],
+            [
+                hand_state(
+                    GESTURE_POINT,
+                    center=(0.49, 0.50),
+                    size=0.20,
+                    index_position=(0.33, 0.50),
+                )
+            ],
             now=0.2,
         )
 
@@ -310,12 +330,14 @@ class SessionPointerTests(unittest.TestCase):
 
         self._point(session, (0.50, 0.50), now=0.1)
         unknown = session.evaluate(
-            [hand_state(
-                DEBUG_UNKNOWN,
-                center=(0.49, 0.50),
-                size=0.20,
-                index_position=(0.33, 0.50),
-            )],
+            [
+                hand_state(
+                    DEBUG_UNKNOWN,
+                    center=(0.49, 0.50),
+                    size=0.20,
+                    index_position=(0.33, 0.50),
+                )
+            ],
             now=0.2,
         )
 
@@ -337,12 +359,14 @@ class SessionPointerTests(unittest.TestCase):
         pointer_reference_size: float = 1.0,
     ):
         return session.evaluate(
-            [hand_state(
-                GESTURE_POINT,
-                center=center,
-                size=0.20,
-                index_position=center,
-            )],
+            [
+                hand_state(
+                    GESTURE_POINT,
+                    center=center,
+                    size=0.20,
+                    index_position=center,
+                )
+            ],
             now=now,
             pointer_reference_size=pointer_reference_size,
         )

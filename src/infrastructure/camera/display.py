@@ -17,7 +17,6 @@ from src.infrastructure.camera.video_overlay import (
     draw_volume_zones,
 )
 
-
 OVERLAY_SMOOTHING_ALPHA = 0.45
 OVERLAY_MISSING_GRACE_FRAMES = 2
 
@@ -51,7 +50,9 @@ class OpenCvDisplay:
             landmarks_to_original_space(detected_hand.landmarks, source_crop)
             for detected_hand in detected_hands
         ]
-        for original_landmarks in self._overlay_smoother.update(original_landmarks_by_hand):
+        for original_landmarks in self._overlay_smoother.update(
+            original_landmarks_by_hand
+        ):
             draw_simple_landmarks(
                 frame,
                 landmarks_to_crop_space(original_landmarks, display_crop),
@@ -82,10 +83,7 @@ class OpenCvDisplay:
 
 
 def _debug_crop(crop: CropRect) -> str:
-    return (
-        f"({crop.x:.2f},{crop.y:.2f},"
-        f"{crop.width:.2f},{crop.height:.2f})"
-    )
+    return f"({crop.x:.2f},{crop.y:.2f}," f"{crop.width:.2f},{crop.height:.2f})"
 
 
 class OverlayLandmarkSmoother:
@@ -121,7 +119,9 @@ class OverlayLandmarkSmoother:
         return smoothed
 
 
-def _blend_landmarks(previous: list[Any], current: list[Any], alpha: float) -> list[Any]:
+def _blend_landmarks(
+    previous: list[Any], current: list[Any], alpha: float
+) -> list[Any]:
     return [
         _blend_landmark(previous_landmark, current_landmark, alpha)
         for previous_landmark, current_landmark in zip(previous, current, strict=True)
@@ -139,6 +139,8 @@ def _blend_landmark(previous: Any, current: Any, alpha: float) -> Any:
             if hasattr(previous, attribute):
                 previous_value = getattr(previous, attribute)
                 if isinstance(current_value, Real) and isinstance(previous_value, Real):
-                    current_value = previous_value + alpha * (current_value - previous_value)
+                    current_value = previous_value + alpha * (
+                        current_value - previous_value
+                    )
             setattr(blended, attribute, current_value)
     return blended

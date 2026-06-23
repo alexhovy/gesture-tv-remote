@@ -1,6 +1,5 @@
 from pathlib import Path
 
-
 DEFAULT_LOG_FILE = Path("logs/logs.txt")
 
 

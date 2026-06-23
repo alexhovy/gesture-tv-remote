@@ -83,15 +83,13 @@ class ConfigRepository:
 
     def _ensure_schema(self) -> None:
         with self._store.connect() as connection:
-            connection.execute(
-                f"""
+            connection.execute(f"""
                 CREATE TABLE IF NOT EXISTS app_config (
                     id INTEGER PRIMARY KEY CHECK (id = {_CONFIG_ROW_ID}),
                     {_column_definitions()},
                     updated_at TEXT NOT NULL
                 )
-                """
-            )
+                """)
             existing_columns = {
                 row["name"]
                 for row in connection.execute("PRAGMA table_info(app_config)")
@@ -99,13 +97,14 @@ class ConfigRepository:
             for field in CONFIG_FIELDS:
                 if field.name in existing_columns:
                     continue
-                connection.execute(
-                    f"""
-                    ALTER TABLE app_config
-                    ADD COLUMN {_migration_column_definition(field.name, config_field_default(field))}
-                    DEFAULT {_sql_literal(_to_db_value(config_field_default(field)))}
-                    """
+                column_definition = _migration_column_definition(
+                    field.name, config_field_default(field)
                 )
+                connection.execute(f"""
+                    ALTER TABLE app_config
+                    ADD COLUMN {column_definition}
+                    DEFAULT {_sql_literal(_to_db_value(config_field_default(field)))}
+                    """)
 
 
 def _column_definitions() -> str:

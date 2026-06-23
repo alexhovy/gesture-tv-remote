@@ -6,6 +6,87 @@ from src.domain.session_types import HandState, PointerDebug, VolumeDebug
 
 
 class GestureSessionDebugMixin:
+    def _inactive_debug_message(
+        self,
+        hands: list[HandState],
+        active_anchor: tuple[float, float] | None,
+        active_index: int | None = None,
+    ) -> str:
+        debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hands]
+        debug_index = "none" if active_index is None else str(active_index)
+        return (
+            f"hands={len(hands)} activated=False "
+            f"gestures={debug_gestures} need_upright_open_palm "
+            f"active_index={debug_index} zoom_hands=0 "
+            f"{self._debug_hands(hands, active_anchor)}"
+        )
+
+    def _temporarily_lost_debug_message(
+        self,
+        hands: list[HandState],
+        active_anchor: tuple[float, float] | None,
+        command_gesture: str | None,
+        zoom_freeze_reason: str,
+        anchor_locked: bool,
+    ) -> str:
+        debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hands]
+        return (
+            f"hands={len(hands)} activated=True "
+            f"gestures={debug_gestures} active_hand_temporarily_lost "
+            f"command={command_gesture or DEBUG_NONE} "
+            f"active_index=none zoom_hands=0 "
+            f"pointer_state={self._debug_pointer_state(None)} "
+            f"volume_state={self._debug_volume_state()} "
+            f"zoom_freeze_reason={zoom_freeze_reason} "
+            f"anchor_locked={anchor_locked} "
+            f"{self._debug_hands(hands, active_anchor)}"
+        )
+
+    def _active_debug_message(
+        self,
+        hands: list[HandState],
+        active_anchor: tuple[float, float] | None,
+        active_index: int,
+        active_gesture: str | None,
+        effective_motion_gesture: str | None,
+        commandable_motion_gesture: str | None,
+        volume_gesture: str | None,
+        pointer_gesture: str | None,
+        two_finger_back_gesture: str | None,
+        active_size: float,
+        pointer_distance: float,
+        volume_distance: float,
+        command_gesture: str | None,
+        pointer_position: tuple[float, float] | None,
+        zoom_hands: int,
+        zoom_freeze_reason: str,
+        anchor_locked: bool,
+    ) -> str:
+        debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hands]
+        return (
+            f"hands={len(hands)} activated=True "
+            f"gestures={debug_gestures} "
+            f"active={active_gesture or DEBUG_UNKNOWN} "
+            f"effective_motion={effective_motion_gesture or DEBUG_NONE} "
+            f"motion_command={commandable_motion_gesture or DEBUG_NONE} "
+            f"pose_blocked={self._pose_blocked_reason or DEBUG_NONE} "
+            f"volume={volume_gesture or DEBUG_NONE} "
+            f"pointer={pointer_gesture or DEBUG_NONE} "
+            f"two_finger_back={two_finger_back_gesture or DEBUG_NONE} "
+            f"two_finger_back_state={self._debug_two_finger_back_state()} "
+            f"size={active_size:.2f} "
+            f"pointer_distance={pointer_distance:.2f} "
+            f"volume_distance={volume_distance:.2f} "
+            f"command={command_gesture or DEBUG_NONE} "
+            f"pointer_state={self._debug_pointer_state(pointer_position)} "
+            f"volume_state={self._debug_volume_state()} "
+            f"active_index={active_index} "
+            f"zoom_hands={zoom_hands} "
+            f"zoom_freeze_reason={zoom_freeze_reason} "
+            f"anchor_locked={anchor_locked} "
+            f"{self._debug_hands(hands, active_anchor)}"
+        )
+
     def _debug_hands(
         self,
         hands: list[HandState],
@@ -75,7 +156,9 @@ class GestureSessionDebugMixin:
             f":blocked={pointer.last_blocked_reason or DEBUG_NONE}"
         )
 
-    def _pointer_debug(self, current_position: tuple[float, float] | None) -> PointerDebug:
+    def _pointer_debug(
+        self, current_position: tuple[float, float] | None
+    ) -> PointerDebug:
         pointer = self._pointer
         anchor_position = pointer.anchor if isinstance(pointer.anchor, tuple) else None
         return PointerDebug(
@@ -110,7 +193,9 @@ class GestureSessionDebugMixin:
             f":blocked={volume.last_blocked_reason or DEBUG_NONE}"
         )
 
-    def _volume_debug(self, current_position: tuple[float, float] | None) -> VolumeDebug:
+    def _volume_debug(
+        self, current_position: tuple[float, float] | None
+    ) -> VolumeDebug:
         volume = self._volume
         anchor_y = volume.anchor if isinstance(volume.anchor, float) else None
         return VolumeDebug(

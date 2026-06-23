@@ -34,7 +34,9 @@ def hand_states_to_original_space(
     hand_states: list[HandState],
     crop: CropRect,
 ) -> list[HandState]:
-    return [hand_state_to_original_space(hand_state, crop) for hand_state in hand_states]
+    return [
+        hand_state_to_original_space(hand_state, crop) for hand_state in hand_states
+    ]
 
 
 def landmarks_to_original_space(landmarks: list[Any], crop: CropRect) -> list[Any]:

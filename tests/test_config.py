@@ -18,7 +18,9 @@ class ConfigTests(unittest.TestCase):
         self.assertEqual(config.tv.host, DEFAULT_CONFIG.tv.host)
         self.assertEqual(config.config_db_file, DEFAULT_CONFIG.config_db_file)
         self.assertEqual(config.camera.webcam_index, DEFAULT_CONFIG.camera.webcam_index)
-        self.assertEqual(config.tv.android_cert_file, DEFAULT_CONFIG.tv.android_cert_file)
+        self.assertEqual(
+            config.tv.android_cert_file, DEFAULT_CONFIG.tv.android_cert_file
+        )
         self.assertEqual(config.model.file, DEFAULT_CONFIG.model.file)
 
     def test_load_config_applies_env_overrides(self) -> None:

@@ -43,8 +43,7 @@ class CommandDecision:
 
         if previous_gesture == GESTURE_FIST and gesture == GESTURE_OPEN_PALM:
             should_select = (
-                self.fist_started_at is not None
-                and not self.home_emitted_for_fist
+                self.fist_started_at is not None and not self.home_emitted_for_fist
             )
             self.reset()
             if should_select:
@@ -86,7 +85,9 @@ class EmitDebounce:
     last_command_time: float = 0.0
     last_command_gesture: str | None = None
 
-    def should_emit(self, command_gesture: str, now: float, debounce_seconds: float) -> bool:
+    def should_emit(
+        self, command_gesture: str, now: float, debounce_seconds: float
+    ) -> bool:
         if command_gesture != self.last_command_gesture:
             return True
         return now - self.last_command_time >= debounce_seconds

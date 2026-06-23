@@ -209,9 +209,13 @@ class SessionActivationTests(unittest.TestCase):
             now=0.0,
         )
 
-        self._assert_zoom_bounds(decision.zoom_landmarks[0], (0.565, 0.775), (0.695, 0.905))
+        self._assert_zoom_bounds(
+            decision.zoom_landmarks[0], (0.565, 0.775), (0.695, 0.905)
+        )
 
-    def test_active_hand_is_matched_by_position_after_other_hand_enters_first(self) -> None:
+    def test_active_hand_is_matched_by_position_after_other_hand_enters_first(
+        self,
+    ) -> None:
         session = GestureSession(app_config(active_hand_match_max_distance=0.35))
         active = hand_state(GESTURE_OPEN_PALM, center=(0.30, 0.50), size=0.20)
         extra = hand_state(GESTURE_TWO_FINGERS, center=(0.80, 0.50), size=0.20)

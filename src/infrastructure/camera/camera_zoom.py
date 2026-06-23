@@ -8,7 +8,6 @@ from src.infrastructure.camera.crop_geometry import clamp, crop_from_center_zoom
 from src.infrastructure.camera.video_preprocessing import center_crop_for_zoom
 from src.shared.config import AppConfig
 
-
 DETECTION_ZOOM_RATIO = 0.75
 DETECTION_SMOOTHING_RATIO = 0.5
 
@@ -139,7 +138,9 @@ class CameraZoomController:
 
         return self.update(landmarks_by_hand, crop)
 
-    def _target_for_bounds(self, hand_bounds: list[CropRect]) -> tuple[float, float, float]:
+    def _target_for_bounds(
+        self, hand_bounds: list[CropRect]
+    ) -> tuple[float, float, float]:
         min_x = min(bounds.x for bounds in hand_bounds)
         min_y = min(bounds.y for bounds in hand_bounds)
         max_x = max(bounds.x + bounds.width for bounds in hand_bounds)
@@ -273,4 +274,6 @@ def _bounds_near_crop_edge(
     right = (max_x - crop.x) / crop.width
     top = (min_y - crop.y) / crop.height
     bottom = (max_y - crop.y) / crop.height
-    return left <= margin or right >= 1 - margin or top <= margin or bottom >= 1 - margin
+    return (
+        left <= margin or right >= 1 - margin or top <= margin or bottom >= 1 - margin
+    )

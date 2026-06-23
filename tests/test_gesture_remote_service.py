@@ -6,6 +6,7 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
+from src.domain.camera_geometry import CropRect
 from src.domain.constants import (
     TV_COMMAND_DPAD_DOWN,
     TV_COMMAND_HOME,
@@ -13,7 +14,6 @@ from src.domain.constants import (
     TV_COMMAND_VOLUME_UP,
 )
 from src.domain.session_types import GestureDecision
-from src.domain.camera_geometry import CropRect
 
 
 def _install_service_import_stubs() -> None:
@@ -34,28 +34,30 @@ def _install_service_import_stubs() -> None:
     hand_tracking = types.ModuleType("src.infrastructure.hand_tracking.hand_tracking")
     hand_tracking.DetectedHand = object
     hand_tracking.MediaPipeHandTracker = object
-    sys.modules.setdefault("src.infrastructure.hand_tracking.hand_tracking", hand_tracking)
+    sys.modules.setdefault(
+        "src.infrastructure.hand_tracking.hand_tracking", hand_tracking
+    )
 
 
 _install_service_import_stubs()
 
-from src.application.services.gesture_remote_service import (  # noqa: E402
-    CONFIG_RELOAD_INTERVAL_SECONDS,
-    GestureRemoteService,
-)
-from src.application.services.pipeline_metrics import PipelineMetrics  # noqa: E402
+import src.infrastructure.camera.display as display_module  # noqa: E402
 from src.application.pipelines import (  # noqa: E402
     CommandDispatchPipeline,
     FrameCapturePipeline,
     GestureDecisionPipeline,
 )
-import src.infrastructure.camera.display as display_module  # noqa: E402
-from src.infrastructure.camera.display import OpenCvDisplay  # noqa: E402
-from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor  # noqa: E402
+from src.application.services.gesture_remote_service import (  # noqa: E402
+    CONFIG_RELOAD_INTERVAL_SECONDS,
+    GestureRemoteService,
+)
+from src.application.services.pipeline_metrics import PipelineMetrics  # noqa: E402
 from src.application.services.remote_command_dispatcher import (  # noqa: E402
     MAX_PENDING_COMMANDS,
     RemoteCommandDispatcher,
 )
+from src.infrastructure.camera.display import OpenCvDisplay  # noqa: E402
+from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor  # noqa: E402
 from src.shared.config import AppConfig  # noqa: E402
 from tests.config_helpers import app_config  # noqa: E402
 
@@ -151,7 +153,9 @@ class GestureRemoteServiceTests(unittest.TestCase):
             ([landmarks], CropRect(0.0, 0.0, 1.0, 1.0)),
         )
 
-    def test_decision_pipeline_passes_display_crop_size_for_pointer_radius(self) -> None:
+    def test_decision_pipeline_passes_display_crop_size_for_pointer_radius(
+        self,
+    ) -> None:
         session = FakeDecisionSession()
 
         GestureDecisionPipeline(
@@ -187,7 +191,9 @@ class GestureRemoteServiceTests(unittest.TestCase):
             ([], CropRect(0.0, 0.0, 1.0, 1.0)),
         )
 
-    def test_update_zoom_holds_crop_during_temporary_loss_when_motion_anchor_is_locked(self) -> None:
+    def test_update_zoom_holds_crop_during_temporary_loss_when_motion_anchor_is_locked(
+        self,
+    ) -> None:
         zoom_controller = FakeZoomController()
 
         changed = GestureDecisionPipeline(
@@ -249,7 +255,9 @@ class GestureRemoteServiceTests(unittest.TestCase):
         self.assertIsNone(zoom_controller.updated_with)
         self.assertIsNone(zoom_controller.conditional_update_with)
 
-    def test_update_zoom_conditionally_frames_hands_when_motion_freezes_zoom(self) -> None:
+    def test_update_zoom_conditionally_frames_hands_when_motion_freezes_zoom(
+        self,
+    ) -> None:
         zoom_controller = FakeZoomController()
         landmarks = [_landmark(0.25, 0.50)]
 
@@ -291,11 +299,16 @@ class GestureRemoteServiceTests(unittest.TestCase):
             ),
         )
 
+
 class DisplayPipelineTests(unittest.TestCase):
-    def test_detected_hand_overlay_is_smoothed_and_held_through_brief_dropout(self) -> None:
+    def test_detected_hand_overlay_is_smoothed_and_held_through_brief_dropout(
+        self,
+    ) -> None:
         drawn = []
         original_draw = display_module.draw_simple_landmarks
-        display_module.draw_simple_landmarks = lambda frame, landmarks: drawn.append(landmarks)
+        display_module.draw_simple_landmarks = lambda frame, landmarks: drawn.append(
+            landmarks
+        )
         try:
             pipeline = OpenCvDisplay()
             frame = FakeFrame(100, 100)
@@ -303,13 +316,21 @@ class DisplayPipelineTests(unittest.TestCase):
 
             pipeline.draw_detected_hands(
                 frame,
-                [SimpleNamespace(landmarks=[_landmark(0.20, 0.20)], handedness="Right")],
+                [
+                    SimpleNamespace(
+                        landmarks=[_landmark(0.20, 0.20)], handedness="Right"
+                    )
+                ],
                 crop,
                 crop,
             )
             pipeline.draw_detected_hands(
                 frame,
-                [SimpleNamespace(landmarks=[_landmark(0.60, 0.20)], handedness="Right")],
+                [
+                    SimpleNamespace(
+                        landmarks=[_landmark(0.60, 0.20)], handedness="Right"
+                    )
+                ],
                 crop,
                 crop,
             )
@@ -325,7 +346,9 @@ class DisplayPipelineTests(unittest.TestCase):
     def test_detected_hand_overlay_handles_none_optional_landmark_fields(self) -> None:
         drawn = []
         original_draw = display_module.draw_simple_landmarks
-        display_module.draw_simple_landmarks = lambda frame, landmarks: drawn.append(landmarks)
+        display_module.draw_simple_landmarks = lambda frame, landmarks: drawn.append(
+            landmarks
+        )
         try:
             pipeline = OpenCvDisplay()
             frame = FakeFrame(100, 100)
@@ -442,7 +465,9 @@ class GestureRemoteConfigReloadTests(unittest.TestCase):
         service._config_provider = ProviderCounter(app_config())
         service._last_config_reload_time = 10.0
 
-        service._reload_config_if_needed(now=10.0 + CONFIG_RELOAD_INTERVAL_SECONDS - 0.01)
+        service._reload_config_if_needed(
+            now=10.0 + CONFIG_RELOAD_INTERVAL_SECONDS - 0.01
+        )
 
         self.assertEqual(service._config_provider.calls, 0)
 
@@ -545,7 +570,9 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         remote.release_first.set()
         await dispatcher.close()
 
-    async def test_queue_overflow_replaces_newest_duplicate_without_drop_count(self) -> None:
+    async def test_queue_overflow_replaces_newest_duplicate_without_drop_count(
+        self,
+    ) -> None:
         remote = BlockingRemote()
         dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
         dispatcher.start()
@@ -662,8 +689,7 @@ def _decision_with_hands(
         debug_message="",
         freeze_zoom=freeze_zoom,
         zoom_landmarks=[
-            _hand_landmarks(centers[index], hand_size)
-            for index in range(hand_count)
+            _hand_landmarks(centers[index], hand_size) for index in range(hand_count)
         ],
     )
 

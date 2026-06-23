@@ -2,6 +2,8 @@ import threading
 import unittest
 from types import SimpleNamespace
 
+from src.domain.constants import GESTURE_POINT
+from src.domain.session_types import HandState
 from src.infrastructure.camera.camera_zoom import CameraZoomController
 from src.infrastructure.camera.frame_source import LatestFrameSource
 from src.infrastructure.camera.landmark_projection import (
@@ -14,8 +16,6 @@ from src.infrastructure.camera.video_preprocessing import (
     apply_center_crop_zoom,
     apply_crop,
 )
-from src.domain.constants import GESTURE_POINT
-from src.domain.session_types import HandState
 from tests.config_helpers import app_config
 
 
@@ -166,8 +166,12 @@ class VideoPreprocessingTests(unittest.TestCase):
             CropRect(0.0, 0.0, 1.0, 1.0),
         )
 
-        self.assertLess(controller.current_crop().width, controller.detection_crop().width)
-        self.assertLess(controller.current_crop().height, controller.detection_crop().height)
+        self.assertLess(
+            controller.current_crop().width, controller.detection_crop().width
+        )
+        self.assertLess(
+            controller.current_crop().height, controller.detection_crop().height
+        )
 
     def _assert_crop_almost_equal(self, actual: CropRect, expected: CropRect) -> None:
         self.assertAlmostEqual(actual.x, expected.x)
@@ -277,7 +281,9 @@ class VideoPreprocessingTests(unittest.TestCase):
         self.assertTrue(changed)
         self.assertNotEqual(controller.current_crop(), CropRect(0.0, 0.0, 1.0, 1.0))
 
-    def test_auto_zoom_display_follows_hand_when_detection_hand_reaches_crop_edge(self) -> None:
+    def test_auto_zoom_display_follows_hand_when_detection_hand_reaches_crop_edge(
+        self,
+    ) -> None:
         controller = CameraZoomController(
             app_config(
                 auto_zoom_enabled=True,
@@ -307,7 +313,9 @@ class VideoPreprocessingTests(unittest.TestCase):
         self.assertGreater(detection_crop.width, display_crop.width)
         self.assertGreater(detection_crop.height, display_crop.height)
 
-    def test_auto_zoom_display_follows_original_space_hand_near_current_crop_edge(self) -> None:
+    def test_auto_zoom_display_follows_original_space_hand_near_current_crop_edge(
+        self,
+    ) -> None:
         controller = CameraZoomController(
             app_config(
                 auto_zoom_enabled=True,
@@ -365,7 +373,9 @@ class VideoPreprocessingTests(unittest.TestCase):
         self.assertGreater(detection_crop.width, display_crop.width)
         self.assertGreater(detection_crop.height, display_crop.height)
 
-    def test_auto_zoom_conditionally_updates_when_frozen_hands_near_current_crop_edge(self) -> None:
+    def test_auto_zoom_conditionally_updates_when_frozen_hands_near_current_crop_edge(
+        self,
+    ) -> None:
         controller = CameraZoomController(
             app_config(
                 auto_zoom_enabled=True,
@@ -395,7 +405,9 @@ class VideoPreprocessingTests(unittest.TestCase):
         self.assertLessEqual(crop.x, 0.40)
         self.assertGreaterEqual(crop.x + crop.width, 0.88)
 
-    def test_auto_zoom_conditionally_holds_when_frozen_hands_are_inside_current_crop(self) -> None:
+    def test_auto_zoom_conditionally_holds_when_frozen_hands_are_inside_current_crop(
+        self,
+    ) -> None:
         controller = CameraZoomController(
             app_config(
                 auto_zoom_enabled=True,

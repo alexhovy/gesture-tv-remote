@@ -2,7 +2,6 @@ import ast
 import unittest
 from pathlib import Path
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 SRC_ROOT = PROJECT_ROOT / "src"
 
@@ -38,7 +37,9 @@ class LayerBoundaryTests(unittest.TestCase):
         self.assertEqual(violations, [])
         self.assertEqual(_find_dynamic_import_violations(SRC_ROOT / "domain"), [])
 
-    def test_application_does_not_import_infrastructure_or_external_adapters(self) -> None:
+    def test_application_does_not_import_infrastructure_or_external_adapters(
+        self,
+    ) -> None:
         violations = _find_import_violations(
             SRC_ROOT / "application",
             forbidden_prefixes=(

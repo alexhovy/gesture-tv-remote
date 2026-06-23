@@ -4,7 +4,6 @@ import re
 from collections import Counter
 from pathlib import Path
 
-
 COMMAND_RE = re.compile(r"sending command_gesture=(?P<gesture>\S+)")
 STATE_RE = re.compile(r"(?P<kind>pointer|volume)_state=(?P<state>\S+)")
 
@@ -17,7 +16,9 @@ def analyze_log(path: Path, near_miss_min_ratio: float) -> str:
     phases: Counter[tuple[str, str]] = Counter()
     near_misses: list[tuple[int, str, float, float, float, str]] = []
 
-    for line_number, line in enumerate(path.read_text(encoding="utf-8").splitlines(), 1):
+    for line_number, line in enumerate(
+        path.read_text(encoding="utf-8").splitlines(), 1
+    ):
         command_match = COMMAND_RE.search(line)
         if command_match:
             commands[command_match.group("gesture")] += 1
@@ -38,11 +39,7 @@ def analyze_log(path: Path, near_miss_min_ratio: float) -> str:
             phases[(kind, phase)] += 1
             if in_neutral:
                 neutral[kind] += 1
-            if (
-                candidate == "none"
-                and in_neutral
-                and ratio >= near_miss_min_ratio
-            ):
+            if candidate == "none" and in_neutral and ratio >= near_miss_min_ratio:
                 near_misses.append(
                     (line_number, kind, magnitude, activation, ratio, blocked_reason)
                 )

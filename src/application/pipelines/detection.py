@@ -1,9 +1,9 @@
 import time
 from typing import Any
 
-from src.domain.session_types import HandState
-from src.application.services.pipeline_metrics import PipelineMetrics
 from src.application.ports.hand_tracker import DetectedHand, HandTrackerPort
+from src.application.services.pipeline_metrics import PipelineMetrics
+from src.domain.session_types import HandState
 
 
 class DetectionPipeline:

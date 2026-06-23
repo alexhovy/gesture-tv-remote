@@ -3,7 +3,6 @@ import threading
 import time
 from typing import Any
 
-from src.application.services.pipeline_metrics import PipelineMetrics
 from src.application.pipelines import (
     CommandDispatchPipeline,
     DetectionPipeline,
@@ -19,9 +18,9 @@ from src.application.ports.hand_tracker import HandTrackerPort
 from src.application.ports.logger import LoggerPort
 from src.application.ports.tv_remote import TVRemotePort
 from src.application.ports.voice_capture import VoiceCapturePort
+from src.application.services.pipeline_metrics import PipelineMetrics
 from src.domain.session import GestureSession
 from src.shared.config import AppConfig, apply_reloadable_config
-
 
 CLEANUP_TIMEOUT_SECONDS = 1.0
 CONFIG_RELOAD_INTERVAL_SECONDS = 1.0

@@ -1,10 +1,7 @@
+from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
-from src.infrastructure.tv.tv_remote import (
-    TV_ADAPTER_SAMSUNG,
-    CapabilityStatus,
-    TvAdapterCapabilities,
-)
+from src.infrastructure.tv.tv_remote import TV_ADAPTER_SAMSUNG
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -30,7 +27,8 @@ class SamsungTvRemoteClient:
             connection_type="samsungtvws websocket",
             known_limitations=(
                 "Only key commands are implemented.",
-                "Voice capture, text input, source selection, and Wake-on-LAN are not implemented.",
+                "Voice capture, text input, source selection, and Wake-on-LAN "
+                "are not implemented.",
             ),
         )
 

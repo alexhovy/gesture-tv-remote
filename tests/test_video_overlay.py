@@ -5,7 +5,6 @@ import unittest
 from src.domain.session_types import PointerDebug, VolumeDebug
 from src.infrastructure.camera.video_preprocessing import CropRect
 
-
 cv2_stub = types.ModuleType("cv2")
 cv2_stub.line = lambda *args, **kwargs: None
 cv2_stub.circle = lambda *args, **kwargs: None
@@ -47,7 +46,9 @@ class VideoOverlayTests(unittest.TestCase):
         self.assertIn(((100, 50), 5, video_overlay.COLOR_ACTIVE, -1), cv2.circles)
         self.assertIn(((120, 50), 6, video_overlay.COLOR_CURRENT, 2), cv2.circles)
         self.assertIn(((90, 0), (90, 100), video_overlay.COLOR_DIRECTION, 1), cv2.lines)
-        self.assertIn(((110, 0), (110, 100), video_overlay.COLOR_DIRECTION, 1), cv2.lines)
+        self.assertIn(
+            ((110, 0), (110, 100), video_overlay.COLOR_DIRECTION, 1), cv2.lines
+        )
         self.assertIn(((100, 50), (120, 50), video_overlay.COLOR_ACTIVE, 2), cv2.lines)
         self.assertTrue(any(call[0] == "LEFT" for call in cv2.text))
         self.assertTrue(any(call[0].startswith("POINT_RIGHT") for call in cv2.text))

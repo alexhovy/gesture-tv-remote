@@ -1,2 +1,1 @@
 """Web UI modules."""
-

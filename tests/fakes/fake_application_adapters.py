@@ -59,7 +59,9 @@ class FakeDisplay:
         del detection_crop, display_crop, zoom_frozen
         return decision_debug_message
 
-    def draw_detected_hands(self, frame, detected_hands, source_crop, display_crop) -> None:
+    def draw_detected_hands(
+        self, frame, detected_hands, source_crop, display_crop
+    ) -> None:
         pass
 
     def draw_pointer_zones(self, frame, pointer_debug, display_crop) -> None:

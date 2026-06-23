@@ -1,10 +1,7 @@
+from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
-from src.infrastructure.tv.tv_remote import (
-    TV_ADAPTER_ROKU,
-    CapabilityStatus,
-    TvAdapterCapabilities,
-)
+from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -30,7 +27,8 @@ class RokuRemoteClient:
             connection_type="Roku ECP HTTP",
             known_limitations=(
                 "Only ECP keypress commands are implemented.",
-                "Voice capture, pairing, text input, source selection, and Wake-on-LAN are not implemented.",
+                "Voice capture, pairing, text input, source selection, and "
+                "Wake-on-LAN are not implemented.",
             ),
         )
 

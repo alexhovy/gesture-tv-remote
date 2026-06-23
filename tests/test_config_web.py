@@ -30,7 +30,9 @@ class ConfigWebTests(unittest.TestCase):
             response = client.request("GET", "/")
 
         self.assertEqual(response.status, 200)
-        self.assertIn('<link rel="stylesheet" href="/static/config.css">', response.body)
+        self.assertIn(
+            '<link rel="stylesheet" href="/static/config.css">', response.body
+        )
         self.assertIn("TV Connection", response.body)
         self.assertIn("Camera", response.body)
         self.assertIn("Gestures", response.body)

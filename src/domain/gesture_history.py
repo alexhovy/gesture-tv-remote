@@ -1,12 +1,9 @@
 from collections import deque
 from dataclasses import dataclass, field
-from typing import Generic, TypeVar
-
-T = TypeVar("T")
 
 
 @dataclass
-class BoundedHistory(Generic[T]):
+class BoundedHistory[T]:
     max_length: int
     _values: deque[T] = field(init=False, repr=False)
 

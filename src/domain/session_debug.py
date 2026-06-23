@@ -1,141 +1,178 @@
 import math
+from dataclasses import dataclass
 
 from src.domain.constants import DEBUG_NONE, DEBUG_UNKNOWN
 from src.domain.landmarks import hand_upright_metrics, hand_upright_reason
+from src.domain.motion_gesture import MotionJoystickState
+from src.domain.session_state import GestureSessionState
 from src.domain.session_types import HandState, PointerDebug, VolumeDebug
+from src.shared.config import AppConfig
 
 
-class GestureSessionDebugMixin:
-    def _inactive_debug_message(
+@dataclass(frozen=True)
+class SessionDebugSnapshot:
+    hands: list[HandState]
+    active_anchor: tuple[float, float] | None
+    pointer: MotionJoystickState
+    volume: MotionJoystickState
+    upright_max_tilt_ratio: float
+    pose_blocked_reason: str | None = None
+    two_finger_back_armed: bool = False
+    two_finger_back_frames: int = 0
+    two_finger_back_required_frames: int = 0
+
+
+def build_debug_snapshot(
+    state: GestureSessionState,
+    config: AppConfig,
+    hand_states: list[HandState],
+    active_anchor: tuple[float, float] | None,
+) -> SessionDebugSnapshot:
+    return SessionDebugSnapshot(
+        hands=hand_states,
+        active_anchor=active_anchor,
+        pointer=state.pointer,
+        volume=state.volume,
+        upright_max_tilt_ratio=config.gesture.hand_upright_max_tilt_ratio,
+        pose_blocked_reason=state.pose_blocked_reason,
+        two_finger_back_armed=state.two_finger_back.armed,
+        two_finger_back_frames=state.two_finger_back.two_finger_frames,
+        two_finger_back_required_frames=state.two_finger_back.required_frames,
+    )
+
+
+@dataclass(frozen=True)
+class ActiveDebugContext:
+    active_index: int
+    active_gesture: str | None
+    effective_motion_gesture: str | None
+    commandable_motion_gesture: str | None
+    volume_gesture: str | None
+    pointer_gesture: str | None
+    two_finger_back_gesture: str | None
+    active_size: float
+    pointer_distance: float
+    volume_distance: float
+    command_gesture: str | None
+    pointer_position: tuple[float, float] | None
+    zoom_hands: int
+    zoom_freeze_reason: str
+    anchor_locked: bool
+
+
+class SessionDebugRenderer:
+    def render_inactive(
         self,
-        hands: list[HandState],
-        active_anchor: tuple[float, float] | None,
+        snapshot: SessionDebugSnapshot,
         active_index: int | None = None,
     ) -> str:
-        debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hands]
         debug_index = "none" if active_index is None else str(active_index)
         return (
-            f"hands={len(hands)} activated=False "
-            f"gestures={debug_gestures} need_upright_open_palm "
-            f"active_index={debug_index} zoom_hands=0 "
-            f"{self._debug_hands(hands, active_anchor)}"
+            f"hands={len(snapshot.hands)} activated=False "
+            f"gestures={self._debug_gestures(snapshot.hands)} "
+            f"need_upright_open_palm active_index={debug_index} zoom_hands=0 "
+            f"{self._debug_hands(snapshot)}"
         )
 
-    def _temporarily_lost_debug_message(
+    def render_temporarily_lost(
         self,
-        hands: list[HandState],
-        active_anchor: tuple[float, float] | None,
+        snapshot: SessionDebugSnapshot,
         command_gesture: str | None,
         zoom_freeze_reason: str,
         anchor_locked: bool,
     ) -> str:
-        debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hands]
         return (
-            f"hands={len(hands)} activated=True "
-            f"gestures={debug_gestures} active_hand_temporarily_lost "
+            f"hands={len(snapshot.hands)} activated=True "
+            f"gestures={self._debug_gestures(snapshot.hands)} "
+            f"active_hand_temporarily_lost "
             f"command={command_gesture or DEBUG_NONE} "
             f"active_index=none zoom_hands=0 "
-            f"pointer_state={self._debug_pointer_state(None)} "
-            f"volume_state={self._debug_volume_state()} "
+            f"pointer_state={self.pointer_state(snapshot.pointer, None)} "
+            f"volume_state={self.volume_state(snapshot.volume)} "
             f"zoom_freeze_reason={zoom_freeze_reason} "
             f"anchor_locked={anchor_locked} "
-            f"{self._debug_hands(hands, active_anchor)}"
+            f"{self._debug_hands(snapshot)}"
         )
 
-    def _active_debug_message(
+    def render_active(
         self,
-        hands: list[HandState],
-        active_anchor: tuple[float, float] | None,
-        active_index: int,
-        active_gesture: str | None,
-        effective_motion_gesture: str | None,
-        commandable_motion_gesture: str | None,
-        volume_gesture: str | None,
-        pointer_gesture: str | None,
-        two_finger_back_gesture: str | None,
-        active_size: float,
-        pointer_distance: float,
-        volume_distance: float,
-        command_gesture: str | None,
-        pointer_position: tuple[float, float] | None,
-        zoom_hands: int,
-        zoom_freeze_reason: str,
-        anchor_locked: bool,
+        snapshot: SessionDebugSnapshot,
+        context: ActiveDebugContext,
     ) -> str:
-        debug_gestures = [hand.gesture or DEBUG_UNKNOWN for hand in hands]
+        pointer_state = self.pointer_state(
+            snapshot.pointer,
+            context.pointer_position,
+        )
         return (
-            f"hands={len(hands)} activated=True "
-            f"gestures={debug_gestures} "
-            f"active={active_gesture or DEBUG_UNKNOWN} "
-            f"effective_motion={effective_motion_gesture or DEBUG_NONE} "
-            f"motion_command={commandable_motion_gesture or DEBUG_NONE} "
-            f"pose_blocked={self._pose_blocked_reason or DEBUG_NONE} "
-            f"volume={volume_gesture or DEBUG_NONE} "
-            f"pointer={pointer_gesture or DEBUG_NONE} "
-            f"two_finger_back={two_finger_back_gesture or DEBUG_NONE} "
-            f"two_finger_back_state={self._debug_two_finger_back_state()} "
-            f"size={active_size:.2f} "
-            f"pointer_distance={pointer_distance:.2f} "
-            f"volume_distance={volume_distance:.2f} "
-            f"command={command_gesture or DEBUG_NONE} "
-            f"pointer_state={self._debug_pointer_state(pointer_position)} "
-            f"volume_state={self._debug_volume_state()} "
-            f"active_index={active_index} "
-            f"zoom_hands={zoom_hands} "
-            f"zoom_freeze_reason={zoom_freeze_reason} "
-            f"anchor_locked={anchor_locked} "
-            f"{self._debug_hands(hands, active_anchor)}"
+            f"hands={len(snapshot.hands)} activated=True "
+            f"gestures={self._debug_gestures(snapshot.hands)} "
+            f"active={context.active_gesture or DEBUG_UNKNOWN} "
+            f"effective_motion={context.effective_motion_gesture or DEBUG_NONE} "
+            f"motion_command={context.commandable_motion_gesture or DEBUG_NONE} "
+            f"pose_blocked={snapshot.pose_blocked_reason or DEBUG_NONE} "
+            f"volume={context.volume_gesture or DEBUG_NONE} "
+            f"pointer={context.pointer_gesture or DEBUG_NONE} "
+            f"two_finger_back={context.two_finger_back_gesture or DEBUG_NONE} "
+            f"two_finger_back_state={self._two_finger_back_state(snapshot)} "
+            f"size={context.active_size:.2f} "
+            f"pointer_distance={context.pointer_distance:.2f} "
+            f"volume_distance={context.volume_distance:.2f} "
+            f"command={context.command_gesture or DEBUG_NONE} "
+            f"pointer_state={pointer_state} "
+            f"volume_state={self.volume_state(snapshot.volume)} "
+            f"active_index={context.active_index} "
+            f"zoom_hands={context.zoom_hands} "
+            f"zoom_freeze_reason={context.zoom_freeze_reason} "
+            f"anchor_locked={context.anchor_locked} "
+            f"{self._debug_hands(snapshot)}"
         )
 
-    def _debug_hands(
+    def pointer_debug(
         self,
-        hands: list[HandState],
-        active_anchor: tuple[float, float] | None,
-    ) -> str:
-        if not hands:
-            return "hand_details=[]"
+        pointer: MotionJoystickState,
+        current_position: tuple[float, float] | None,
+    ) -> PointerDebug:
+        anchor_position = pointer.anchor if isinstance(pointer.anchor, tuple) else None
+        return PointerDebug(
+            anchor=anchor_position,
+            current=current_position,
+            active_gesture=pointer.active_gesture,
+            candidate_gesture=pointer.candidate_gesture,
+            phase=pointer.phase,
+            armed=pointer.armed,
+            activation_distance=pointer.activation_distance,
+            neutral_distance=pointer.neutral_distance,
+            threshold_ratio=pointer.threshold_ratio,
+            in_neutral=pointer.in_neutral,
+            blocked_reason=pointer.last_blocked_reason,
+        )
 
-        details = [
-            self._debug_hand(index, hand, active_anchor)
-            for index, hand in enumerate(hands)
-        ]
-        return f"hand_details=[{';'.join(details)}]"
-
-    def _debug_hand(
+    def volume_debug(
         self,
-        index: int,
-        hand: HandState,
-        active_anchor: tuple[float, float] | None,
+        volume: MotionJoystickState,
+        current_position: tuple[float, float] | None,
+    ) -> VolumeDebug:
+        anchor_y = volume.anchor if isinstance(volume.anchor, float) else None
+        return VolumeDebug(
+            anchor=volume.visual_anchor if anchor_y is not None else None,
+            anchor_y=anchor_y,
+            current=current_position,
+            active_gesture=volume.active_gesture,
+            candidate_gesture=volume.candidate_gesture,
+            phase=volume.phase,
+            armed=volume.armed,
+            activation_distance=volume.activation_distance,
+            neutral_distance=volume.neutral_distance,
+            threshold_ratio=volume.threshold_ratio,
+            in_neutral=volume.in_neutral,
+            blocked_reason=volume.last_blocked_reason,
+        )
+
+    def pointer_state(
+        self,
+        pointer: MotionJoystickState,
+        current_position: tuple[float, float] | None,
     ) -> str:
-        center_x, center_y = hand.center
-        distance = "none"
-        if active_anchor is not None:
-            distance_value = math.hypot(
-                center_x - active_anchor[0],
-                center_y - active_anchor[1],
-            )
-            distance = f"{distance_value:.2f}"
-        dx, dy, tilt_ratio = hand_upright_metrics(hand.landmarks)
-        tilt = "inf" if math.isinf(tilt_ratio) else f"{tilt_ratio:.2f}"
-        reason = hand_upright_reason(
-            hand.landmarks,
-            self._config.gesture.hand_upright_max_tilt_ratio,
-        )
-
-        return (
-            f"{index}:gesture={hand.gesture or DEBUG_UNKNOWN}"
-            f":upright={hand.upright}"
-            f":upright_reason={reason}"
-            f":upright_dx={dx:.2f}"
-            f":upright_dy={dy:.2f}"
-            f":upright_tilt={tilt}"
-            f":center=({center_x:.2f},{center_y:.2f})"
-            f":size={hand.size:.2f}"
-            f":active_dist={distance}"
-        )
-
-    def _debug_pointer_state(self, current_position: tuple[float, float] | None) -> str:
-        pointer = self._pointer
         anchor_position = pointer.anchor if isinstance(pointer.anchor, tuple) else None
         anchor = self._debug_position(anchor_position)
         current = self._debug_position(current_position)
@@ -156,27 +193,7 @@ class GestureSessionDebugMixin:
             f":blocked={pointer.last_blocked_reason or DEBUG_NONE}"
         )
 
-    def _pointer_debug(
-        self, current_position: tuple[float, float] | None
-    ) -> PointerDebug:
-        pointer = self._pointer
-        anchor_position = pointer.anchor if isinstance(pointer.anchor, tuple) else None
-        return PointerDebug(
-            anchor=anchor_position,
-            current=current_position,
-            active_gesture=pointer.active_gesture,
-            candidate_gesture=pointer.candidate_gesture,
-            phase=pointer.phase,
-            armed=pointer.armed,
-            activation_distance=pointer.activation_distance,
-            neutral_distance=pointer.neutral_distance,
-            threshold_ratio=pointer.threshold_ratio,
-            in_neutral=pointer.in_neutral,
-            blocked_reason=pointer.last_blocked_reason,
-        )
-
-    def _debug_volume_state(self) -> str:
-        volume = self._volume
+    def volume_state(self, volume: MotionJoystickState) -> str:
         anchor_y = volume.anchor if isinstance(volume.anchor, float) else None
         anchor = DEBUG_NONE if anchor_y is None else f"{anchor_y:.2f}"
         return (
@@ -193,25 +210,52 @@ class GestureSessionDebugMixin:
             f":blocked={volume.last_blocked_reason or DEBUG_NONE}"
         )
 
-    def _volume_debug(
-        self, current_position: tuple[float, float] | None
-    ) -> VolumeDebug:
-        volume = self._volume
-        anchor_y = volume.anchor if isinstance(volume.anchor, float) else None
-        return VolumeDebug(
-            anchor=volume.visual_anchor if anchor_y is not None else None,
-            anchor_y=anchor_y,
-            current=current_position,
-            active_gesture=volume.active_gesture,
-            candidate_gesture=volume.candidate_gesture,
-            phase=volume.phase,
-            armed=volume.armed,
-            activation_distance=volume.activation_distance,
-            neutral_distance=volume.neutral_distance,
-            threshold_ratio=volume.threshold_ratio,
-            in_neutral=volume.in_neutral,
-            blocked_reason=volume.last_blocked_reason,
+    def _debug_hands(self, snapshot: SessionDebugSnapshot) -> str:
+        if not snapshot.hands:
+            return "hand_details=[]"
+
+        details = [
+            self._debug_hand(index, hand, snapshot)
+            for index, hand in enumerate(snapshot.hands)
+        ]
+        return f"hand_details=[{';'.join(details)}]"
+
+    def _debug_hand(
+        self,
+        index: int,
+        hand: HandState,
+        snapshot: SessionDebugSnapshot,
+    ) -> str:
+        center_x, center_y = hand.center
+        distance = "none"
+        if snapshot.active_anchor is not None:
+            distance_value = math.hypot(
+                center_x - snapshot.active_anchor[0],
+                center_y - snapshot.active_anchor[1],
+            )
+            distance = f"{distance_value:.2f}"
+        dx, dy, tilt_ratio = hand_upright_metrics(hand.landmarks)
+        tilt = "inf" if math.isinf(tilt_ratio) else f"{tilt_ratio:.2f}"
+        reason = hand_upright_reason(
+            hand.landmarks,
+            snapshot.upright_max_tilt_ratio,
         )
+
+        return (
+            f"{index}:gesture={hand.gesture or DEBUG_UNKNOWN}"
+            f":upright={hand.upright}"
+            f":upright_reason={reason}"
+            f":upright_dx={dx:.2f}"
+            f":upright_dy={dy:.2f}"
+            f":upright_tilt={tilt}"
+            f":center=({center_x:.2f},{center_y:.2f})"
+            f":size={hand.size:.2f}"
+            f":active_dist={distance}"
+        )
+
+    @staticmethod
+    def _debug_gestures(hands: list[HandState]) -> list[str]:
+        return [hand.gesture or DEBUG_UNKNOWN for hand in hands]
 
     @staticmethod
     def _debug_position(position: tuple[float, float] | None) -> str:
@@ -232,3 +276,11 @@ class GestureSessionDebugMixin:
         start_x, start_y = start_position
         current_x, current_y = current_position
         return f"{current_x - start_x:.2f}", f"{current_y - start_y:.2f}"
+
+    @staticmethod
+    def _two_finger_back_state(snapshot: SessionDebugSnapshot) -> str:
+        return (
+            f"armed={snapshot.two_finger_back_armed}"
+            f":frames={snapshot.two_finger_back_frames}"
+            f":required={snapshot.two_finger_back_required_frames}"
+        )

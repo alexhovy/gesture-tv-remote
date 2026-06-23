@@ -2,8 +2,8 @@ import math
 from dataclasses import dataclass
 from typing import Any
 
-from src.domain.camera_geometry import CropRect
-from src.domain.landmark_projection import landmarks_to_original_bounds
+from src.domain.geometry.camera_geometry import CropRect
+from src.domain.geometry.landmark_projection import landmarks_to_original_bounds
 from src.infrastructure.camera.crop_geometry import clamp, crop_from_center_zoom
 from src.infrastructure.camera.video_preprocessing import center_crop_for_zoom
 from src.shared.config import AppConfig

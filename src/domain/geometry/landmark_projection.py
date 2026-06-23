@@ -1,9 +1,9 @@
 from types import SimpleNamespace
 from typing import Any
 
-from src.domain.camera_geometry import CropRect
-from src.domain.landmarks import hand_center
-from src.domain.session_types import HandState
+from src.domain.geometry.camera_geometry import CropRect
+from src.domain.geometry.landmarks import hand_center
+from src.domain.session.session_types import HandState
 
 
 def landmarks_to_original_bounds(landmarks: list[Any], crop: CropRect) -> CropRect:

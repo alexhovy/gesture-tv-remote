@@ -6,7 +6,7 @@ from src.domain.constants import (
     GESTURE_POINT_RIGHT,
     GESTURE_VOLUME_UP,
 )
-from src.domain.motion_filter import (
+from src.domain.gestures.motion_filter import (
     classify_pointer_joystick,
     classify_volume_joystick,
 )

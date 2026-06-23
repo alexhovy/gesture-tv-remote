@@ -24,6 +24,12 @@ protocols, and storage.
 ```text
 src/
 ├── domain/
+│   ├── session/
+│   ├── evaluators/
+│   ├── gestures/
+│   ├── geometry/
+│   ├── commands/
+│   └── constants.py
 ├── application/
 │   ├── ports/
 │   ├── pipelines/
@@ -38,11 +44,14 @@ src/
 
 Responsibility:
 
-- gesture state and activation
-- gesture classification
-- gesture decisions and command mapping
-- motion filtering and joystick-style motion state
-- pure camera geometry and landmark projection values
+- `session/`: gesture session lifecycle, session state, decision result types,
+  and debug snapshot/rendering values
+- `evaluators/`: phase and motion decision engines used by the session
+- `gestures/`: activation tracking, pose classification, gesture history,
+  preprocessing, motion filtering, and joystick-style motion state
+- `geometry/`: pure camera crop, landmark, and projection math
+- `commands/`: command mappings and command-transition decisions
+- `constants.py`: shared gesture and TV command names
 
 Allowed dependencies:
 
@@ -164,6 +173,14 @@ Do not put here:
 Domain code must remain framework-independent. It contains gesture state,
 classification, activation, motion filtering, gesture decisions, and command
 mapping. It must not import infrastructure or runtime code.
+
+New domain code should follow the existing package boundaries:
+
+- session lifecycle, state, result types, or debug snapshots -> `src/domain/session/`
+- session phase or motion evaluators -> `src/domain/evaluators/`
+- gesture classification, preprocessing, history, or motion state -> `src/domain/gestures/`
+- camera or landmark math -> `src/domain/geometry/`
+- command mappings or command-decision rules -> `src/domain/commands/`
 
 ### Application
 

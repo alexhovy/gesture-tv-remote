@@ -3,7 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 from src.domain.constants import GESTURE_POINT
-from src.domain.session_types import HandState
+from src.domain.session.session_types import HandState
 from src.infrastructure.camera.camera_zoom import CameraZoomController
 from src.infrastructure.camera.frame_source import LatestFrameSource
 from src.infrastructure.camera.landmark_projection import (

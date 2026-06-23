@@ -2,10 +2,10 @@ import math
 from dataclasses import dataclass
 
 from src.domain.constants import DEBUG_NONE, DEBUG_UNKNOWN
-from src.domain.landmarks import hand_upright_metrics, hand_upright_reason
-from src.domain.motion_gesture import MotionJoystickState
-from src.domain.session_state import GestureSessionState
-from src.domain.session_types import HandState, PointerDebug, VolumeDebug
+from src.domain.geometry.landmarks import hand_upright_metrics, hand_upright_reason
+from src.domain.gestures.motion_gesture import MotionJoystickState
+from src.domain.session.session_state import GestureSessionState
+from src.domain.session.session_types import HandState, PointerDebug, VolumeDebug
 from src.shared.config import AppConfig
 
 

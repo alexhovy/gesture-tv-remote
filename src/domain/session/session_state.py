@@ -1,12 +1,15 @@
 from dataclasses import dataclass
 
-from src.domain.activation_tracker import ActiveHandTracker
-from src.domain.command_decision import (
+from src.domain.commands.command_decision import (
     CommandDecision,
     EmitDebounce,
     TwoFingerBackDecision,
 )
-from src.domain.motion_gesture import MotionGestureInterpreter, MotionJoystickState
+from src.domain.gestures.activation_tracker import ActiveHandTracker
+from src.domain.gestures.motion_gesture import (
+    MotionGestureInterpreter,
+    MotionJoystickState,
+)
 
 
 @dataclass

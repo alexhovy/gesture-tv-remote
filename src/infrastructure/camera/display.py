@@ -5,12 +5,12 @@ from typing import Any
 import cv2
 
 from src.application.ports.hand_tracker import DetectedHand
-from src.domain.camera_geometry import CropRect
-from src.domain.landmark_projection import (
+from src.domain.geometry.camera_geometry import CropRect
+from src.domain.geometry.landmark_projection import (
     landmarks_to_crop_space,
     landmarks_to_original_space,
 )
-from src.domain.session_types import PointerDebug, VolumeDebug
+from src.domain.session.session_types import PointerDebug, VolumeDebug
 from src.infrastructure.camera.video_overlay import (
     draw_pointer_zones,
     draw_simple_landmarks,

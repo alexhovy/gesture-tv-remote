@@ -7,7 +7,7 @@ from src.domain.constants import (
     GESTURE_POINT,
     GESTURE_TWO_FINGERS,
 )
-from src.domain.landmarks import (
+from src.domain.geometry.landmarks import (
     LANDMARK_INDEX_PIP,
     LANDMARK_INDEX_TIP,
     LANDMARK_MIDDLE_PIP,

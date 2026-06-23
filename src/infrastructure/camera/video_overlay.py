@@ -1,8 +1,8 @@
 import cv2
 
-from src.domain.camera_geometry import CropRect
-from src.domain.landmarks import HAND_CONNECTIONS
-from src.domain.session_types import PointerDebug, VolumeDebug
+from src.domain.geometry.camera_geometry import CropRect
+from src.domain.geometry.landmarks import HAND_CONNECTIONS
+from src.domain.session.session_types import PointerDebug, VolumeDebug
 
 COLOR_ACTIVE = (0, 165, 255)
 COLOR_ARMED = (0, 220, 0)

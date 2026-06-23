@@ -1,4 +1,4 @@
-from src.domain.landmark_projection import (
+from src.domain.geometry.landmark_projection import (
     hand_state_to_original_space,
     hand_states_to_original_space,
     landmarks_to_crop_space,

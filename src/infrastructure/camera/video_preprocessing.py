@@ -1,7 +1,7 @@
 from collections.abc import Callable
 from typing import Any
 
-from src.domain.camera_geometry import CroppedFrame, CropRect
+from src.domain.geometry.camera_geometry import CroppedFrame, CropRect
 
 
 def apply_center_crop_zoom(

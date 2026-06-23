@@ -1,9 +1,9 @@
 from dataclasses import dataclass, field
 
 from src.domain.constants import DEBUG_UNKNOWN, GESTURE_PINCH, GESTURE_POINT
-from src.domain.gesture_history import BoundedHistory
-from src.domain.motion_filter import JoystickDecision
-from src.domain.session_types import HandState
+from src.domain.gestures.gesture_history import BoundedHistory
+from src.domain.gestures.motion_filter import JoystickDecision
+from src.domain.session.session_types import HandState
 
 
 @dataclass

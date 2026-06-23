@@ -1,8 +1,8 @@
 from typing import Any, Protocol
 
 from src.application.ports.hand_tracker import DetectedHand
-from src.domain.camera_geometry import CropRect
-from src.domain.session_types import PointerDebug, VolumeDebug
+from src.domain.geometry.camera_geometry import CropRect
+from src.domain.session.session_types import PointerDebug, VolumeDebug
 
 
 class DisplayPort(Protocol):

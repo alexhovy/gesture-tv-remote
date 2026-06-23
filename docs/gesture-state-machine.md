@@ -6,16 +6,18 @@ audio, or TV adapter libraries.
 ## Data Flow
 
 1. Infrastructure detects raw hands with landmarks and handedness.
-2. `gesture_preprocessing.py` normalizes raw detected hands into center, size,
-   upright status, and original landmarks.
-3. `gesture_classification.py` classifies static hand poses.
-4. `GestureSession` selects one active hand.
-5. `activation_tracker.py` maintains active-hand activation and identity
-   matching.
-6. `motion_gesture.py` applies motion grace and joystick state.
-7. `command_decision.py` decides fist select/home transitions, two-finger BACK,
-   and emit debounce.
-8. `commands.py` maps command gestures to TV commands.
+2. `domain/gestures/gesture_preprocessing.py` normalizes raw detected hands
+   into center, size, upright status, and original landmarks.
+3. `domain/gestures/gesture_classification.py` classifies static hand poses.
+4. `GestureSession` in `domain/session/` dispatches to inactive, lost, or
+   active session evaluators.
+5. `domain/gestures/activation_tracker.py` maintains active-hand activation and
+   identity matching.
+6. `domain/evaluators/` applies session phase rules and coordinates pointer or
+   volume motion interactions.
+7. `domain/commands/command_decision.py` decides fist select/home transitions,
+   two-finger BACK, and emit debounce.
+8. `domain/commands/commands.py` maps command gestures to TV commands.
 
 ## Activation
 
@@ -69,4 +71,5 @@ memory over time.
 | Pinch moves up/down | `VOLUME_UP` / `VOLUME_DOWN` |
 | Point moves left/right/up/down | `POINT_LEFT` / `POINT_RIGHT` / `POINT_UP` / `POINT_DOWN` |
 
-`commands.py` maps command gestures to adapter-neutral TV commands.
+`domain/commands/commands.py` maps command gestures to adapter-neutral TV
+commands.

@@ -21,6 +21,8 @@ them through ports:
 Application pipeline implementations live in `src/application/pipelines/`.
 OpenCV frame processing, display rendering, MediaPipe tracking, audio capture,
 and TV transport live in `src/infrastructure/` behind application ports.
+Gesture decisions enter the pure domain through `src/domain/session/`, which
+dispatches to focused phase and motion evaluators under `src/domain/evaluators/`.
 The service module keeps lifecycle, config reload, and cleanup logic in one
 place while concrete adapter construction stays in the runtime container.
 

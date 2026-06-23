@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 from src.domain.constants import GESTURE_POINT
-from src.domain.motion_filter import classify_pointer_joystick
-from src.domain.motion_gesture import MotionJoystickState
+from src.domain.gestures.motion_filter import classify_pointer_joystick
+from src.domain.gestures.motion_gesture import MotionJoystickState
 from src.shared.config import AppConfig
 
 

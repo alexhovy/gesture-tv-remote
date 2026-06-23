@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Any, Protocol
 
-from src.domain.session_types import HandState
+from src.domain.session.session_types import HandState
 from src.shared.config import AppConfig
 
 

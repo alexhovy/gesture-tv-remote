@@ -3,9 +3,9 @@ from dataclasses import dataclass
 from src.domain.constants import DEBUG_UNKNOWN, GESTURE_PINCH, GESTURE_POINT
 from src.domain.evaluators.pointer_evaluator import evaluate_pointer_motion
 from src.domain.evaluators.volume_evaluator import evaluate_volume_motion
-from src.domain.landmarks import LANDMARK_INDEX_TIP, landmark_position
-from src.domain.session_state import GestureSessionState
-from src.domain.session_types import HandState
+from src.domain.geometry.landmarks import LANDMARK_INDEX_TIP, landmark_position
+from src.domain.session.session_state import GestureSessionState
+from src.domain.session.session_types import HandState
 from src.shared.config import AppConfig
 
 MOTION_COMMAND_MIN_HAND_SIZE = 0.10

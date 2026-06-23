@@ -1,8 +1,8 @@
 from src.domain.constants import GESTURE_FIST
 from src.domain.evaluators.inactive_session_evaluator import InactiveSessionEvaluator
-from src.domain.session_debug import SessionDebugRenderer, build_debug_snapshot
-from src.domain.session_state import GestureSessionState
-from src.domain.session_types import GestureDecision, HandState
+from src.domain.session.session_debug import SessionDebugRenderer, build_debug_snapshot
+from src.domain.session.session_state import GestureSessionState
+from src.domain.session.session_types import GestureDecision, HandState
 from src.shared.config import AppConfig
 
 

@@ -1,6 +1,6 @@
 from typing import Any, Protocol
 
-from src.domain.camera_geometry import CroppedFrame, CropRect
+from src.domain.geometry.camera_geometry import CroppedFrame, CropRect
 from src.shared.config import AppConfig
 
 

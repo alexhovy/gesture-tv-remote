@@ -2,7 +2,7 @@ import math
 from dataclasses import dataclass
 
 from src.domain.constants import GESTURE_OPEN_PALM
-from src.domain.session_types import HandState
+from src.domain.session.session_types import HandState
 from src.shared.config import AppConfig
 
 

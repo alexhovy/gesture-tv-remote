@@ -90,9 +90,14 @@ Do not put protocol-specific TV behavior in application or domain code.
 
 ## Adding Gesture Logic
 
-Put deterministic gesture semantics in `src/domain`. Typical changes belong in
-classification, activation tracking, motion gesture state, command decisions, or
-command mappings.
+Put deterministic gesture semantics in `src/domain`. Use the domain subpackage
+that matches the responsibility:
+
+- session lifecycle, state, result types, or debug snapshots -> `src/domain/session/`
+- session phase or motion evaluators -> `src/domain/evaluators/`
+- classification, activation tracking, preprocessing, history, or motion state -> `src/domain/gestures/`
+- camera crop, landmark, or projection math -> `src/domain/geometry/`
+- command mappings or command-transition rules -> `src/domain/commands/`
 
 Only update `src/application` when orchestration changes are required, such as
 new pipeline behavior or command dispatch flow. Infrastructure should not own

@@ -5,14 +5,14 @@ from src.domain.constants import (
     GESTURE_PINCH,
     GESTURE_POINT,
 )
-from src.domain.landmarks import (
+from src.domain.geometry.landmarks import (
     LANDMARK_COUNT,
     LANDMARK_INDEX_TIP,
     LANDMARK_MIDDLE_MCP,
     LANDMARK_WRIST,
 )
 from src.domain.session import GestureSession
-from src.domain.session_types import HandState
+from src.domain.session.session_types import HandState
 from tests.config_helpers import app_config
 
 

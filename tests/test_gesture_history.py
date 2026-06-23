@@ -1,6 +1,6 @@
 import unittest
 
-from src.domain.gesture_history import BoundedHistory
+from src.domain.gestures.gesture_history import BoundedHistory
 
 
 class BoundedHistoryTests(unittest.TestCase):

@@ -1,9 +1,9 @@
 from dataclasses import dataclass
 from typing import Any
 
-from src.domain.gesture_classification import classify_static_hand_pose
-from src.domain.landmarks import hand_center, hand_is_upright
-from src.domain.session_types import HandState
+from src.domain.geometry.landmarks import hand_center, hand_is_upright
+from src.domain.gestures.gesture_classification import classify_static_hand_pose
+from src.domain.session.session_types import HandState
 from src.shared.config import GestureConfig
 
 

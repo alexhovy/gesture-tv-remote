@@ -3,13 +3,13 @@ from src.domain.evaluators.motion_interaction_coordinator import (
     MotionCommandResult,
     MotionInteractionCoordinator,
 )
-from src.domain.session_debug import (
+from src.domain.session.session_debug import (
     ActiveDebugContext,
     SessionDebugRenderer,
     build_debug_snapshot,
 )
-from src.domain.session_state import GestureSessionState
-from src.domain.session_types import GestureDecision, HandState
+from src.domain.session.session_state import GestureSessionState
+from src.domain.session.session_types import GestureDecision, HandState
 from src.shared.config import AppConfig
 
 

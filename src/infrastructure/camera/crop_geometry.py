@@ -1,4 +1,4 @@
-from src.domain.camera_geometry import CropRect
+from src.domain.geometry.camera_geometry import CropRect
 
 
 def crop_from_center_zoom(center_x: float, center_y: float, zoom: float) -> CropRect:

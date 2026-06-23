@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from src.domain.motion_filter import classify_volume_joystick
-from src.domain.motion_gesture import MotionJoystickState
+from src.domain.gestures.motion_filter import classify_volume_joystick
+from src.domain.gestures.motion_gesture import MotionJoystickState
 from src.shared.config import AppConfig
 
 

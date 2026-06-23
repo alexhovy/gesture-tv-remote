@@ -14,8 +14,11 @@ from mediapipe.tasks.python.vision.hand_landmarker import (
 
 from src.application.ports.hand_tracker import DetectedHand
 from src.domain.constants import HANDEDNESS_RIGHT
-from src.domain.gesture_preprocessing import RawDetectedHandState, raw_hand_to_state
-from src.domain.session_types import HandState
+from src.domain.gestures.gesture_preprocessing import (
+    RawDetectedHandState,
+    raw_hand_to_state,
+)
+from src.domain.session.session_types import HandState
 from src.shared.config import AppConfig
 
 

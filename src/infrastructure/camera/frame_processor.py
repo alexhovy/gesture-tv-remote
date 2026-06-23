@@ -3,7 +3,7 @@ from typing import Any
 import cv2
 
 from src.application.ports.camera import CameraPort
-from src.domain.camera_geometry import CroppedFrame
+from src.domain.geometry.camera_geometry import CroppedFrame
 from src.infrastructure.camera.video_preprocessing import apply_crop
 
 

@@ -1,6 +1,6 @@
 import unittest
 
-from src.domain.command_decision import (
+from src.domain.commands.command_decision import (
     CommandDecision,
     EmitDebounce,
     TwoFingerBackDecision,

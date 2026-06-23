@@ -4,9 +4,9 @@ from src.domain.evaluators.lost_session_evaluator import LostSessionEvaluator
 from src.domain.evaluators.motion_interaction_coordinator import (
     MotionInteractionCoordinator,
 )
-from src.domain.session_debug import SessionDebugRenderer
-from src.domain.session_state import GestureSessionState
-from src.domain.session_types import GestureDecision, HandState
+from src.domain.session.session_debug import SessionDebugRenderer
+from src.domain.session.session_state import GestureSessionState
+from src.domain.session.session_types import GestureDecision, HandState
 from src.shared.config import AppConfig
 
 

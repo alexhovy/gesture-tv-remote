@@ -3,7 +3,7 @@ from typing import Any
 from src.application.ports.camera import CameraPort, FrameProcessorPort
 from src.application.ports.frame_source import FrameSourcePort
 from src.application.services.pipeline_metrics import PipelineMetrics
-from src.domain.camera_geometry import CroppedFrame
+from src.domain.geometry.camera_geometry import CroppedFrame
 
 
 class FrameCapturePipeline:

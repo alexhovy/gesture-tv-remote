@@ -8,8 +8,7 @@ from src.domain.constants import (
     GESTURE_TWO_FINGERS,
     HANDEDNESS_RIGHT,
 )
-from src.domain.gesture_classification import classify_static_hand_pose
-from src.domain.landmarks import (
+from src.domain.geometry.landmarks import (
     LANDMARK_COUNT,
     LANDMARK_INDEX_MCP,
     LANDMARK_INDEX_PIP,
@@ -27,6 +26,7 @@ from src.domain.landmarks import (
     LANDMARK_THUMB_TIP,
     LANDMARK_WRIST,
 )
+from src.domain.gestures.gesture_classification import classify_static_hand_pose
 
 
 class GestureRuleTests(unittest.TestCase):

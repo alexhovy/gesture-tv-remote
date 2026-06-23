@@ -2,10 +2,10 @@ import time
 
 from src.application.ports.camera import CameraPort
 from src.application.services.pipeline_metrics import PipelineMetrics
-from src.domain.camera_geometry import CropRect
-from src.domain.landmark_projection import hand_states_to_original_space
+from src.domain.geometry.camera_geometry import CropRect
+from src.domain.geometry.landmark_projection import hand_states_to_original_space
 from src.domain.session import GestureSession
-from src.domain.session_types import GestureDecision, HandState
+from src.domain.session.session_types import GestureDecision, HandState
 
 
 class GestureDecisionPipeline:

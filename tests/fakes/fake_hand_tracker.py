@@ -1,7 +1,7 @@
 from typing import Any
 
 from src.application.ports.hand_tracker import DetectedHand
-from src.domain.session_types import HandState
+from src.domain.session.session_types import HandState
 from src.shared.config import AppConfig
 
 

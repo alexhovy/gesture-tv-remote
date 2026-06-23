@@ -6,14 +6,14 @@ import unittest
 from types import SimpleNamespace
 from unittest.mock import patch
 
-from src.domain.camera_geometry import CropRect
 from src.domain.constants import (
     TV_COMMAND_DPAD_DOWN,
     TV_COMMAND_HOME,
     TV_COMMAND_VOLUME_DOWN,
     TV_COMMAND_VOLUME_UP,
 )
-from src.domain.session_types import GestureDecision
+from src.domain.geometry.camera_geometry import CropRect
+from src.domain.session.session_types import GestureDecision
 
 
 def _install_service_import_stubs() -> None:

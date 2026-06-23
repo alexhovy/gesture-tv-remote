@@ -2,7 +2,7 @@ import sys
 import types
 import unittest
 
-from src.domain.session_types import PointerDebug, VolumeDebug
+from src.domain.session.session_types import PointerDebug, VolumeDebug
 from src.infrastructure.camera.video_preprocessing import CropRect
 
 cv2_stub = types.ModuleType("cv2")

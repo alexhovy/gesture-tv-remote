@@ -39,6 +39,107 @@ class CommandDecisionTests(unittest.TestCase):
             GESTURE_OPEN_TO_FIST,
         )
 
+    def test_unknown_between_open_and_fist_still_emits_select(self) -> None:
+        decision = CommandDecision()
+
+        self.assertIsNone(
+            decision.evaluate(
+                None,
+                GESTURE_OPEN_PALM,
+                now=0.0,
+                fist_hold_home_seconds=0.7,
+            )
+        )
+        self.assertIsNone(
+            decision.evaluate(
+                GESTURE_OPEN_PALM,
+                None,
+                now=0.1,
+                fist_hold_home_seconds=0.7,
+            )
+        )
+        self.assertIsNone(
+            decision.evaluate(
+                None,
+                GESTURE_FIST,
+                now=0.2,
+                fist_hold_home_seconds=0.7,
+            )
+        )
+
+        self.assertEqual(
+            decision.evaluate(
+                GESTURE_FIST,
+                GESTURE_OPEN_PALM,
+                now=0.3,
+                fist_hold_home_seconds=0.7,
+            ),
+            GESTURE_OPEN_TO_FIST,
+        )
+
+    def test_unknown_between_fist_and_open_still_emits_select(self) -> None:
+        decision = CommandDecision()
+        decision.evaluate(
+            GESTURE_OPEN_PALM,
+            GESTURE_FIST,
+            now=0.1,
+            fist_hold_home_seconds=0.7,
+        )
+        self.assertIsNone(
+            decision.evaluate(
+                GESTURE_FIST,
+                None,
+                now=0.2,
+                fist_hold_home_seconds=0.7,
+            )
+        )
+
+        self.assertEqual(
+            decision.evaluate(
+                None,
+                GESTURE_OPEN_PALM,
+                now=0.3,
+                fist_hold_home_seconds=0.7,
+            ),
+            GESTURE_OPEN_TO_FIST,
+        )
+
+    def test_fist_unknown_grace_expires_before_select(self) -> None:
+        decision = CommandDecision()
+        decision.evaluate(
+            GESTURE_OPEN_PALM,
+            GESTURE_FIST,
+            now=0.1,
+            fist_hold_home_seconds=0.7,
+        )
+        decision.evaluate(
+            GESTURE_FIST,
+            None,
+            now=0.2,
+            fist_hold_home_seconds=0.7,
+        )
+        decision.evaluate(
+            None,
+            None,
+            now=0.3,
+            fist_hold_home_seconds=0.7,
+        )
+        decision.evaluate(
+            None,
+            None,
+            now=0.4,
+            fist_hold_home_seconds=0.7,
+        )
+
+        self.assertIsNone(
+            decision.evaluate(
+                None,
+                GESTURE_OPEN_PALM,
+                now=0.5,
+                fist_hold_home_seconds=0.7,
+            )
+        )
+
     def test_held_fist_emits_home(self) -> None:
         decision = CommandDecision()
         decision.evaluate(
@@ -56,6 +157,36 @@ class CommandDecisionTests(unittest.TestCase):
                 fist_hold_home_seconds=0.7,
             ),
             GESTURE_HOME,
+        )
+
+    def test_home_does_not_emit_after_active_unknown_grace_expires(self) -> None:
+        decision = CommandDecision()
+        decision.evaluate(
+            GESTURE_OPEN_PALM,
+            GESTURE_FIST,
+            now=1.0,
+            fist_hold_home_seconds=0.7,
+        )
+        decision.evaluate(
+            GESTURE_FIST,
+            None,
+            now=1.1,
+            fist_hold_home_seconds=0.7,
+        )
+        decision.evaluate(
+            None,
+            None,
+            now=1.2,
+            fist_hold_home_seconds=0.7,
+        )
+
+        self.assertIsNone(
+            decision.evaluate(
+                None,
+                None,
+                now=1.7,
+                fist_hold_home_seconds=0.7,
+            )
         )
 
     def test_home_does_not_repeat_until_fist_reopens(self) -> None:
@@ -125,6 +256,25 @@ class TwoFingerBackDecisionTests(unittest.TestCase):
         decision.evaluate(GESTURE_TWO_FINGERS)
 
         self.assertIsNone(decision.evaluate(GESTURE_POINT))
+        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM))
+
+    def test_single_unknown_frame_does_not_reset_two_finger_back(self) -> None:
+        decision = TwoFingerBackDecision()
+        decision.evaluate(GESTURE_TWO_FINGERS)
+        decision.evaluate(GESTURE_TWO_FINGERS)
+        self.assertIsNone(decision.evaluate(None))
+        decision.evaluate(GESTURE_TWO_FINGERS)
+
+        self.assertEqual(decision.evaluate(GESTURE_OPEN_PALM), GESTURE_BACK)
+
+    def test_second_unknown_frame_resets_two_finger_back(self) -> None:
+        decision = TwoFingerBackDecision()
+        decision.evaluate(GESTURE_TWO_FINGERS)
+        decision.evaluate(GESTURE_TWO_FINGERS)
+        decision.evaluate(GESTURE_TWO_FINGERS)
+        self.assertIsNone(decision.evaluate(None))
+        self.assertIsNone(decision.evaluate(None))
+
         self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM))
 
 

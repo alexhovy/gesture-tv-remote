@@ -51,6 +51,32 @@ class SessionActivationTests(unittest.TestCase):
         self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
         self.assertIn("active=OPEN_PALM", decision.debug_message)
 
+    def test_select_tolerates_brief_unknown_before_fist(self) -> None:
+        session = GestureSession(app_config())
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        unknown = hand_state(None, center=(0.20, 0.50), size=0.20)
+        fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate([open_hand], now=0.0)
+        session.evaluate([unknown], now=0.1)
+        session.evaluate([fist], now=0.2)
+        decision = session.evaluate([open_hand], now=0.3)
+
+        self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
+
+    def test_select_tolerates_brief_unknown_before_open(self) -> None:
+        session = GestureSession(app_config())
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        unknown = hand_state(None, center=(0.20, 0.50), size=0.20)
+        fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate([open_hand], now=0.0)
+        session.evaluate([fist], now=0.1)
+        session.evaluate([unknown], now=0.2)
+        decision = session.evaluate([open_hand], now=0.3)
+
+        self.assertEqual(decision.command_gesture, GESTURE_OPEN_TO_FIST)
+
     def test_held_fist_emits_home(self) -> None:
         session = GestureSession(app_config(fist_hold_home_seconds=0.5))
         open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
@@ -76,6 +102,21 @@ class SessionActivationTests(unittest.TestCase):
         self.assertTrue(decision.activated)
         self.assertEqual(decision.command_gesture, GESTURE_BACK)
         self.assertIn("two_finger_back=BACK", decision.debug_message)
+
+    def test_two_fingers_back_tolerates_one_unknown_frame(self) -> None:
+        session = GestureSession(app_config())
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        unknown = hand_state(None, center=(0.20, 0.50), size=0.20)
+        two_fingers = hand_state(GESTURE_TWO_FINGERS, center=(0.20, 0.50), size=0.20)
+
+        session.evaluate([open_hand], now=0.0)
+        session.evaluate([two_fingers], now=0.1)
+        session.evaluate([two_fingers], now=0.2)
+        session.evaluate([unknown], now=0.3)
+        session.evaluate([two_fingers], now=0.4)
+        decision = session.evaluate([open_hand], now=0.5)
+
+        self.assertEqual(decision.command_gesture, GESTURE_BACK)
 
     def test_decision_does_not_activate_from_non_upright_open_palm(self) -> None:
         session = GestureSession(app_config())

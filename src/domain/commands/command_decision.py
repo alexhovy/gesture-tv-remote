@@ -14,10 +14,15 @@ from src.domain.constants import (
 class CommandDecision:
     fist_started_at: float | None = None
     home_emitted_for_fist: bool = False
+    unknown_grace_frames: int = 2
+    unknown_frames: int = 0
+    last_definitive_gesture: str | None = None
 
     def reset(self) -> None:
         self.fist_started_at = None
         self.home_emitted_for_fist = False
+        self.unknown_frames = 0
+        self.last_definitive_gesture = None
 
     def evaluate(
         self,
@@ -26,12 +31,29 @@ class CommandDecision:
         now: float,
         fist_hold_home_seconds: float,
     ) -> str | None:
-        if previous_gesture == GESTURE_OPEN_PALM and gesture == GESTURE_FIST:
+        effective_previous = previous_gesture
+        if gesture is None:
+            self.unknown_frames += 1
+        else:
+            if (
+                previous_gesture is None
+                and self.unknown_frames <= self.unknown_grace_frames
+            ):
+                effective_previous = self.last_definitive_gesture
+            self.unknown_frames = 0
+
+        if effective_previous == GESTURE_OPEN_PALM and gesture == GESTURE_FIST:
             self.fist_started_at = now
             self.home_emitted_for_fist = False
 
-        current_or_missing_fist = gesture == GESTURE_FIST or (
-            gesture is None and previous_gesture == GESTURE_FIST
+        current_or_missing_fist = (
+            gesture == GESTURE_FIST
+            or (gesture is None and previous_gesture == GESTURE_FIST)
+            or (
+                gesture is None
+                and self.last_definitive_gesture == GESTURE_FIST
+                and self.unknown_frames <= self.unknown_grace_frames
+            )
         )
         if current_or_missing_fist and self.fist_started_at is not None:
             if (
@@ -41,36 +63,53 @@ class CommandDecision:
                 self.home_emitted_for_fist = True
                 return GESTURE_HOME
 
-        if previous_gesture == GESTURE_FIST and gesture == GESTURE_OPEN_PALM:
+        command_gesture = None
+        if effective_previous == GESTURE_FIST and gesture == GESTURE_OPEN_PALM:
             should_select = (
                 self.fist_started_at is not None and not self.home_emitted_for_fist
             )
             self.reset()
             if should_select:
-                return GESTURE_OPEN_TO_FIST
+                command_gesture = GESTURE_OPEN_TO_FIST
 
-        if gesture not in {GESTURE_FIST, None} and previous_gesture != GESTURE_FIST:
+        if (
+            command_gesture is None
+            and gesture not in {GESTURE_FIST, None}
+            and effective_previous != GESTURE_FIST
+        ):
             self.reset()
 
-        return None
+        if gesture is not None:
+            self.last_definitive_gesture = gesture
+
+        return command_gesture
 
 
 @dataclass
 class TwoFingerBackDecision:
     required_frames: int = 3
+    unknown_grace_frames: int = 1
     two_finger_frames: int = 0
+    unknown_frames: int = 0
     armed: bool = False
 
     def reset(self) -> None:
         self.two_finger_frames = 0
+        self.unknown_frames = 0
         self.armed = False
 
     def evaluate(self, gesture: str | None) -> str | None:
         if gesture == GESTURE_TWO_FINGERS:
+            self.unknown_frames = 0
             self.two_finger_frames += 1
             if self.two_finger_frames >= self.required_frames:
                 self.armed = True
             return None
+
+        if gesture is None and (self.two_finger_frames > 0 or self.armed):
+            self.unknown_frames += 1
+            if self.unknown_frames <= self.unknown_grace_frames:
+                return None
 
         if gesture == GESTURE_OPEN_PALM and self.armed:
             self.reset()

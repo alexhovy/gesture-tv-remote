@@ -71,5 +71,11 @@ memory over time.
 | Pinch moves up/down | `VOLUME_UP` / `VOLUME_DOWN` |
 | Point moves left/right/up/down | `POINT_LEFT` / `POINT_RIGHT` / `POINT_UP` / `POINT_DOWN` |
 
+Fist select/HOME tolerates one or two unclassified active-hand frames inside the
+open/fist/open sequence. Two-finger BACK tolerates one unclassified active-hand
+frame while the BACK gesture is pending. This grace is command-specific and does
+not relax activation, pointer motion, volume motion, or expired lost-hand
+handling.
+
 `domain/commands/commands.py` maps command gestures to adapter-neutral TV
 commands.

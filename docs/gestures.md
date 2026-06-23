@@ -37,14 +37,17 @@ current position becomes the anchor for measuring motion.
 
 Select emits when the active hand closes its four non-thumb fingers from open
 palm to fist and opens again before the HOME hold threshold. Thumb position does
-not matter for fist detection. Holding the fist through
+not matter for fist detection. One or two briefly unclassified active-hand
+frames are tolerated during the open/fist/open transition so normal closing and
+opening motion does not cancel the command. Holding the fist through
 `GESTURE_TV_FIST_HOLD_HOME_SECONDS` emits HOME once, then waits for the hand to
 open before another fist command can occur.
 
 BACK emits when the active hand holds two fingers up for several consecutive
-frames and then returns to an open palm. A single two-finger misread does not
-emit BACK, and point, pinch, fist, unknown, or missing-hand frames reset the
-pending BACK gesture.
+frames and then returns to an open palm. A single unclassified active-hand frame
+is tolerated while two-finger BACK is pending. A single two-finger misread does
+not emit BACK, and point, pinch, fist, repeated unknown, or missing-hand frames
+reset the pending BACK gesture.
 
 Point navigation tracks the active hand's index fingertip so left/right intent
 does not depend on moving the whole hand. The first point frame captures a fixed

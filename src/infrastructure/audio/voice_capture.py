@@ -1,17 +1,22 @@
 import asyncio
 import time
 
+from src.application.ports.logger import LoggerPort
+from src.application.ports.tv_remote import TVRemotePort
 from src.infrastructure.tv.async_call import call_remote_method
-from src.infrastructure.tv.tv_remote import TvRemoteClient
 from src.shared.config import AppConfig
-from src.shared.logging import AppLogger
 
 
-class VoiceCaptureService:
-    def __init__(self, remote: TvRemoteClient, config: AppConfig) -> None:
+class MicrophoneVoiceCapture:
+    def __init__(
+        self,
+        remote: TVRemotePort,
+        config: AppConfig,
+        logger: LoggerPort,
+    ) -> None:
         self._remote = remote
         self._config = config
-        self._logger = AppLogger()
+        self._logger = logger
 
     def update_config(self, config: AppConfig) -> None:
         self._config = config
@@ -37,6 +42,7 @@ class VoiceCaptureService:
             chunks: asyncio.Queue[bytes] = asyncio.Queue(maxsize=4)
 
             def audio_callback(indata, frames, time_info, status) -> None:
+                del frames, time_info
                 if status:
                     loop.call_soon_threadsafe(
                         self._logger.debug,
@@ -57,11 +63,11 @@ class VoiceCaptureService:
                     timeout = max(0.0, deadline - time.monotonic())
                     try:
                         chunk = await asyncio.wait_for(chunks.get(), timeout=timeout)
-                    except asyncio.TimeoutError:
+                    except TimeoutError:
                         break
                     await call_remote_method(voice_stream.send_chunk, chunk)
             self._logger.info("Microphone: finished.")
-        except asyncio.TimeoutError:
+        except TimeoutError:
             self._logger.error("TV did not start a voice session.")
         except (OSError, RuntimeError) as error:
             self._logger.error(f"Microphone capture failed: {error}")

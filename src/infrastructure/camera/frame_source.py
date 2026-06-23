@@ -18,6 +18,9 @@ class LatestFrameSource:
         self._thread = threading.Thread(target=self._read_loop, daemon=True)
         self._thread.start()
 
+    def is_open(self) -> bool:
+        return bool(self._capture.isOpened())
+
     def latest(self) -> Any | None:
         with self._lock:
             return self._latest_frame
@@ -35,6 +38,10 @@ class LatestFrameSource:
         if self._thread is not None:
             self._thread.join(timeout=1.0)
             self._thread = None
+
+    def close(self) -> None:
+        self.stop()
+        self._capture.release()
 
     def _read_loop(self) -> None:
         while not self._stop_event.is_set():

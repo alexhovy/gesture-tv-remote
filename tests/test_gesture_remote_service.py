@@ -13,7 +13,7 @@ from src.domain.constants import (
     TV_COMMAND_VOLUME_UP,
 )
 from src.domain.session_types import GestureDecision
-from src.infrastructure.camera.video_preprocessing import CropRect
+from src.domain.camera_geometry import CropRect
 
 
 def _install_service_import_stubs() -> None:
@@ -39,19 +39,20 @@ def _install_service_import_stubs() -> None:
 
 _install_service_import_stubs()
 
-from src.services.gesture_remote_service import (  # noqa: E402
+from src.application.services.gesture_remote_service import (  # noqa: E402
     CONFIG_RELOAD_INTERVAL_SECONDS,
     GestureRemoteService,
 )
-from src.services.pipeline_metrics import PipelineMetrics  # noqa: E402
-from src.services.pipelines import (  # noqa: E402
+from src.application.services.pipeline_metrics import PipelineMetrics  # noqa: E402
+from src.application.pipelines import (  # noqa: E402
     CommandDispatchPipeline,
-    DisplayPipeline,
     FrameCapturePipeline,
     GestureDecisionPipeline,
 )
-import src.services.pipelines.display as display_module  # noqa: E402
-from src.services.remote_command_dispatcher import (  # noqa: E402
+import src.infrastructure.camera.display as display_module  # noqa: E402
+from src.infrastructure.camera.display import OpenCvDisplay  # noqa: E402
+from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor  # noqa: E402
+from src.application.services.remote_command_dispatcher import (  # noqa: E402
     MAX_PENDING_COMMANDS,
     RemoteCommandDispatcher,
 )
@@ -109,7 +110,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
     def test_detection_frame_uses_current_zoom_crop(self) -> None:
         frame = FakeFrame(6, 8)
 
-        detection_frame = FrameCapturePipeline().detection_frame(
+        detection_frame = FrameCapturePipeline(OpenCvFrameProcessor()).detection_frame(
             frame,
             FakeZoomController(),
         )
@@ -121,7 +122,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
         frame = FakeFrame(6, 8)
         zoom_controller = FakeZoomController()
 
-        detection_frame = FrameCapturePipeline().detection_frame(
+        detection_frame = FrameCapturePipeline(OpenCvFrameProcessor()).detection_frame(
             frame,
             zoom_controller,
         )
@@ -273,7 +274,7 @@ class GestureRemoteServiceTests(unittest.TestCase):
         )
 
     def test_debug_message_includes_detection_and_display_crops(self) -> None:
-        debug_message = DisplayPipeline(FakeLogger()).debug_message(
+        debug_message = OpenCvDisplay().debug_message(
             "hands=2 activated=True",
             CropRect(0.0, 0.0, 1.0, 1.0),
             CropRect(0.25, 0.25, 0.5, 0.5),
@@ -296,7 +297,7 @@ class DisplayPipelineTests(unittest.TestCase):
         original_draw = display_module.draw_simple_landmarks
         display_module.draw_simple_landmarks = lambda frame, landmarks: drawn.append(landmarks)
         try:
-            pipeline = DisplayPipeline(FakeLogger())
+            pipeline = OpenCvDisplay()
             frame = FakeFrame(100, 100)
             crop = CropRect(0.0, 0.0, 1.0, 1.0)
 
@@ -326,7 +327,7 @@ class DisplayPipelineTests(unittest.TestCase):
         original_draw = display_module.draw_simple_landmarks
         display_module.draw_simple_landmarks = lambda frame, landmarks: drawn.append(landmarks)
         try:
-            pipeline = DisplayPipeline(FakeLogger())
+            pipeline = OpenCvDisplay()
             frame = FakeFrame(100, 100)
             crop = CropRect(0.0, 0.0, 1.0, 1.0)
 
@@ -420,14 +421,10 @@ class GestureRemoteConfigReloadTests(unittest.TestCase):
         service._logger = FakeLogger()
         service._gesture_session = FakeReloadableConfig()
         service._voice_capture = FakeReloadableConfig()
-        zoom_controller = FakeReloadableConfig()
-        hand_tracker = FakeReloadableConfig()
+        service._camera = FakeReloadableConfig()
+        service._hand_tracker = FakeReloadableConfig()
 
-        service._reload_config_if_needed(
-            now=CONFIG_RELOAD_INTERVAL_SECONDS,
-            zoom_controller=zoom_controller,
-            hand_tracker=hand_tracker,
-        )
+        service._reload_config_if_needed(now=CONFIG_RELOAD_INTERVAL_SECONDS)
 
         self.assertEqual(service._config.tv.host, "10.0.0.10")
         self.assertEqual(service._config.camera.webcam_index, 0)
@@ -435,8 +432,8 @@ class GestureRemoteConfigReloadTests(unittest.TestCase):
         self.assertEqual(service._config.debug.log_seconds, 0.1)
         self.assertEqual(service._gesture_session.config, service._config)
         self.assertEqual(service._voice_capture.config, service._config)
-        self.assertEqual(zoom_controller.config, service._config)
-        self.assertEqual(hand_tracker.config, service._config)
+        self.assertEqual(service._camera.config, service._config)
+        self.assertEqual(service._hand_tracker.config, service._config)
         self.assertIn("Reloaded live config settings.", service._logger.messages)
 
     def test_reload_config_is_throttled(self) -> None:
@@ -445,11 +442,7 @@ class GestureRemoteConfigReloadTests(unittest.TestCase):
         service._config_provider = ProviderCounter(app_config())
         service._last_config_reload_time = 10.0
 
-        service._reload_config_if_needed(
-            now=10.0 + CONFIG_RELOAD_INTERVAL_SECONDS - 0.01,
-            zoom_controller=FakeReloadableConfig(),
-            hand_tracker=FakeReloadableConfig(),
-        )
+        service._reload_config_if_needed(now=10.0 + CONFIG_RELOAD_INTERVAL_SECONDS - 0.01)
 
         self.assertEqual(service._config_provider.calls, 0)
 
@@ -463,7 +456,7 @@ class GestureRemoteCleanupTests(unittest.IsolatedAsyncioTestCase):
             time.sleep(10.0)
 
         with patch(
-            "src.services.gesture_remote_service.CLEANUP_TIMEOUT_SECONDS",
+            "src.application.services.gesture_remote_service.CLEANUP_TIMEOUT_SECONDS",
             0.01,
         ):
             started = time.monotonic()

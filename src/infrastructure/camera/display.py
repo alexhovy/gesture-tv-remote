@@ -1,10 +1,12 @@
-from types import SimpleNamespace
 from numbers import Real
+from types import SimpleNamespace
 from typing import Any
 
 import cv2
 
-from src.infrastructure.camera.landmark_projection import (
+from src.application.ports.hand_tracker import DetectedHand
+from src.domain.camera_geometry import CropRect
+from src.domain.landmark_projection import (
     landmarks_to_crop_space,
     landmarks_to_original_space,
 )
@@ -14,18 +16,14 @@ from src.infrastructure.camera.video_overlay import (
     draw_simple_landmarks,
     draw_volume_zones,
 )
-from src.infrastructure.camera.video_preprocessing import CropRect
-from src.infrastructure.hand_tracking.hand_tracking import DetectedHand
-from src.shared.logging import AppLogger
 
 
 OVERLAY_SMOOTHING_ALPHA = 0.45
 OVERLAY_MISSING_GRACE_FRAMES = 2
 
 
-class DisplayPipeline:
-    def __init__(self, logger: AppLogger) -> None:
-        self._logger = logger
+class OpenCvDisplay:
+    def __init__(self) -> None:
         self._overlay_smoother = OverlayLandmarkSmoother()
 
     def debug_message(
@@ -78,6 +76,9 @@ class DisplayPipeline:
     def render(self, app_name: str, frame: Any) -> bool:
         cv2.imshow(app_name, frame)
         return bool(cv2.pollKey() & 0xFF == ord("q"))
+
+    def close(self) -> None:
+        cv2.destroyAllWindows()
 
 
 def _debug_crop(crop: CropRect) -> str:

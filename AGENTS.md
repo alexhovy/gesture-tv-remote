@@ -13,7 +13,7 @@ The application combines webcam input, MediaPipe hand tracking, gesture-session 
 Before making changes, agents must:
 
 1. Understand context: read applicable `AGENTS.md` files, `README.md`, and relevant docs.
-2. Identify scope: determine whether the change affects app composition, services, domain rules, infrastructure adapters, docs, tests, or configuration.
+2. Identify scope: determine whether the change affects app composition, application services, domain rules, infrastructure adapters, docs, tests, or configuration.
 3. Search for existing patterns before introducing new structure.
 4. Define a plan before implementation for meaningful behavior, architecture, or documentation changes.
 5. Respect layer boundaries and keep changes minimal.
@@ -24,7 +24,7 @@ Before making changes, agents must:
 - `main.py`: Thin executable entry point.
 - `src/runtime/`: Runnable process composition and CLI runtime selection.
 - `src/web/`: Lightweight config UI request handling, forms, and rendering.
-- `src/services/`: Use cases and orchestration.
+- `src/application/`: Use cases and orchestration.
 - `src/domain/`: Gesture rules, command mappings, landmark math, and session state.
 - `src/infrastructure/`: External integrations such as OpenCV, MediaPipe, Android TV remote, camera preprocessing, model download, and overlays.
 - `src/shared/`: Small cross-cutting primitives such as configuration and logging.
@@ -36,7 +36,7 @@ Before making changes, agents must:
 ## Working Principles
 - Follow the existing architecture documented in `docs/architecture.md`.
 - Prefer deterministic domain functions for gesture semantics.
-- Keep I/O, hardware, network, MediaPipe, OpenCV, Android TV, and audio dependencies behind infrastructure or service boundaries.
+- Keep I/O, hardware, network, MediaPipe, OpenCV, Android TV, and audio dependencies behind infrastructure adapters and application ports.
 - Keep `main.py` and `src/runtime/` free of business logic.
 - Keep shared code small and purposeful; do not turn `src/shared/` into a general utility bucket.
 - Avoid new dependencies unless they are clearly necessary and fit the project size.
@@ -56,7 +56,7 @@ Before making changes, agents must:
 python -m unittest discover -s tests
 ```
 
-- Add or update tests when changing gesture rules, session behavior, configuration parsing, crop/zoom math, or service orchestration.
+- Add or update tests when changing gesture rules, session behavior, configuration parsing, crop/zoom math, or application orchestration.
 - Avoid tests that require a real webcam, TV, microphone, network, certificates, or downloaded model unless the test is explicitly integration-focused.
 
 ## Safety and Quality

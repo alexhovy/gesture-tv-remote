@@ -1,11 +1,9 @@
 import time
 from typing import Any
 
-import cv2
-
 from src.domain.session_types import HandState
-from src.infrastructure.hand_tracking.hand_tracking import DetectedHand, MediaPipeHandTracker
-from src.services.pipeline_metrics import PipelineMetrics
+from src.application.services.pipeline_metrics import PipelineMetrics
+from src.application.ports.hand_tracker import DetectedHand, HandTrackerPort
 
 
 class DetectionPipeline:
@@ -14,12 +12,11 @@ class DetectionPipeline:
 
     def detect_hands(
         self,
-        hand_tracker: MediaPipeHandTracker,
+        hand_tracker: HandTrackerPort,
         frame: Any,
     ) -> tuple[list[HandState], list[DetectedHand]]:
-        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         started_at = time.monotonic()
-        result = hand_tracker.detect(rgb_frame, int(time.monotonic() * 1000))
+        result = hand_tracker.detect(frame, int(time.monotonic() * 1000))
         if self._metrics is not None:
             self._metrics.record_detection(time.monotonic() - started_at)
         return result

@@ -5,21 +5,24 @@ window rendering, and TV network commands run at different speeds.
 
 ## Pipelines
 
-`GestureRemoteService` is the top-level orchestrator. It creates and owns these
-runtime collaborators:
+`GestureRemoteService` is the top-level application orchestrator. Runtime wiring
+creates its concrete collaborators in `src/runtime/container.py` and injects
+them through ports:
 
 | Pipeline | Responsibility |
 | --- | --- |
 | `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies the current detection/display zoom crops. |
-| `DetectionPipeline` | Converts BGR frames to RGB and submits them to MediaPipe live-stream detection. |
+| `DetectionPipeline` | Submits frames to the injected hand-tracker port and records detection timing. |
 | `GestureDecisionPipeline` | Projects hand states back from the active detection crop, evaluates the domain session, and updates auto-zoom for the next frame. |
 | `CommandDispatchPipeline` | Applies gesture debounce and enqueues TV key commands. |
-| `DisplayPipeline` | Draws detected hand landmarks and renders the OpenCV preview window. |
+| `OpenCvDisplay` | Infrastructure adapter that draws detected hand landmarks and renders the OpenCV preview window. |
 | `PipelineMetrics` | Tracks lightweight counters and timings for debug diagnostics. |
 
-Pipeline implementations live in `src/services/pipelines/`. The service module
-keeps lifecycle, config reload, and cleanup logic in one place while frame,
-detection, gesture, command, and display details stay in focused modules.
+Application pipeline implementations live in `src/application/pipelines/`.
+OpenCV frame processing, display rendering, MediaPipe tracking, audio capture,
+and TV transport live in `src/infrastructure/` behind application ports.
+The service module keeps lifecycle, config reload, and cleanup logic in one
+place while concrete adapter construction stays in the runtime container.
 
 ## Concurrency Model
 

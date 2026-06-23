@@ -1,22 +1,19 @@
 from typing import Any
 
-import cv2
-
-from src.infrastructure.camera.camera_zoom import CameraZoomController
-from src.infrastructure.camera.frame_source import LatestFrameSource
-from src.infrastructure.camera.video_preprocessing import (
-    CroppedFrame,
-    apply_crop,
-)
-from src.services.pipeline_metrics import PipelineMetrics
+from src.application.services.pipeline_metrics import PipelineMetrics
+from src.application.ports.camera import CameraPort, FrameProcessorPort
+from src.application.ports.frame_source import FrameSourcePort
+from src.domain.camera_geometry import CroppedFrame
 
 
 class FrameCapturePipeline:
     def __init__(
         self,
-        frame_source: LatestFrameSource | None = None,
+        frame_processor: FrameProcessorPort,
+        frame_source: FrameSourcePort | None = None,
         metrics: PipelineMetrics | None = None,
     ) -> None:
+        self._frame_processor = frame_processor
         self._frame_source = frame_source
         self._metrics = metrics
 
@@ -34,18 +31,18 @@ class FrameCapturePipeline:
         return frame
 
     def flip_frame(self, frame: Any) -> Any:
-        return cv2.flip(frame, 1)
+        return self._frame_processor.flip_frame(frame)
 
     def detection_frame(
         self,
         frame: Any,
-        zoom_controller: CameraZoomController,
+        zoom_controller: CameraPort,
     ) -> CroppedFrame:
-        return apply_crop(frame, zoom_controller.detection_crop())
+        return self._frame_processor.detection_frame(frame, zoom_controller)
 
     def display_frame(
         self,
         frame: Any,
-        zoom_controller: CameraZoomController,
+        zoom_controller: CameraPort,
     ) -> CroppedFrame:
-        return apply_crop(frame, zoom_controller.current_crop())
+        return self._frame_processor.display_frame(frame, zoom_controller)

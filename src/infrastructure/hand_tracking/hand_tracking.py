@@ -1,7 +1,7 @@
 import threading
-from dataclasses import dataclass
 from typing import Any
 
+import cv2
 import mediapipe as mp
 from mediapipe.tasks.python.core.base_options import BaseOptions
 from mediapipe.tasks.python.vision.core.vision_task_running_mode import (
@@ -12,16 +12,11 @@ from mediapipe.tasks.python.vision.hand_landmarker import (
     HandLandmarkerOptions,
 )
 
+from src.application.ports.hand_tracker import DetectedHand
 from src.domain.constants import HANDEDNESS_RIGHT
 from src.domain.gesture_preprocessing import RawDetectedHandState, raw_hand_to_state
 from src.domain.session_types import HandState
 from src.shared.config import AppConfig
-
-
-@dataclass(frozen=True)
-class DetectedHand:
-    landmarks: list[Any]
-    handedness: str
 
 
 class MediaPipeHandTracker:
@@ -46,9 +41,10 @@ class MediaPipeHandTracker:
 
     def detect(
         self,
-        rgb_frame: Any,
+        frame: Any,
         timestamp_ms: int,
     ) -> tuple[list[HandState], list[DetectedHand]]:
+        rgb_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         mp_image = mp.Image(image_format=mp.ImageFormat.SRGB, data=rgb_frame)
         timestamp_ms = self._next_timestamp(timestamp_ms)
         self._hands.detect_async(mp_image, timestamp_ms)

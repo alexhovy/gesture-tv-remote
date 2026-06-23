@@ -1,19 +1,6 @@
-from dataclasses import dataclass
 from typing import Any, Callable
 
-
-@dataclass(frozen=True)
-class CropRect:
-    x: float
-    y: float
-    width: float
-    height: float
-
-
-@dataclass(frozen=True)
-class CroppedFrame:
-    frame: Any
-    crop: CropRect
+from src.domain.camera_geometry import CroppedFrame, CropRect
 
 
 def apply_center_crop_zoom(

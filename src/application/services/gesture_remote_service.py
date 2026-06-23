@@ -1,30 +1,27 @@
 import asyncio
 import threading
 import time
-from collections.abc import Callable
 from typing import Any
 
-import cv2
-
-from src.domain.session import GestureSession
-from src.infrastructure.camera.camera_zoom import CameraZoomController
-from src.infrastructure.camera.frame_source import LatestFrameSource
-from src.infrastructure.camera.video_preprocessing import CropRect
-from src.infrastructure.hand_tracking.hand_model import download_model_if_missing
-from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
-from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
-from src.services.voice_capture import VoiceCaptureService
-from src.services.remote_command_dispatcher import RemoteCommandDispatcher
-from src.services.pipeline_metrics import PipelineMetrics
-from src.services.pipelines import (
+from src.application.services.pipeline_metrics import PipelineMetrics
+from src.application.pipelines import (
     CommandDispatchPipeline,
     DetectionPipeline,
-    DisplayPipeline,
     FrameCapturePipeline,
     GestureDecisionPipeline,
 )
+from src.application.ports.camera import CameraPort, FrameProcessorPort
+from src.application.ports.command_dispatcher import CommandDispatcherPort
+from src.application.ports.config_provider import ConfigProviderPort
+from src.application.ports.display import DisplayPort
+from src.application.ports.frame_source import FrameSourcePort
+from src.application.ports.hand_tracker import HandTrackerPort
+from src.application.ports.logger import LoggerPort
+from src.application.ports.model_store import ModelStorePort
+from src.application.ports.tv_remote import TVRemotePort
+from src.application.ports.voice_capture import VoiceCapturePort
+from src.domain.session import GestureSession
 from src.shared.config import AppConfig, apply_reloadable_config
-from src.shared.logging import AppLogger
 
 
 CLEANUP_TIMEOUT_SECONDS = 1.0
@@ -35,64 +32,78 @@ class GestureRemoteService:
     def __init__(
         self,
         config: AppConfig,
-        config_provider: Callable[[], AppConfig] | None = None,
+        *,
+        remote: TVRemotePort,
+        frame_source: FrameSourcePort,
+        hand_tracker: HandTrackerPort,
+        camera: CameraPort,
+        frame_processor: FrameProcessorPort,
+        display: DisplayPort,
+        voice_capture: VoiceCapturePort,
+        command_dispatcher: CommandDispatcherPort,
+        model_store: ModelStorePort,
+        logger: LoggerPort,
+        metrics: PipelineMetrics,
+        config_provider: ConfigProviderPort | None = None,
+        gesture_session: GestureSession | None = None,
     ) -> None:
         self._config = config
         self._config_provider = config_provider
         self._last_config_reload_time = 0.0
-        self._remote = create_tv_remote_client(config)
-        self._voice_capture = VoiceCaptureService(self._remote, config)
-        self._gesture_session = GestureSession(config)
-        self._logger = AppLogger()
-        self._command_dispatcher = RemoteCommandDispatcher(self._remote, self._logger)
+        self._remote = remote
+        self._frame_source = frame_source
+        self._hand_tracker = hand_tracker
+        self._camera = camera
+        self._frame_processor = frame_processor
+        self._display = display
+        self._voice_capture = voice_capture
+        self._command_dispatcher = command_dispatcher
+        self._model_store = model_store
+        self._logger = logger
+        self._metrics = metrics
+        self._gesture_session = gesture_session or GestureSession(config)
 
     async def run(self) -> None:
         if not await self._remote.connect():
             self._logger.info("TV connection failed. Exiting.")
+            await self._cleanup(None)
             return
 
-        cap = await asyncio.to_thread(cv2.VideoCapture, self._config.camera.webcam_index)
-        if not await asyncio.to_thread(cap.isOpened):
+        if not await asyncio.to_thread(self._frame_source.is_open):
             self._logger.error("Could not open webcam.")
-            await asyncio.to_thread(cap.release)
-            await self._remote.disconnect()
+            await self._cleanup(None)
             return
 
-        hand_tracker = None
         voice_task = None
-        frame_source = LatestFrameSource(cap)
-        metrics = PipelineMetrics(self._config.tv.adapter)
         last_debug_time = 0.0
         last_debug_message = ""
-        zoom_controller = CameraZoomController(self._config)
-        frame_pipeline = FrameCapturePipeline(frame_source, metrics)
-        detection_pipeline = DetectionPipeline(metrics)
+        frame_pipeline = FrameCapturePipeline(
+            self._frame_processor,
+            self._frame_source,
+            self._metrics,
+        )
+        detection_pipeline = DetectionPipeline(self._metrics)
         gesture_pipeline = GestureDecisionPipeline(
             self._gesture_session,
-            zoom_controller,
-            metrics,
+            self._camera,
+            self._metrics,
         )
-        display_pipeline = DisplayPipeline(self._logger)
         command_pipeline = CommandDispatchPipeline(
             self._gesture_session,
             self._voice_capture,
             self._command_dispatcher,
-            metrics,
+            self._metrics,
             self._logger,
         )
-        # One bounded async worker sends TV commands so network stalls do not block
-        # camera capture, MediaPipe submission, or display rendering.
+
         self._command_dispatcher.start()
-        # One camera thread continuously reads frames and keeps only the newest
-        # frame; the async loop drops stale versions instead of building backlog.
         frame_pipeline.start()
 
         try:
-            await asyncio.to_thread(download_model_if_missing, self._config)
-            hand_tracker = MediaPipeHandTracker(self._config)
+            await asyncio.to_thread(self._model_store.ensure_model)
 
             while True:
-                if frame_source.failed():
+                if self._frame_source.failed():
                     self._logger.error("Could not read frame from webcam.")
                     break
 
@@ -102,18 +113,18 @@ class GestureRemoteService:
                     continue
 
                 now = time.monotonic()
-                await self._reload_config_if_needed_async(now, zoom_controller, hand_tracker)
+                await self._reload_config_if_needed_async(now)
                 frame = frame_pipeline.flip_frame(frame)
                 detection_frame = frame_pipeline.detection_frame(
                     frame,
-                    zoom_controller,
+                    self._camera,
                 )
                 hand_states, detected_hands = detection_pipeline.detect_hands(
-                    hand_tracker,
+                    self._hand_tracker,
                     detection_frame.frame,
                 )
 
-                display_frame = frame_pipeline.display_frame(frame, zoom_controller)
+                display_frame = frame_pipeline.display_frame(frame, self._camera)
                 decision = gesture_pipeline.evaluate(
                     hand_states,
                     detection_frame.crop,
@@ -128,7 +139,7 @@ class GestureRemoteService:
                     voice_task,
                 )
 
-                debug_message = display_pipeline.debug_message(
+                debug_message = self._display.debug_message(
                     decision.debug_message,
                     detection_frame.crop,
                     display_frame.crop,
@@ -142,27 +153,27 @@ class GestureRemoteService:
                     last_debug_message = debug_message
                     last_debug_time = now
 
-                display_pipeline.draw_detected_hands(
+                self._display.draw_detected_hands(
                     display_frame.frame,
                     detected_hands,
                     detection_frame.crop,
                     display_frame.crop,
                 )
-                display_pipeline.draw_pointer_zones(
+                self._display.draw_pointer_zones(
                     display_frame.frame,
                     decision.pointer_debug,
                     display_frame.crop,
                 )
-                display_pipeline.draw_volume_zones(
+                self._display.draw_volume_zones(
                     display_frame.frame,
                     decision.volume_debug,
                     display_frame.crop,
                 )
-                if display_pipeline.render(self._config.app_name, display_frame.frame):
+                if self._display.render(self._config.app_name, display_frame.frame):
                     break
 
                 command_pipeline.record_dispatch_metrics()
-                metrics.log_if_due(
+                self._metrics.log_if_due(
                     self._logger,
                     now,
                     self._config.debug.verbose_pipeline_diagnostics,
@@ -170,14 +181,9 @@ class GestureRemoteService:
                 )
                 await asyncio.sleep(0)
         finally:
-            await self._cleanup(voice_task, hand_tracker, cap, frame_source)
+            await self._cleanup(voice_task)
 
-    def _reload_config_if_needed(
-        self,
-        now: float,
-        zoom_controller: CameraZoomController,
-        hand_tracker: MediaPipeHandTracker | None,
-    ) -> None:
+    def _reload_config_if_needed(self, now: float) -> None:
         if self._config_provider is None:
             return
         if now - self._last_config_reload_time < CONFIG_RELOAD_INTERVAL_SECONDS:
@@ -191,14 +197,9 @@ class GestureRemoteService:
             self._logger.error(f"Config reload skipped: {error}")
             return
 
-        self._apply_reloaded_config(config, zoom_controller, hand_tracker)
+        self._apply_reloaded_config(config)
 
-    async def _reload_config_if_needed_async(
-        self,
-        now: float,
-        zoom_controller: CameraZoomController,
-        hand_tracker: MediaPipeHandTracker | None,
-    ) -> None:
+    async def _reload_config_if_needed_async(self, now: float) -> None:
         if self._config_provider is None:
             return
         if now - self._last_config_reload_time < CONFIG_RELOAD_INTERVAL_SECONDS:
@@ -212,41 +213,26 @@ class GestureRemoteService:
             self._logger.error(f"Config reload skipped: {error}")
             return
 
-        self._apply_reloaded_config(config, zoom_controller, hand_tracker)
+        self._apply_reloaded_config(config)
 
-    def _apply_reloaded_config(
-        self,
-        config: AppConfig,
-        zoom_controller: CameraZoomController,
-        hand_tracker: MediaPipeHandTracker | None,
-    ) -> None:
+    def _apply_reloaded_config(self, config: AppConfig) -> None:
         if config == self._config:
             return
 
         self._config = config
         self._gesture_session.update_config(config)
         self._voice_capture.update_config(config)
-        zoom_controller.update_config(config)
-        if hand_tracker is not None:
-            hand_tracker.update_config(config)
+        self._camera.update_config(config)
+        self._hand_tracker.update_config(config)
         self._logger.info("Reloaded live config settings.")
 
-    async def _cleanup(
-        self,
-        voice_task: asyncio.Task | None,
-        hand_tracker: MediaPipeHandTracker | None,
-        cap: Any,
-        frame_source: LatestFrameSource | None,
-    ) -> None:
+    async def _cleanup(self, voice_task: asyncio.Task | None) -> None:
         if voice_task is not None and not voice_task.done():
             voice_task.cancel()
             await self._cleanup_step("voice capture", voice_task)
-        if frame_source is not None:
-            await self._cleanup_sync_step("frame source", frame_source.stop)
-        if hand_tracker is not None:
-            await self._cleanup_sync_step("hand tracker", hand_tracker.close)
-        await self._cleanup_sync_step("camera", cap.release)
-        self._cleanup_now("OpenCV windows", cv2.destroyAllWindows)
+        await self._cleanup_sync_step("frame source", self._frame_source.close)
+        await self._cleanup_sync_step("hand tracker", self._hand_tracker.close)
+        self._cleanup_now("display", self._display.close)
         await self._cleanup_step("command dispatcher", self._command_dispatcher.close())
         await self._cleanup_step("TV remote", self._remote.disconnect())
 

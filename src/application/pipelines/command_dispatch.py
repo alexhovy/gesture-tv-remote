@@ -3,20 +3,20 @@ import asyncio
 from src.domain.commands import GESTURE_TO_COMMAND
 from src.domain.constants import GESTURE_MIC
 from src.domain.session import GestureSession
-from src.services.pipeline_metrics import PipelineMetrics
-from src.services.remote_command_dispatcher import RemoteCommandDispatcher
-from src.services.voice_capture import VoiceCaptureService
-from src.shared.logging import AppLogger
+from src.application.services.pipeline_metrics import PipelineMetrics
+from src.application.ports.command_dispatcher import CommandDispatcherPort
+from src.application.ports.logger import LoggerPort
+from src.application.ports.voice_capture import VoiceCapturePort
 
 
 class CommandDispatchPipeline:
     def __init__(
         self,
         gesture_session: GestureSession,
-        voice_capture: VoiceCaptureService,
-        command_dispatcher: RemoteCommandDispatcher,
+        voice_capture: VoiceCapturePort,
+        command_dispatcher: CommandDispatcherPort,
         metrics: PipelineMetrics | None,
-        logger: AppLogger,
+        logger: LoggerPort,
     ) -> None:
         self._gesture_session = gesture_session
         self._voice_capture = voice_capture

@@ -1,8 +1,8 @@
 import cv2
 
+from src.domain.camera_geometry import CropRect
 from src.domain.landmarks import HAND_CONNECTIONS
 from src.domain.session_types import PointerDebug, VolumeDebug
-from src.infrastructure.camera.video_preprocessing import CropRect
 
 
 COLOR_ACTIVE = (0, 165, 255)

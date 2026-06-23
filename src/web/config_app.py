@@ -5,7 +5,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Any
 from urllib.parse import parse_qs, urlparse
 
-from src.infrastructure.repositories.config_repository import ConfigRepository
+from src.application.ports.config_provider import ConfigStorePort
 from src.shared.config import AppConfig
 from src.web.config_forms import config_from_form
 from src.web.config_templates import (
@@ -19,7 +19,7 @@ ConfigProvider = Callable[[], AppConfig]
 
 
 def create_config_server(
-    repository: ConfigRepository,
+    repository: ConfigStorePort,
     config_provider: ConfigProvider,
     host: str = AppConfig().web.host,
     port: int = AppConfig().web.port,

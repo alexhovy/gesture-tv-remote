@@ -1,7 +1,7 @@
 import time
 from dataclasses import dataclass
 
-from src.shared.logging import AppLogger
+from src.application.ports.logger import LoggerPort
 
 
 @dataclass
@@ -75,7 +75,7 @@ class PipelineMetrics:
 
     def log_if_due(
         self,
-        logger: AppLogger,
+        logger: LoggerPort,
         now: float,
         enabled: bool,
         interval_seconds: float,

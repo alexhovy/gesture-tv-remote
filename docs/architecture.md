@@ -1,45 +1,26 @@
 # Architecture
 
-Gesture TV Remote is organized around separate responsibilities instead of a
-single script. The app is still small, but the boundaries make the gesture rules
-testable and keep external libraries from leaking across the codebase.
+Gesture TV Remote uses a lightweight Clean Architecture / Ports and Adapters
+layout. The codebase stays small, but the dependency direction is explicit:
+domain rules are pure, application use cases depend on ports, infrastructure
+implements those ports, and runtime wires concrete objects together.
 
 ## Layers
 
-### Runtime
-
-`src/runtime` contains runnable process composition. The CLI selects whether to
-start the gesture runtime, config UI, or both. Runtime modules compose services,
-repositories, mDNS publishing, and web servers while avoiding gesture business
-logic or HTTP request handling.
-
-### Web
-
-`src/web` contains the lightweight config UI: HTTP routes, form parsing, and
-HTML rendering. Web modules should depend on application-facing repositories and
-typed config values, while process setup stays in `src/runtime`.
-
-### Services
-
-`src/services` contains use cases and orchestration. `GestureRemoteService`
-owns application lifecycle and delegates runtime loop details to
-`src/services/pipelines/` modules for frame capture, detection, gesture
-decision, command dispatch, and display. `VoiceCaptureService` handles the
-voice-input use case when the selected TV adapter supports it.
-
 ### Domain
 
-`src/domain` contains the business rules for gestures and commands:
+`src/domain` contains pure gesture and command rules:
 
-- landmark math
+- landmark math and projection value objects
 - raw-to-normalized hand preprocessing
 - static hand-pose classification
 - bounded motion and stability history
 - activation tracking and gesture-session state transitions
 - command mappings, command decisions, and debounce behavior
 
-Domain code should not import OpenCV, MediaPipe, TV-control libraries, or audio
-libraries.
+Domain code must not import OpenCV, MediaPipe, TV-control libraries, audio
+libraries, SQLite/storage libraries, web modules, infrastructure modules, or
+runtime composition code.
 
 Gesture sessions are coordinated by `GestureSession`, with focused state
 collaborators:
@@ -52,10 +33,6 @@ collaborators:
 - `command_decision.py` owns fist select/home decisions and emit debounce.
 - `commands.py` keeps the gesture-to-TV-command mapping easy to inspect.
 
-`GestureSession` does not expose collaborator state as a public compatibility
-surface. Active-hand state, motion grace, fist command timing, emit debounce,
-and pointer/volume joystick state each have one owner.
-
 The session transition model remains:
 
 1. An upright open palm activates the active hand.
@@ -66,52 +43,62 @@ The session transition model remains:
    neutral area, repeat while held, and re-arm after returning to neutral.
 5. Loss of activation clears pending fist decisions and motion anchors.
 
+### Application
+
+`src/application` contains use cases, orchestration, pipelines, metrics, command
+dispatch, and application ports. Application code may depend on domain code and
+application ports. It must not import concrete infrastructure adapters or
+third-party integration libraries such as OpenCV, MediaPipe, TV SDKs,
+`sounddevice`, `sqlite3`, or `zeroconf`.
+
+`GestureRemoteService` owns the gesture runtime lifecycle: connect, start frame
+capture, run detection and gesture decisions, dispatch commands, reload live
+config, and clean up. It receives all external collaborators through explicit
+constructor injection.
+
+Application ports live in `src/application/ports/` and describe real external
+boundaries such as TV remotes, hand tracking, frame sources, frame processing,
+display rendering, voice capture, config storage, logging, metrics, models, and
+camera zoom state. The project intentionally uses Python `Protocol` and
+structural typing instead of a dependency injection framework.
+
 ### Infrastructure
 
-`src/infrastructure` contains adapters for external systems:
+`src/infrastructure` contains concrete adapters for external systems:
 
 - `tv`: TV remote pairing, command transport, and adapter command translation
 - `hand_tracking`: MediaPipe hand tracking and model-file download
-- `camera`: OpenCV frame preprocessing, crop geometry, projection, zoom, and overlays
+- `camera`: OpenCV frame capture, preprocessing, display rendering, zoom, and overlays
+- `audio`: microphone capture and TV voice-stream forwarding
 - `network`: local network discovery such as mDNS publishing for the config UI
+- `repositories` and `data_access`: local config persistence and SQLite access
 
-Infrastructure modules may depend on third-party libraries, but domain modules
-should not depend on infrastructure.
+Infrastructure may depend on application ports and domain objects. It must not
+import runtime or web modules.
 
-Repositories for durable local storage live under `src/infrastructure/repositories`.
-They expose app-facing persistence APIs and own table shape and mapping.
-Reusable stores under `src/infrastructure/data_access` own source mechanics such
-as SQLite connection handling. This keeps data sources replaceable while typed
-configuration remains represented as `AppConfig`.
+TV control is adapter-based. Runtime creates the selected TV adapter and injects
+it behind the TV remote port. Application command dispatch queues app-level TV
+commands such as `HOME`, `BACK`, `DPAD_UP`, and `VOLUME_UP`; each TV adapter
+translates those commands to protocol-specific names for Android TV, Samsung TV,
+webOS, or Roku.
 
-TV control is adapter-based. `GestureRemoteService` asks the TV remote factory
-for a client selected by configuration, then queues app-level TV commands such as
-`HOME`, `BACK`, `DPAD_UP`, and `VOLUME_UP` through a bounded service command
-dispatcher.
-Each adapter translates those
-commands to the protocol-specific command names for Android TV, Samsung TV,
-webOS, or Roku. Each adapter also exposes explicit capability metadata so
-common commands can stay shared while platform gaps remain visible. Voice
-capture is currently available only when the Android TV adapter returns a voice
-stream.
-Adapters backed by synchronous TV libraries own their own single-worker
-executor so connection objects are opened, used, reconnected, and closed on one
-thread without blocking the gesture loop.
+Camera preprocessing is split by responsibility: latest-frame capture lives in
+`frame_source`, frame cropping lives in `video_preprocessing`, OpenCV frame
+operations live in `frame_processor`, display rendering lives in `display`, and
+auto-zoom state lives in `camera_zoom`. Pure crop geometry and landmark
+projection live in domain where application code can use them without importing
+OpenCV.
 
-Camera preprocessing is split by responsibility inside `infrastructure/camera`:
-latest-frame capture lives in `frame_source`, frame cropping lives in
-`video_preprocessing`, coordinate projection lives in `landmark_projection`, and
-auto-zoom state lives in `camera_zoom`. Auto-zoom keeps separate crops for
-display and MediaPipe detection: the display crop follows the active hand, while
-the detection crop lags wider so edge hands remain visible to MediaPipe.
-Pointer and volume anchors pause auto-zoom crop updates while active so the
-visual neutral center remains fixed. Landmarks are projected back to original
-frame space before gesture rules run. Camera capture keeps only the newest frame
-so slow processing cannot build a stale frame backlog.
+### Runtime
 
-Hand tracking uses MediaPipe live-stream mode. The service submits frames and
-consumes the latest completed result, allowing MediaPipe to skip frames while it
-is busy instead of blocking the display and gesture loop.
+`src/runtime` is the composition root. The CLI selects whether to start the
+gesture runtime, config UI, or both. `src/runtime/container.py` reads config,
+creates concrete infrastructure implementations, wires application services,
+and returns fully constructed runtime objects.
+
+Runtime may import infrastructure, application, web, shared config, and logging
+because its job is dependency wiring. It should still avoid gesture decisions,
+HTTP request handling, and transport behavior.
 
 The runtime uses explicit producer/consumer boundaries:
 
@@ -124,18 +111,28 @@ The runtime uses explicit producer/consumer boundaries:
 
 See `docs/runtime-pipeline.md` for the runtime pipeline and metrics model.
 
+### Web
+
+`src/web` contains the lightweight config UI: HTTP routes, form parsing, static
+assets, and HTML rendering. Web code depends on application-facing config ports
+and typed config values. It should not construct infrastructure directly;
+runtime passes the concrete config store into the web server factory.
+
 ### Shared
 
-`src/shared` contains cross-cutting primitives such as configuration. `AppConfig`
-is grouped into TV, gesture, camera, model, web, debug, and performance sections
-while environment variables and saved config fields remain named for the config
-UI. Keep this folder small; shared code should not become a dumping ground for
-unrelated helpers.
+`src/shared` contains small cross-cutting primitives such as configuration and
+logging. `AppConfig` is grouped into TV, gesture, camera, model, web, debug, and
+performance sections while environment variables and saved config fields remain
+named for the config UI. Keep this folder small; shared code should not become a
+dumping ground for unrelated helpers.
 
 ## Design Rules
 
 - Prefer domain functions for deterministic gesture rules.
 - Keep I/O and third-party libraries behind infrastructure adapters.
-- Add orchestration in services only when it represents an application workflow.
+- Add orchestration in application only when it represents a use case workflow.
+- Wire dependencies explicitly in `src/runtime/container.py`.
+- Use constructor injection and `Protocol` ports; do not add a DI framework.
 - Keep `main.py` and `src/runtime` free of business logic.
 - Add tests around domain behavior before changing gesture semantics.
+- Add layer-boundary tests when changing dependency rules.

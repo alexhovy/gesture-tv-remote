@@ -1,18 +1,18 @@
 import time
 
+from src.application.ports.camera import CameraPort
 from src.domain.session import GestureSession
+from src.domain.camera_geometry import CropRect
+from src.domain.landmark_projection import hand_states_to_original_space
 from src.domain.session_types import GestureDecision, HandState
-from src.infrastructure.camera.camera_zoom import CameraZoomController
-from src.infrastructure.camera.landmark_projection import hand_states_to_original_space
-from src.infrastructure.camera.video_preprocessing import CropRect
-from src.services.pipeline_metrics import PipelineMetrics
+from src.application.services.pipeline_metrics import PipelineMetrics
 
 
 class GestureDecisionPipeline:
     def __init__(
         self,
         gesture_session: GestureSession,
-        zoom_controller: CameraZoomController,
+        zoom_controller: CameraPort,
         metrics: PipelineMetrics | None = None,
     ) -> None:
         self._gesture_session = gesture_session

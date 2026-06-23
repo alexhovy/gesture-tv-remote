@@ -1,12 +1,8 @@
 import threading
 from http.server import ThreadingHTTPServer
 
-from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.network.mdns import MdnsPublisher
-from src.infrastructure.repositories.config_repository import ConfigRepository
-from src.shared.config import AppConfig, load_config_from_env
 from src.shared.logging import AppLogger, configure_app_logging
-from src.web.config_app import create_config_server
 
 
 class ConfigServerRunner:
@@ -65,22 +61,9 @@ def create_runner(
     host: str | None = None,
     port: int | None = None,
 ) -> ConfigServerRunner:
-    bootstrap_config = load_config_from_env()
-    repository = ConfigRepository(SqliteStore(bootstrap_config.config_db_file))
-    config = _effective_config(repository)
-    bind_host = config.web.host if host is None else host
-    bind_port = config.web.port if port is None else port
-    server = create_config_server(
-        repository,
-        lambda: _effective_config(repository),
-        bind_host,
-        bind_port,
-    )
-    logger = AppLogger()
-    mdns_publisher = None
-    if config.web.mdns_enabled:
-        mdns_publisher = MdnsPublisher(config.web.mdns_name, bind_port, logger)
-    return ConfigServerRunner(server, mdns_publisher, logger)
+    from src.runtime.container import build_config_server_runner
+
+    return build_config_server_runner(host, port)
 
 
 def run_config_server(
@@ -93,9 +76,3 @@ def run_config_server(
 def run() -> None:
     configure_app_logging()
     run_config_server()
-
-
-def _effective_config(repository: ConfigRepository) -> AppConfig:
-    bootstrap_config = load_config_from_env()
-    saved_config = repository.get_config()
-    return load_config_from_env(base_config=saved_config or bootstrap_config)

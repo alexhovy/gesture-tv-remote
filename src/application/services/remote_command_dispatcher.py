@@ -3,10 +3,10 @@ import contextlib
 import time
 from collections import deque
 from dataclasses import dataclass
-from typing import Any
 
+from src.application.ports.logger import LoggerPort
+from src.application.ports.tv_remote import TVRemotePort
 from src.domain.constants import DISPLAY_COMMAND_SELECT, TV_COMMAND_DPAD_CENTER
-from src.shared.logging import AppLogger
 
 MAX_PENDING_COMMANDS = 8
 
@@ -19,7 +19,7 @@ class RemoteCommandRequest:
 
 
 class RemoteCommandDispatcher:
-    def __init__(self, remote: Any, logger: AppLogger) -> None:
+    def __init__(self, remote: TVRemotePort, logger: LoggerPort) -> None:
         self._remote = remote
         self._logger = logger
         self._commands: deque[RemoteCommandRequest] = deque()

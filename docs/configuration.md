@@ -2,11 +2,12 @@
 
 Runtime defaults live in `src/shared/config.py` as `AppConfig`. `AppConfig` is
 grouped into `tv`, `gesture`, `camera`, `model`, `web`, `debug`, and
-`performance` sections so runtime code reads related settings together. The application loads those
-defaults, applies saved configuration from the local config database when
-present, and then applies environment-variable overrides at startup.
+`performance` sections so runtime code reads related settings together. The
+application loads those defaults, applies saved configuration from the local
+config database when present, and then applies environment-variable overrides
+at startup.
 
-The current defaults preserve the MVP behavior:
+Current runtime defaults:
 
 - TV adapter: `samsung`
 - TV host: `192.168.8.7`
@@ -37,10 +38,10 @@ Set `GESTURE_TV_ADAPTER` to select the TV integration:
 
 | Value | Library | Notes |
 | --- | --- | --- |
-| `androidtv` | `androidtvremote2` | Supports pairing, key commands, and voice capture. |
-| `samsung` | `samsungtvws` | Supports key commands. Accept the pairing prompt on the TV when required. |
-| `webos` | `aiowebostv` | Supports key commands. Accept the pairing prompt on the TV when required. |
-| `roku` | `rokuecp` | Supports ECP key commands. |
+| `androidtv` | `androidtvremote2` | Supports pairing, TV commands, and voice capture. |
+| `samsung` | `samsungtvws` | Supports TV commands. Accept the pairing prompt on the TV when required. |
+| `webos` | `aiowebostv` | Supports TV commands. Accept the pairing prompt on the TV when required. |
+| `roku` | `rokuecp` | Supports ECP TV commands. |
 
 Voice capture is available only when the selected adapter returns a voice
 stream. No default gesture currently starts microphone capture.
@@ -76,7 +77,7 @@ the grouped `AppConfig` sections are the internal runtime structure.
 Run the lightweight config UI with:
 
 ```bash
-uv run python config_server.py
+uv run python main.py config
 ```
 
 It listens on `http://localhost` by default and advertises

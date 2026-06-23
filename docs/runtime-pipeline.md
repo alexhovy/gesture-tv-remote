@@ -14,7 +14,7 @@ them through ports:
 | `FrameCapturePipeline` | Starts the latest-frame camera source, flips frames, and applies the current detection/display zoom crops. |
 | `DetectionPipeline` | Submits frames to the injected hand-tracker port and records detection timing. |
 | `GestureDecisionPipeline` | Projects hand states back from the active detection crop, evaluates the domain session, and updates auto-zoom for the next frame. |
-| `CommandDispatchPipeline` | Applies gesture debounce and enqueues TV key commands. |
+| `CommandDispatchPipeline` | Applies gesture debounce and enqueues adapter-neutral TV commands. |
 | `OpenCvDisplay` | Infrastructure adapter that draws detected hand landmarks and renders the OpenCV preview window. |
 | `PipelineMetrics` | Tracks lightweight counters and timings for debug diagnostics. |
 
@@ -24,6 +24,9 @@ and TV transport live in `src/infrastructure/` behind application ports.
 The service module keeps lifecycle, config reload, and cleanup logic in one
 place while concrete adapter construction stays in the runtime container.
 
+`src/runtime/container.py` is also responsible for preparing the MediaPipe model
+file before constructing the concrete hand tracker.
+
 ## Concurrency Model
 
 Camera capture runs in one dedicated thread. It continuously reads from OpenCV
@@ -31,22 +34,22 @@ and stores only the newest frame. The service loop consumes versioned latest
 frames; if frame versions jump, older frames are counted as dropped instead of
 being processed late.
 
-MediaPipe hand tracking runs in live-stream mode. The runtime submits the
-current detection frame and consumes the latest completed result. Auto-zoom uses
-separate display and detection crops: display follows the active hand, while
-detection lags wider so edge hands remain visible to MediaPipe. Pointer and
-volume distances are measured against the displayed crop. Once pointer or
-volume motion has established an anchor, auto-zoom crop updates are paused until
-the anchor clears; this keeps the visual neutral center fixed during motion and
-dropout grace.
+MediaPipe hand tracking runs in live-stream mode behind `HandTrackerPort`. The
+runtime submits the current detection frame and consumes the latest completed
+result. Auto-zoom uses separate display and detection crops: display follows the
+active hand, while detection lags wider so edge hands remain visible to
+MediaPipe. Pointer and volume distances are measured against the displayed crop.
+Once pointer or volume motion has established an anchor, auto-zoom crop updates
+are paused until the anchor clears; this keeps the visual neutral center fixed
+during motion and dropout grace.
 
 The preview smooths only the drawn landmark overlay in original-frame
 coordinates and holds it briefly through dropped detection frames. Gesture
 decisions still use the current MediaPipe result.
 
-TV commands are sent by one bounded async dispatcher task. Slow TV network
-calls, reconnects, or adapter retries do not block camera capture, hand
-detection, gesture decisions, or display rendering.
+Adapter-neutral TV commands are sent by one bounded async dispatcher task. Slow
+TV network calls, reconnects, or adapter retries do not block camera capture,
+hand detection, gesture decisions, or display rendering.
 
 Samsung and Roku clients use one thread-bound executor each because their
 libraries are synchronous. That keeps each TV connection opened, used, retried,

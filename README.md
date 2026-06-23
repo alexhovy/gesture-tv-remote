@@ -1,6 +1,8 @@
 # Gesture TV Remote
 
-Python MVP for controlling a TV with webcam hand gestures.
+A modular gesture-controlled smart TV remote built around MediaPipe hand
+tracking, configurable gesture recognition, multi-platform TV adapters, local
+configuration, and a lightweight ports-and-adapters architecture.
 
 Supported TV adapters:
 
@@ -57,6 +59,14 @@ ignored by git.
 - [Configuration](docs/configuration.md)
 - [Gestures](docs/gestures.md)
 - [Development](docs/development.md)
+
+## Architecture
+
+The code is organized into domain rules, application use cases and ports,
+infrastructure adapters, runtime composition, shared configuration, and the web
+configuration UI. Concrete integrations such as OpenCV, MediaPipe, TV SDKs,
+SQLite, mDNS, and audio stay behind infrastructure adapters wired in
+`src/runtime/container.py`.
 
 ## Configuration
 

@@ -9,7 +9,7 @@ The root `AGENTS.md` still applies. This guide adds source-specific rules.
 ## Layer Boundaries
 - `src/runtime/`: Compose and run selected runtimes. Keep it thin.
 - `src/web/`: Own lightweight config UI request handling, forms, and rendering.
-- `src/application/`: Own use cases, orchestration, pipelines, and ports.
+- `src/application/`: Own use cases, orchestration, pipelines, application services, and ports.
 - `src/domain/`: Own gesture semantics, command mappings, landmark math, and session state.
 - `src/infrastructure/`: Own external libraries, hardware integration, model download, image processing, and transport adapters.
 - `src/shared/`: Own small cross-cutting primitives such as configuration and logging.
@@ -19,7 +19,7 @@ The root `AGENTS.md` still applies. This guide adds source-specific rules.
 - Application modules must not import infrastructure modules or concrete integration libraries.
 - Infrastructure modules may depend on third-party libraries, but should not own gesture business rules.
 - Application services may orchestrate workflows, but should not hide deterministic gesture rules that belong in domain code.
-- Runtime composition and `main.py` must remain free of gesture decisions and transport details.
+- Runtime composition and `main.py` must remain free of gesture decisions, HTTP request handling, and transport details.
 - Configuration changes belong in `src/shared/config.py` and must stay documented.
 
 ## Development Guidelines
@@ -39,7 +39,7 @@ When unsure:
 - Startup composition -> `src/runtime/` or `main.py`.
 
 ## Validation
-- Add or update tests for behavior changes in domain, configuration, geometry, session state, or service orchestration.
+- Add or update tests for behavior changes in domain, configuration, geometry, session state, or application orchestration.
 - Prefer tests that use deterministic inputs and avoid hardware dependencies.
 - Run:
 

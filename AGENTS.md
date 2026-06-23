@@ -5,9 +5,13 @@ Agents must read this file before making changes within this directory scope.
 This file applies to the entire repository at the root level.
 
 ## Repository Purpose
-This repository contains a Python MVP for controlling a Google TV with webcam hand gestures.
+This repository contains a modular Python application for controlling a TV with
+webcam hand gestures.
 
-The application combines webcam input, MediaPipe hand tracking, gesture-session rules, Android TV command dispatch, and optional voice capture. Keep the code organized around those responsibilities instead of collapsing behavior into scripts.
+The application combines webcam input, MediaPipe hand tracking,
+gesture-session rules, multi-platform TV command dispatch, local configuration,
+and optional voice capture. Keep the code organized around those
+responsibilities instead of collapsing behavior into scripts.
 
 ## Agent Operating Procedure
 Before making changes, agents must:
@@ -24,9 +28,9 @@ Before making changes, agents must:
 - `main.py`: Thin executable entry point.
 - `src/runtime/`: Runnable process composition and CLI runtime selection.
 - `src/web/`: Lightweight config UI request handling, forms, and rendering.
-- `src/application/`: Use cases and orchestration.
+- `src/application/`: Use cases, orchestration, pipelines, and ports.
 - `src/domain/`: Gesture rules, command mappings, landmark math, and session state.
-- `src/infrastructure/`: External integrations such as OpenCV, MediaPipe, Android TV remote, camera preprocessing, model download, and overlays.
+- `src/infrastructure/`: External integrations such as OpenCV, MediaPipe, TV adapters, camera preprocessing, model download, storage, mDNS, audio, and overlays.
 - `src/shared/`: Small cross-cutting primitives such as configuration and logging.
 - `docs/`: Durable project documentation for architecture, configuration, development, and gesture behavior.
 - `tests/`: `unittest` test suite.

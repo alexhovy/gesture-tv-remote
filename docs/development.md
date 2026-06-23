@@ -41,7 +41,7 @@ uv run python main.py config
 ## Config UI
 
 ```bash
-uv run python config_server.py
+uv run python main.py config
 ```
 
 Open `http://localhost`. When mDNS is available on the local network, the
@@ -59,6 +59,63 @@ uv run python -m unittest discover -s tests
 The current tests focus on pure domain behavior and adapter selection or command
 translation. Hardware-dependent TV behavior should be covered through adapters
 or integration tests when test doubles are available.
+
+## Architecture Workflow
+
+Use `docs/architecture.md` as the canonical layer guide. The short version:
+
+- gesture rules and state transitions belong in `src/domain`
+- use-case orchestration and ports belong in `src/application`
+- OpenCV, MediaPipe, TV SDKs, SQLite, mDNS, and audio belong in `src/infrastructure`
+- concrete wiring belongs in `src/runtime/container.py`
+- config UI request handling belongs in `src/web`
+
+Application code should depend on domain and application ports. Infrastructure
+implements those ports. Runtime wires concrete implementations into application
+services with explicit constructor injection.
+
+## Adding a TV Platform
+
+1. Add the adapter implementation under `src/infrastructure/tv/`.
+2. Make the adapter satisfy `TVRemotePort` from `src/application/ports/tv_remote.py`.
+3. Add adapter-neutral command translations in
+   `src/infrastructure/tv/tv_command_translation.py`.
+4. Register the adapter in `src/infrastructure/tv/tv_remote_factory.py` and the
+   supported config values.
+5. Add tests for factory selection, command translation, capability metadata,
+   and adapter behavior using fakes.
+6. Update `docs/configuration.md` and `docs/tv-adapter-capabilities.md`.
+
+Do not put protocol-specific TV behavior in application or domain code.
+
+## Adding Gesture Logic
+
+Put deterministic gesture semantics in `src/domain`. Typical changes belong in
+classification, activation tracking, motion gesture state, command decisions, or
+command mappings.
+
+Only update `src/application` when orchestration changes are required, such as
+new pipeline behavior or command dispatch flow. Infrastructure should not own
+gesture decisions.
+
+Add tests with synthetic landmarks or explicit timestamps. Normal tests must
+not require a real webcam, TV, microphone, network, certificates, downloaded
+model, or MediaPipe runtime.
+
+## Adding Infrastructure
+
+1. Check whether an application port already describes the boundary.
+2. Define or update a port in `src/application/ports/` only when the application
+   needs a real replaceable external boundary.
+3. Implement the adapter under `src/infrastructure/`.
+4. Wire the adapter in `src/runtime/container.py`.
+5. Add fakes or stubs for application tests and adapter-focused tests for the
+   concrete integration.
+6. Update architecture, configuration, or operational docs when behavior or
+   setup changes.
+
+Prefer Python `Protocol` ports and structural typing. Do not add a dependency
+injection framework.
 
 ## Gesture Log Analysis
 

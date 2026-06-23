@@ -17,7 +17,7 @@ The root `AGENTS.md` still applies. This guide adds test-specific rules.
 - Gesture session state -> deterministic tests with explicit timestamps.
 - Configuration parsing -> isolated environment dictionaries.
 - Crop, projection, and zoom math -> deterministic frame or geometry fakes.
-- Service orchestration -> stub OpenCV, Android TV, MediaPipe, audio, and task boundaries as needed.
+- Application orchestration -> use fakes for OpenCV, TV adapters, MediaPipe, audio, and task boundaries as needed.
 
 ## Rules
 - Do not require a real webcam, TV, microphone, network, certificates, downloaded model, or MediaPipe runtime in normal tests.

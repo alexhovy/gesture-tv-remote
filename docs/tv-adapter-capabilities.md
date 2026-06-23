@@ -1,7 +1,9 @@
 # TV Adapter Capabilities
 
 The app keeps common commands adapter-neutral, but each TV platform has
-different protocol support. Capability status is explicit:
+different protocol support. Capability metadata is exposed through the
+application TV remote port and implemented by the concrete TV adapters.
+Capability status is explicit:
 
 - `implemented`: available through the current adapter code.
 - `not_implemented`: the platform or library is expected to support this class
@@ -36,9 +38,9 @@ translations live in `src/infrastructure/tv/tv_command_translation.py`.
 ## Platform Gaps
 
 Power, media controls, text input, source selection, and Wake-on-LAN are outside
-the current gesture MVP command surface. They are tracked as `not_implemented`
-when a future adapter extension could reasonably add them without changing the
+the current gesture command surface. They are tracked as `not_implemented`
+when an adapter extension could reasonably add them without changing the
 gesture pipeline.
 
-Voice capture is not part of the key-command table. Android TV can provide a
+Voice capture is not part of the TV-command table. Android TV can provide a
 voice stream, but no default gesture currently starts voice capture.

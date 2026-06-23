@@ -1,3 +1,4 @@
+from src.application.ports.tv_remote import TVRemotePort
 from src.infrastructure.tv.androidtv_remote import AndroidTvRemoteClient
 from src.infrastructure.tv.roku_remote import RokuRemoteClient
 from src.infrastructure.tv.samsung_remote import SamsungTvRemoteClient
@@ -7,13 +8,12 @@ from src.infrastructure.tv.tv_remote import (
     TV_ADAPTER_SAMSUNG,
     TV_ADAPTER_WEBOS,
     SUPPORTED_TV_ADAPTERS,
-    TvRemoteClient,
 )
 from src.infrastructure.tv.webos_remote import WebOsRemoteClient
 from src.shared.config import AppConfig
 
 
-def create_tv_remote_client(config: AppConfig) -> TvRemoteClient:
+def create_tv_remote_client(config: AppConfig) -> TVRemotePort:
     adapter = config.tv.adapter.lower()
     if adapter == TV_ADAPTER_ANDROIDTV:
         return AndroidTvRemoteClient(config)

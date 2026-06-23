@@ -571,7 +571,7 @@ class BlockingRemote:
         self.second_started = asyncio.Event()
         self.release_first = asyncio.Event()
 
-    async def send_key_command(self, command: str) -> None:
+    async def send_command(self, command: str) -> None:
         self.commands.append(command)
         if len(self.commands) == 1:
             self.first_started.set()

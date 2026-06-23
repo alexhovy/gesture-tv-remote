@@ -17,7 +17,6 @@ from src.application.ports.display import DisplayPort
 from src.application.ports.frame_source import FrameSourcePort
 from src.application.ports.hand_tracker import HandTrackerPort
 from src.application.ports.logger import LoggerPort
-from src.application.ports.model_store import ModelStorePort
 from src.application.ports.tv_remote import TVRemotePort
 from src.application.ports.voice_capture import VoiceCapturePort
 from src.domain.session import GestureSession
@@ -41,7 +40,6 @@ class GestureRemoteService:
         display: DisplayPort,
         voice_capture: VoiceCapturePort,
         command_dispatcher: CommandDispatcherPort,
-        model_store: ModelStorePort,
         logger: LoggerPort,
         metrics: PipelineMetrics,
         config_provider: ConfigProviderPort | None = None,
@@ -58,7 +56,6 @@ class GestureRemoteService:
         self._display = display
         self._voice_capture = voice_capture
         self._command_dispatcher = command_dispatcher
-        self._model_store = model_store
         self._logger = logger
         self._metrics = metrics
         self._gesture_session = gesture_session or GestureSession(config)
@@ -100,8 +97,6 @@ class GestureRemoteService:
         frame_pipeline.start()
 
         try:
-            await asyncio.to_thread(self._model_store.ensure_model)
-
             while True:
                 if self._frame_source.failed():
                     self._logger.error("Could not read frame from webcam.")

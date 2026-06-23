@@ -4,6 +4,7 @@ __pycache__/
 .uv-cache/
 .ruff_cache/
 .agents/
+.codex/
 
 logs/
 certs/

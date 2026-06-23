@@ -105,7 +105,7 @@ class RemoteCommandDispatcher:
         )
         self._logger.info(f"Gesture: {request.gesture} -> {display_command}")
         started_at = time.monotonic()
-        await self._remote.send_key_command(request.command)
+        await self._remote.send_command(request.command)
         self._last_send_latency_seconds = time.monotonic() - started_at
 
     def _next_request(self) -> RemoteCommandRequest | None:

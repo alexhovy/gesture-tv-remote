@@ -178,7 +178,7 @@ class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
             )
 
             self.assertTrue(await client.connect())
-            await client.send_key_command(TV_COMMAND_DPAD_LEFT)
+            await client.send_command(TV_COMMAND_DPAD_LEFT)
             await client.disconnect()
 
         instance = fake_remote.instances[0]
@@ -200,7 +200,7 @@ class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
             )
 
             self.assertTrue(await client.connect())
-            await client.send_key_command(TV_COMMAND_DPAD_RIGHT)
+            await client.send_command(TV_COMMAND_DPAD_RIGHT)
             await client.disconnect()
 
         self.assertEqual(len(fake_remote.instances), 2)
@@ -229,7 +229,7 @@ class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
         client = RokuRemoteClient(app_config(tv_host="roku.local"))
 
         self.assertTrue(await client.connect())
-        await client.send_key_command(TV_COMMAND_DPAD_UP)
+        await client.send_command(TV_COMMAND_DPAD_UP)
         await client.disconnect()
 
         instance = fake_remote.instances[0]
@@ -245,7 +245,7 @@ class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
         client = RokuRemoteClient(app_config(tv_host="roku.local"))
 
         self.assertTrue(await client.connect())
-        await client.send_key_command(TV_COMMAND_DPAD_DOWN)
+        await client.send_command(TV_COMMAND_DPAD_DOWN)
         await client.disconnect()
 
         self.assertEqual(len(fake_remote.instances), 2)

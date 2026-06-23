@@ -67,7 +67,7 @@ class WebOsRemoteClient:
         self._logger.info(f"Connected to webOS TV at {self._config.tv.host}")
         return True
 
-    async def send_key_command(self, command: str) -> None:
+    async def send_command(self, command: str) -> None:
         if self._client is None:
             self._logger.info(f"TV not connected. Skipping command: {command}")
             return

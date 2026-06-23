@@ -12,7 +12,7 @@ class UnsupportedVoiceRemote:
     async def connect(self) -> bool:
         return True
 
-    async def send_key_command(self, command: str) -> None:
+    async def send_command(self, command: str) -> None:
         pass
 
     async def start_voice(self):

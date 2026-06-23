@@ -10,7 +10,7 @@ class FakeTVRemote:
         self.connect_calls += 1
         return self.connected
 
-    async def send_key_command(self, command: str) -> None:
+    async def send_command(self, command: str) -> None:
         self.commands.append(command)
 
     async def start_voice(self):

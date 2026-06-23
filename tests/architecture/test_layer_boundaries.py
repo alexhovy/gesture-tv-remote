@@ -36,6 +36,7 @@ class LayerBoundaryTests(unittest.TestCase):
         )
 
         self.assertEqual(violations, [])
+        self.assertEqual(_find_dynamic_import_violations(SRC_ROOT / "domain"), [])
 
     def test_application_does_not_import_infrastructure_or_external_adapters(self) -> None:
         violations = _find_import_violations(
@@ -49,6 +50,7 @@ class LayerBoundaryTests(unittest.TestCase):
         )
 
         self.assertEqual(violations, [])
+        self.assertEqual(_find_dynamic_import_violations(SRC_ROOT / "application"), [])
 
     def test_infrastructure_does_not_import_runtime_or_web(self) -> None:
         violations = _find_import_violations(
@@ -95,6 +97,32 @@ def _imports_from_node(node: ast.AST) -> list[str]:
     if isinstance(node, ast.ImportFrom) and node.module:
         return [node.module]
     return []
+
+
+def _find_dynamic_import_violations(directory: Path) -> list[str]:
+    violations = []
+    for path in sorted(directory.rglob("*.py")):
+        if "__pycache__" in path.parts:
+            continue
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.Call):
+                continue
+            if _is_dynamic_import_call(node):
+                relative_path = path.relative_to(PROJECT_ROOT)
+                violations.append(f"{relative_path}:{node.lineno}: dynamic import")
+    return violations
+
+
+def _is_dynamic_import_call(node: ast.Call) -> bool:
+    function = node.func
+    if isinstance(function, ast.Name):
+        return function.id == "__import__"
+    if not isinstance(function, ast.Attribute):
+        return False
+    if function.attr != "import_module":
+        return False
+    return isinstance(function.value, ast.Name) and function.value.id == "importlib"
 
 
 if __name__ == "__main__":

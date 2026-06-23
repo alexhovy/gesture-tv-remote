@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from src.application.ports.config_provider import ConfigStorePort
 from src.application.services.gesture_remote_service import GestureRemoteService
 from src.runtime.config_server import ConfigServerRunner
 from src.shared.config import AppConfig, load_config_from_env
@@ -13,7 +14,7 @@ def build_config_repository(config: AppConfig):
     return ConfigRepository(SqliteStore(config.config_db_file))
 
 
-def build_config_provider(repository: ConfigRepository):
+def build_config_provider(repository: ConfigStorePort):
     bootstrap_config = load_config_from_env()
 
     def provide_config() -> AppConfig:
@@ -70,7 +71,6 @@ def build_gesture_remote_service(config_provider=None) -> GestureRemoteService:
         display=display,
         voice_capture=voice_capture,
         command_dispatcher=command_dispatcher,
-        model_store=model_store,
         logger=logger,
         metrics=metrics,
         config_provider=provider,

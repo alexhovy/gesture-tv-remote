@@ -107,11 +107,3 @@ class FakeCommandDispatcher:
 
     async def close(self) -> None:
         self.closed = True
-
-
-class FakeModelStore:
-    def __init__(self) -> None:
-        self.ensured = False
-
-    def ensure_model(self) -> None:
-        self.ensured = True

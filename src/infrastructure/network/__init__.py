@@ -1,1 +1,0 @@
-"""Network discovery adapters."""

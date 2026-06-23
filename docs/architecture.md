@@ -258,6 +258,11 @@ Architecture tests in `tests/architecture/test_layer_boundaries.py` scan imports
 and fail when forbidden layer dependencies are introduced. They also reject
 dynamic import escape hatches in domain and application code.
 
+The rest of the test suite mirrors the production layers: `tests/domain/`,
+`tests/application/`, `tests/infrastructure/`, `tests/runtime/`, `tests/web/`,
+and `tests/shared/`. Shared fakes and helpers live under `tests/fakes/` and
+`tests/helpers/`.
+
 ## Design Rules
 
 - Prefer domain functions for deterministic gesture rules.

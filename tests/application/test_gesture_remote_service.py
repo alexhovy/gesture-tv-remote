@@ -59,7 +59,7 @@ from src.application.services.remote_command_dispatcher import (  # noqa: E402
 from src.infrastructure.camera.display import OpenCvDisplay  # noqa: E402
 from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor  # noqa: E402
 from src.shared.config import AppConfig  # noqa: E402
-from tests.config_helpers import app_config  # noqa: E402
+from tests.helpers.config_helpers import app_config  # noqa: E402
 
 
 class FakeFrame:

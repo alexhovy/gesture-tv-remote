@@ -21,8 +21,8 @@ from src.domain.session.session_debug import (
     build_debug_snapshot,
 )
 from src.domain.session.session_state import GestureSessionState
-from tests.config_helpers import app_config
-from tests.session_helpers import hand_state
+from tests.helpers.config_helpers import app_config
+from tests.helpers.session_helpers import hand_state
 
 
 class SessionPhaseEvaluatorTests(unittest.TestCase):

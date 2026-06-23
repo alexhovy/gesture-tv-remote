@@ -7,7 +7,7 @@ from src.shared.config import (
     apply_reloadable_config,
     load_config_from_env,
 )
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 class ConfigTests(unittest.TestCase):

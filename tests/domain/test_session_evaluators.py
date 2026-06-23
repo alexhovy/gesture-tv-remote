@@ -4,7 +4,7 @@ from src.domain.constants import GESTURE_POINT_RIGHT, GESTURE_VOLUME_UP
 from src.domain.evaluators.pointer_evaluator import evaluate_pointer_motion
 from src.domain.evaluators.volume_evaluator import evaluate_volume_motion
 from src.domain.gestures.motion_gesture import MotionJoystickState
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 class SessionEvaluatorTests(unittest.TestCase):

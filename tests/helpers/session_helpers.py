@@ -13,7 +13,7 @@ from src.domain.geometry.landmarks import (
 )
 from src.domain.session import GestureSession
 from src.domain.session.session_types import HandState
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 def evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> str | None:

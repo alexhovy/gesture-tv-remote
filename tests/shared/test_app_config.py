@@ -9,7 +9,7 @@ from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.runtime.container import build_config_provider
 from src.runtime.gesture_app import create_config_provider, load_config
 from src.shared.config import EnvVar
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 class AppConfigTests(unittest.TestCase):

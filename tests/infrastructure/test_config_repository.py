@@ -6,7 +6,7 @@ from pathlib import Path
 
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 class ConfigRepositoryTests(unittest.TestCase):

@@ -2,7 +2,7 @@ import asyncio
 import unittest
 
 from src.infrastructure.audio.voice_capture import MicrophoneVoiceCapture
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 class UnsupportedVoiceRemote:

@@ -12,8 +12,8 @@ from src.domain.constants import (
     GESTURE_POINT_UP,
 )
 from src.domain.session import GestureSession
-from tests.config_helpers import app_config
-from tests.session_helpers import evaluate_pointer_move, hand_state
+from tests.helpers.config_helpers import app_config
+from tests.helpers.session_helpers import evaluate_pointer_move, hand_state
 
 
 class SessionPointerTests(unittest.TestCase):

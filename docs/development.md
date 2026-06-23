@@ -60,6 +60,18 @@ The current tests focus on pure domain behavior and adapter selection or command
 translation. Hardware-dependent TV behavior should be covered through adapters
 or integration tests when test doubles are available.
 
+Test files are grouped by the layer or feature they validate:
+
+- `tests/domain/`: pure gesture, session, evaluator, command, and motion behavior
+- `tests/application/`: use-case orchestration, pipelines, ports, and dispatch flow
+- `tests/infrastructure/`: adapter and integration-boundary behavior
+- `tests/runtime/`: CLI, composition, and runtime runner behavior
+- `tests/web/`: config UI request handling and rendering
+- `tests/shared/`: configuration, logging, and shared primitives
+- `tests/architecture/`: layer-boundary import checks
+- `tests/fakes/`: reusable test doubles
+- `tests/helpers/`: shared test data builders and helper functions
+
 ## Architecture Workflow
 
 Use `docs/architecture.md` as the canonical layer guide. The short version:

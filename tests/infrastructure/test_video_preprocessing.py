@@ -16,7 +16,7 @@ from src.infrastructure.camera.video_preprocessing import (
     apply_center_crop_zoom,
     apply_crop,
 )
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 class FakeFrame:

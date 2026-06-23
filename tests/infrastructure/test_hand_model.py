@@ -4,7 +4,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from src.infrastructure.hand_tracking.hand_model import download_model_if_missing
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 class HandModelDownloadTests(unittest.TestCase):

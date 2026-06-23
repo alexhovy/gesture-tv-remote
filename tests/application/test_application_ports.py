@@ -2,7 +2,6 @@ import unittest
 
 from src.application.services.gesture_remote_service import GestureRemoteService
 from src.application.services.pipeline_metrics import PipelineMetrics
-from tests.config_helpers import app_config
 from tests.fakes.fake_application_adapters import (
     FakeCamera,
     FakeCommandDispatcher,
@@ -14,6 +13,7 @@ from tests.fakes.fake_frame_source import FakeFrameSource
 from tests.fakes.fake_hand_tracker import FakeHandTracker
 from tests.fakes.fake_logger import FakeLogger
 from tests.fakes.fake_tv_remote import FakeTVRemote
+from tests.helpers.config_helpers import app_config
 
 
 class ApplicationPortsTests(unittest.IsolatedAsyncioTestCase):

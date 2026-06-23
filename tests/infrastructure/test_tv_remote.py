@@ -33,7 +33,7 @@ from src.infrastructure.tv.tv_remote import (
 )
 from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
 from src.infrastructure.tv.webos_remote import WebOsRemoteClient
-from tests.config_helpers import app_config
+from tests.helpers.config_helpers import app_config
 
 
 class TvRemoteTests(unittest.TestCase):

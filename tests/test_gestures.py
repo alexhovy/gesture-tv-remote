@@ -6,7 +6,6 @@ from src.domain.constants import (
     GESTURE_OPEN_PALM,
     GESTURE_PINCH,
     GESTURE_TWO_FINGERS,
-    HANDEDNESS_LEFT,
     HANDEDNESS_RIGHT,
 )
 from src.domain.gesture_classification import classify_static_hand_pose
@@ -35,25 +34,6 @@ class GestureRuleTests(unittest.TestCase):
         self.assertEqual(
             classify_static_hand_pose(_open_palm_landmarks(), HANDEDNESS_RIGHT, 0.22),
             GESTURE_OPEN_PALM,
-        )
-
-    def test_static_pose_classifier_accepts_left_hand_open_palm(self) -> None:
-        self.assertEqual(
-            classify_static_hand_pose(
-                _open_palm_landmarks(thumb_ip=(0.64, 0.56), thumb_tip=(0.76, 0.50)),
-                HANDEDNESS_LEFT,
-                0.22,
-            ),
-            GESTURE_OPEN_PALM,
-        )
-
-    def test_static_pose_classifier_rejects_open_palm_with_folded_thumb(self) -> None:
-        self.assertIsNone(
-            classify_static_hand_pose(
-                _open_palm_landmarks(thumb_tip=(0.40, 0.56)),
-                HANDEDNESS_RIGHT,
-                0.22,
-            )
         )
 
     def test_static_pose_classifier_rejects_sideways_open_palm(self) -> None:

@@ -1,8 +1,7 @@
 # Gestures
 
-Show one upright open palm with all five digits extended to activate gesture
-controls. That same active hand then performs every command gesture. An open
-palm is neutral.
+Show one upright open palm to activate gesture controls. That same active hand
+then performs every command gesture. An open palm is neutral.
 
 ## Commands
 

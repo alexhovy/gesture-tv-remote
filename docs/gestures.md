@@ -1,7 +1,8 @@
 # Gestures
 
-Show one upright open palm to activate gesture controls. That same active hand
-then performs every command gesture. An open palm is neutral.
+Show one upright open palm with all five digits extended to activate gesture
+controls. That same active hand then performs every command gesture. An open
+palm is neutral.
 
 ## Commands
 
@@ -35,8 +36,9 @@ Most commands are emitted once per gesture change. DPAD and volume gestures use
 a joystick-style anchor. When the active hand first points or pinches, its
 current position becomes the anchor for measuring motion.
 
-Select emits when the active hand closes from open palm to fist and opens again
-before the HOME hold threshold. Holding the fist through
+Select emits when the active hand closes its four non-thumb fingers from open
+palm to fist and opens again before the HOME hold threshold. Thumb position does
+not matter for fist detection. Holding the fist through
 `GESTURE_TV_FIST_HOLD_HOME_SECONDS` emits HOME once, then waits for the hand to
 open before another fist command can occur.
 

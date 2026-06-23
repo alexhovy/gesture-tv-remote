@@ -4,7 +4,9 @@ from types import SimpleNamespace
 from src.domain.constants import (
     GESTURE_FIST,
     GESTURE_OPEN_PALM,
+    GESTURE_PINCH,
     GESTURE_TWO_FINGERS,
+    HANDEDNESS_LEFT,
     HANDEDNESS_RIGHT,
 )
 from src.domain.gesture_classification import classify_static_hand_pose
@@ -33,6 +35,25 @@ class GestureRuleTests(unittest.TestCase):
         self.assertEqual(
             classify_static_hand_pose(_open_palm_landmarks(), HANDEDNESS_RIGHT, 0.22),
             GESTURE_OPEN_PALM,
+        )
+
+    def test_static_pose_classifier_accepts_left_hand_open_palm(self) -> None:
+        self.assertEqual(
+            classify_static_hand_pose(
+                _open_palm_landmarks(thumb_ip=(0.64, 0.56), thumb_tip=(0.76, 0.50)),
+                HANDEDNESS_LEFT,
+                0.22,
+            ),
+            GESTURE_OPEN_PALM,
+        )
+
+    def test_static_pose_classifier_rejects_open_palm_with_folded_thumb(self) -> None:
+        self.assertIsNone(
+            classify_static_hand_pose(
+                _open_palm_landmarks(thumb_tip=(0.40, 0.56)),
+                HANDEDNESS_RIGHT,
+                0.22,
+            )
         )
 
     def test_static_pose_classifier_rejects_sideways_open_palm(self) -> None:
@@ -91,10 +112,38 @@ class GestureRuleTests(unittest.TestCase):
             GESTURE_FIST,
         )
 
+    def test_static_pose_classifier_treats_extended_thumb_as_fist(self) -> None:
+        self.assertEqual(
+            classify_static_hand_pose(
+                _fist_landmarks(thumb_tip=(0.24, 0.50)),
+                HANDEDNESS_RIGHT,
+                0.22,
+            ),
+            GESTURE_FIST,
+        )
+
+    def test_static_pose_classifier_treats_thumb_touching_closed_index_as_fist(self) -> None:
+        self.assertEqual(
+            classify_static_hand_pose(
+                _fist_landmarks(thumb_tip=(0.43, 0.62)),
+                HANDEDNESS_RIGHT,
+                0.22,
+            ),
+            GESTURE_FIST,
+        )
+
+    def test_static_pose_classifier_detects_pinch_when_index_is_not_closed(self) -> None:
+        self.assertEqual(
+            classify_static_hand_pose(_pinch_landmarks(), HANDEDNESS_RIGHT, 0.22),
+            GESTURE_PINCH,
+        )
+
 
 def _open_palm_landmarks(
     wrist: tuple[float, float] = (0.50, 0.80),
     middle_mcp: tuple[float, float] = (0.50, 0.50),
+    thumb_ip: tuple[float, float] = (0.36, 0.56),
+    thumb_tip: tuple[float, float] = (0.24, 0.50),
 ) -> list[SimpleNamespace]:
     landmarks = [_landmark(0.50, 0.50) for _ in range(LANDMARK_COUNT)]
     landmarks[LANDMARK_WRIST] = _landmark(*wrist)
@@ -110,8 +159,8 @@ def _open_palm_landmarks(
     landmarks[LANDMARK_MIDDLE_TIP] = _landmark(0.50, 0.16)
     landmarks[LANDMARK_RING_TIP] = _landmark(0.60, 0.20)
     landmarks[LANDMARK_PINKY_TIP] = _landmark(0.68, 0.26)
-    landmarks[LANDMARK_THUMB_IP] = _landmark(0.36, 0.56)
-    landmarks[LANDMARK_THUMB_TIP] = _landmark(0.24, 0.50)
+    landmarks[LANDMARK_THUMB_IP] = _landmark(*thumb_ip)
+    landmarks[LANDMARK_THUMB_TIP] = _landmark(*thumb_tip)
     return landmarks
 
 
@@ -135,6 +184,10 @@ def _two_finger_landmarks() -> list[SimpleNamespace]:
 
 
 def _fist_with_folded_thumb_landmarks() -> list[SimpleNamespace]:
+    return _fist_landmarks(thumb_tip=(0.40, 0.48))
+
+
+def _fist_landmarks(thumb_tip: tuple[float, float]) -> list[SimpleNamespace]:
     landmarks = [_landmark(0.50, 0.50) for _ in range(LANDMARK_COUNT)]
     landmarks[LANDMARK_WRIST] = _landmark(0.50, 0.80)
     landmarks[LANDMARK_INDEX_MCP] = _landmark(0.42, 0.54)
@@ -149,7 +202,13 @@ def _fist_with_folded_thumb_landmarks() -> list[SimpleNamespace]:
     landmarks[LANDMARK_MIDDLE_TIP] = _landmark(0.50, 0.62)
     landmarks[LANDMARK_RING_TIP] = _landmark(0.58, 0.62)
     landmarks[LANDMARK_PINKY_TIP] = _landmark(0.64, 0.63)
-    landmarks[LANDMARK_THUMB_TIP] = _landmark(0.40, 0.48)
+    landmarks[LANDMARK_THUMB_TIP] = _landmark(*thumb_tip)
+    return landmarks
+
+
+def _pinch_landmarks() -> list[SimpleNamespace]:
+    landmarks = _fist_landmarks(thumb_tip=(0.43, 0.25))
+    landmarks[LANDMARK_INDEX_TIP] = _landmark(0.42, 0.24)
     return landmarks
 
 

@@ -63,8 +63,8 @@ memory over time.
 
 | Gesture event | Command gesture |
 | --- | --- |
-| Open palm closes to fist and opens before hold threshold | `OPEN_TO_FIST` |
-| Fist held through hold threshold | `HOME` |
+| Open palm closes four non-thumb fingers to fist and opens before hold threshold | `OPEN_TO_FIST` |
+| Four non-thumb fingers held closed through hold threshold | `HOME` |
 | Two fingers held for several frames, then open palm | `BACK` |
 | Pinch moves up/down | `VOLUME_UP` / `VOLUME_DOWN` |
 | Point moves left/right/up/down | `POINT_LEFT` / `POINT_RIGHT` / `POINT_UP` / `POINT_DOWN` |

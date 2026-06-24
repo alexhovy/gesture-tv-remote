@@ -41,6 +41,14 @@ class GestureSession:
     ) -> GestureDecision:
         active_anchor = self._state.active.position
         active_index = self._state.active.find_active_index(hand_states, self._config)
+        if active_index is None and self._state.active.has_active_hand():
+            active_index = self._state.active.find_continuation_open_palm_index(
+                hand_states,
+            )
+            if active_index is not None:
+                self._state.reset_for_handoff()
+                active_anchor = None
+
         active_hand = hand_states[active_index] if active_index is not None else None
 
         if active_hand is None:

@@ -192,7 +192,10 @@ class SessionVolumeTests(unittest.TestCase):
 
     def _activate(self, session: GestureSession, y: float) -> None:
         session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.70, y), size=0.20)],
+            [
+                hand_state(GESTURE_OPEN_PALM, center=(0.70, y), size=0.20),
+                hand_state(GESTURE_OPEN_PALM, center=(0.30, y), size=0.20),
+            ],
             now=0.0,
         )
 

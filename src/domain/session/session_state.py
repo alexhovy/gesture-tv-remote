@@ -44,6 +44,14 @@ class GestureSessionState:
         self.reset_motion_tracking()
         self.pose_blocked_reason = None
 
+    def reset_for_handoff(self) -> None:
+        self.active.reset()
+        self.motion.reset()
+        self.command_decision.reset()
+        self.two_finger_back.reset()
+        self.reset_motion_tracking()
+        self.pose_blocked_reason = None
+
     def reset_motion_tracking(self) -> None:
         self.volume.reset_tracking()
         self.pointer.reset_tracking()

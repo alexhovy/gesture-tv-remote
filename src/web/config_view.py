@@ -137,7 +137,7 @@ FIELD_HELP: dict[str, str] = {
     "model_file": "Downloaded automatically on first run when missing.",
     "model_url": "Source URL used for model downloads.",
     "max_hands": (
-        "Maximum hands MediaPipe tracks. One hand is enough for the full gesture set."
+        "Maximum hands MediaPipe tracks. Two hands are required to start controls."
     ),
     "min_hand_detection_confidence": "MediaPipe detection confidence from 0.0 to 1.0.",
     "min_hand_presence_confidence": (
@@ -190,7 +190,7 @@ def input_constraints(name: str) -> str:
     }:
         return ' min="1"'
     if name == "max_hands":
-        return ' min="1"'
+        return ' min="2"'
     if name == "webcam_index":
         return ' min="0"'
     if name in {

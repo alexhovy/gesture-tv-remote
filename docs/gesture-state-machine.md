@@ -21,8 +21,11 @@ audio, or TV adapter libraries.
 
 ## Activation
 
-An upright open palm activates the session. Once active, the hand is matched by
-distance from its previous position while brief dropouts stay active for
+Two upright open palms activate the session. Once active, the selected hand is
+matched by distance from its previous position. If that hand drops out while
+another upright open palm remains visible, the session hands off to the visible
+palm and clears pending command or motion state. If no continuation palm is
+visible, brief full dropouts stay active for
 `GESTURE_TV_ACTIVE_HAND_LOST_GRACE_SECONDS`. After that grace interval the
 session deactivates and clears pending command state.
 

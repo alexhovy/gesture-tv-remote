@@ -149,7 +149,7 @@ will not override that environment value.
 | `GESTURE_TV_AUTO_ZOOM_POSITION_DEADBAND` | `0.08` |
 | `GESTURE_TV_AUTO_ZOOM_SCALE_DEADBAND` | `0.12` |
 | `GESTURE_TV_AUTO_ZOOM_CROP_RESET_THRESHOLD` | `0.08` |
-| `GESTURE_TV_MAX_HANDS` | `1` |
+| `GESTURE_TV_MAX_HANDS` | `2` |
 | `GESTURE_TV_DEBOUNCE_SECONDS` | `0.3` |
 | `GESTURE_TV_FIST_HOLD_HOME_SECONDS` | `0.7` |
 | `GESTURE_TV_POINTER_SCREEN_RADIUS_RATIO` | `0.14` |
@@ -212,6 +212,12 @@ Boolean settings accept `1`, `true`, `yes`, `on`, `0`, `false`, `no`, and `off`.
 `GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` apply to the active hand. This
 prevents sideways or upside-down hands from activating controls or being
 misclassified as command gestures.
+
+Gesture sessions start only when two upright open palms are visible. After the
+session starts, one hand can leave the frame if the remaining hand is still an
+upright open palm; that hand becomes the active controller and pending command
+or motion state is cleared. `GESTURE_TV_MAX_HANDS` must be at least `2` so
+MediaPipe can report both activation palms.
 
 `GESTURE_TV_ACTIVE_HAND_LOST_GRACE_SECONDS` keeps an active gesture session
 alive through brief active-hand detection dropouts. This helps when a hand is

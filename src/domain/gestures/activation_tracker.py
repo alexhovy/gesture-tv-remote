@@ -17,6 +17,9 @@ class ActiveHandTracker:
         self.last_seen_time = None
         self.previous_gesture = None
 
+    def has_active_hand(self) -> bool:
+        return self.position is not None
+
     def update_seen(self, hand: HandState, now: float) -> None:
         self.position = hand.center
         self.last_seen_time = now
@@ -33,14 +36,7 @@ class ActiveHandTracker:
         if not hands:
             return None
         if self.position is None:
-            return next(
-                (
-                    index
-                    for index, hand in enumerate(hands)
-                    if hand.upright and hand.gesture == GESTURE_OPEN_PALM
-                ),
-                None,
-            )
+            return self.find_initial_activation_index(hands)
 
         max_distance = max(0.0, config.gesture.active_hand_match_max_distance)
         candidates = [
@@ -83,3 +79,29 @@ class ActiveHandTracker:
             return math.inf
         target_x, target_y = self.position
         return math.hypot(hand.center[0] - target_x, hand.center[1] - target_y)
+
+    def find_initial_activation_index(self, hands: list[HandState]) -> int | None:
+        open_palm_indices = self._upright_open_palm_indices(hands)
+        if len(open_palm_indices) < 2:
+            return None
+        return open_palm_indices[0]
+
+    def find_continuation_open_palm_index(
+        self,
+        hands: list[HandState],
+    ) -> int | None:
+        open_palm_indices = self._upright_open_palm_indices(hands)
+        if not open_palm_indices:
+            return None
+        return min(
+            open_palm_indices,
+            key=lambda index: self.distance_from_active(hands[index]),
+        )
+
+    @staticmethod
+    def _upright_open_palm_indices(hands: list[HandState]) -> list[int]:
+        return [
+            index
+            for index, hand in enumerate(hands)
+            if hand.upright and hand.gesture == GESTURE_OPEN_PALM
+        ]

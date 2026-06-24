@@ -1,7 +1,8 @@
 # Gestures
 
-Show one upright open palm to activate gesture controls. That same active hand
-then performs every command gesture. An open palm is neutral.
+Show two upright open palms to activate gesture controls. After activation, one
+hand may drop out if the remaining hand is still an upright open palm; that
+remaining hand becomes the active controller. An open palm is neutral.
 
 ## Commands
 
@@ -19,10 +20,12 @@ then performs every command gesture. An open palm is neutral.
 
 ## Gesture Ownership
 
-The active hand is selected by the first upright open palm. While the session is
-active, that hand is matched by position and must remain upright when
-`GESTURE_TV_REQUIRE_UPRIGHT_HANDS` is enabled. Extra detected hands are ignored
-for command decisions and auto-zoom framing.
+The active hand is selected from the two upright open palms that start the
+session. While the session is active, that hand is matched by position and must
+remain upright when `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` is enabled. If the
+tracked active hand drops out and another upright open palm is visible, control
+hands off to that palm and pending command or motion state is cleared. Extra
+detected hands are ignored for command decisions and auto-zoom framing.
 
 Point and pinch gestures are only commandable once the active hand is large
 enough relative to the active camera crop to classify reliably. Small point and

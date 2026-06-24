@@ -108,7 +108,7 @@ class ModelConfig:
     )
     download_timeout_seconds: float = 20.0
     download_retries: int = 2
-    max_hands: int = 1
+    max_hands: int = 2
     min_hand_detection_confidence: float = 0.6
     min_hand_presence_confidence: float = 0.6
     min_tracking_confidence: float = 0.6
@@ -268,7 +268,7 @@ def validate_config(config: AppConfig) -> None:
         "auto_zoom_crop_reset_threshold",
         0.0,
     )
-    _require_at_least(config.model.max_hands, "max_hands", 1)
+    _require_at_least(config.model.max_hands, "max_hands", 2)
     _require_between(
         config.model.min_hand_detection_confidence,
         "min_hand_detection_confidence",

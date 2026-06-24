@@ -59,7 +59,10 @@ class SessionWaveTests(unittest.TestCase):
     def test_vertical_open_palm_movement_does_not_emit_back(self) -> None:
         session = GestureSession(app_config())
         session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.50, 0.50), size=0.20)],
+            [
+                hand_state(GESTURE_OPEN_PALM, center=(0.50, 0.50), size=0.20),
+                hand_state(GESTURE_OPEN_PALM, center=(0.80, 0.50), size=0.20),
+            ],
             now=0.0,
         )
         session.evaluate(
@@ -113,10 +116,10 @@ class SessionWaveTests(unittest.TestCase):
         self.assertEqual(second.command_gesture, GESTURE_BACK)
 
     def _open(self, session: GestureSession, x: float, now: float):
-        return session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(x, 0.50), size=0.20)],
-            now=now,
-        )
+        hands = [hand_state(GESTURE_OPEN_PALM, center=(x, 0.50), size=0.20)]
+        if now == 0.0:
+            hands.append(hand_state(GESTURE_OPEN_PALM, center=(0.80, 0.50), size=0.20))
+        return session.evaluate(hands, now=now)
 
     def _two_fingers(self, session: GestureSession, now: float):
         return session.evaluate(

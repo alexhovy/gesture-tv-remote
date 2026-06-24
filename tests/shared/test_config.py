@@ -179,6 +179,10 @@ class ConfigTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "min_tracking_confidence"):
             load_config_from_env({EnvVar.MIN_TRACKING_CONFIDENCE: "1.2"})
 
+    def test_load_config_rejects_max_hands_below_two(self) -> None:
+        with self.assertRaisesRegex(ValueError, "max_hands"):
+            load_config_from_env({EnvVar.MAX_HANDS: "1"})
+
     def test_load_config_rejects_invalid_model_download_settings(self) -> None:
         with self.assertRaisesRegex(ValueError, "model_download_timeout_seconds"):
             load_config_from_env({EnvVar.MODEL_DOWNLOAD_TIMEOUT_SECONDS: "0"})

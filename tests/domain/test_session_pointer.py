@@ -347,7 +347,10 @@ class SessionPointerTests(unittest.TestCase):
 
     def _activate(self, session: GestureSession, center: tuple[float, float]) -> None:
         session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=center, size=0.20)],
+            [
+                hand_state(GESTURE_OPEN_PALM, center=center, size=0.20),
+                hand_state(GESTURE_OPEN_PALM, center=(0.90, 0.50), size=0.20),
+            ],
             now=0.0,
         )
 

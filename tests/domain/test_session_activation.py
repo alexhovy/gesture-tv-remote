@@ -26,13 +26,21 @@ class SessionActivationTests(unittest.TestCase):
         self.assertFalse(decision.activated)
         self.assertIsNone(decision.command_gesture)
 
-    def test_decision_activates_from_upright_open_palm(self) -> None:
+    def test_decision_does_not_activate_from_one_upright_open_palm(self) -> None:
         session = GestureSession(app_config())
 
         decision = session.evaluate(
             [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
             now=0.0,
         )
+
+        self.assertFalse(decision.activated)
+        self.assertIsNone(decision.command_gesture)
+
+    def test_decision_activates_from_two_upright_open_palms(self) -> None:
+        session = GestureSession(app_config())
+
+        decision = self._activate_with_two_palms(session)
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
@@ -43,7 +51,7 @@ class SessionActivationTests(unittest.TestCase):
         open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
 
-        session.evaluate([open_hand], now=0.0)
+        self._activate_with_two_palms(session, open_hand)
         pending = session.evaluate([fist], now=0.1)
         decision = session.evaluate([open_hand], now=0.2)
 
@@ -57,7 +65,7 @@ class SessionActivationTests(unittest.TestCase):
         unknown = hand_state(None, center=(0.20, 0.50), size=0.20)
         fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
 
-        session.evaluate([open_hand], now=0.0)
+        self._activate_with_two_palms(session, open_hand)
         session.evaluate([unknown], now=0.1)
         session.evaluate([fist], now=0.2)
         decision = session.evaluate([open_hand], now=0.3)
@@ -70,7 +78,7 @@ class SessionActivationTests(unittest.TestCase):
         unknown = hand_state(None, center=(0.20, 0.50), size=0.20)
         fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
 
-        session.evaluate([open_hand], now=0.0)
+        self._activate_with_two_palms(session, open_hand)
         session.evaluate([fist], now=0.1)
         session.evaluate([unknown], now=0.2)
         decision = session.evaluate([open_hand], now=0.3)
@@ -82,7 +90,7 @@ class SessionActivationTests(unittest.TestCase):
         open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
 
-        session.evaluate([open_hand], now=0.0)
+        self._activate_with_two_palms(session, open_hand)
         session.evaluate([fist], now=0.1)
         decision = session.evaluate([fist], now=0.6)
 
@@ -93,7 +101,7 @@ class SessionActivationTests(unittest.TestCase):
         open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
         two_fingers = hand_state(GESTURE_TWO_FINGERS, center=(0.20, 0.50), size=0.20)
 
-        session.evaluate([open_hand], now=0.0)
+        self._activate_with_two_palms(session, open_hand)
         session.evaluate([two_fingers], now=0.1)
         session.evaluate([two_fingers], now=0.2)
         session.evaluate([two_fingers], now=0.3)
@@ -109,7 +117,7 @@ class SessionActivationTests(unittest.TestCase):
         unknown = hand_state(None, center=(0.20, 0.50), size=0.20)
         two_fingers = hand_state(GESTURE_TWO_FINGERS, center=(0.20, 0.50), size=0.20)
 
-        session.evaluate([open_hand], now=0.0)
+        self._activate_with_two_palms(session, open_hand)
         session.evaluate([two_fingers], now=0.1)
         session.evaluate([two_fingers], now=0.2)
         session.evaluate([unknown], now=0.3)
@@ -138,10 +146,7 @@ class SessionActivationTests(unittest.TestCase):
 
     def test_active_session_deactivates_when_active_hand_is_not_upright(self) -> None:
         session = GestureSession(app_config())
-        session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
-            now=0.0,
-        )
+        self._activate_with_two_palms(session)
 
         decision = session.evaluate(
             [
@@ -160,10 +165,7 @@ class SessionActivationTests(unittest.TestCase):
 
     def test_active_session_stays_active_during_brief_hand_dropout(self) -> None:
         session = GestureSession(app_config(active_hand_lost_grace_seconds=0.35))
-        session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
-            now=0.0,
-        )
+        self._activate_with_two_palms(session)
 
         decision = session.evaluate([], now=0.2)
 
@@ -174,10 +176,7 @@ class SessionActivationTests(unittest.TestCase):
 
     def test_active_session_deactivates_after_dropout_grace(self) -> None:
         session = GestureSession(app_config(active_hand_lost_grace_seconds=0.35))
-        session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
-            now=0.0,
-        )
+        self._activate_with_two_palms(session)
 
         decision = session.evaluate([], now=0.36)
 
@@ -191,10 +190,7 @@ class SessionActivationTests(unittest.TestCase):
                 fist_hold_home_seconds=0.50,
             )
         )
-        session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
-            now=0.0,
-        )
+        self._activate_with_two_palms(session)
         session.evaluate(
             [hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
             now=0.1,
@@ -210,10 +206,7 @@ class SessionActivationTests(unittest.TestCase):
 
     def test_fist_does_not_contribute_to_zoom(self) -> None:
         session = GestureSession(app_config(active_hand_lost_grace_seconds=0.80))
-        session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)],
-            now=0.0,
-        )
+        self._activate_with_two_palms(session)
 
         fist = session.evaluate(
             [hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)],
@@ -234,7 +227,9 @@ class SessionActivationTests(unittest.TestCase):
         active = hand_state(GESTURE_OPEN_PALM, center=(0.30, 0.50), size=0.20)
         extra = hand_state(GESTURE_TWO_FINGERS, center=(0.80, 0.50), size=0.20)
 
-        decision = session.evaluate([active, extra], now=0.0)
+        starter = hand_state(GESTURE_OPEN_PALM, center=(0.80, 0.50), size=0.20)
+
+        decision = session.evaluate([active, starter, extra], now=0.0)
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
@@ -245,9 +240,9 @@ class SessionActivationTests(unittest.TestCase):
     def test_zoom_uses_active_hand_center_and_size_near_frame_edge(self) -> None:
         session = GestureSession(app_config())
 
-        decision = session.evaluate(
-            [hand_state(GESTURE_OPEN_PALM, center=(0.63, 0.84), size=0.13)],
-            now=0.0,
+        decision = self._activate_with_two_palms(
+            session,
+            hand_state(GESTURE_OPEN_PALM, center=(0.63, 0.84), size=0.13),
         )
 
         self._assert_zoom_bounds(
@@ -261,13 +256,38 @@ class SessionActivationTests(unittest.TestCase):
         active = hand_state(GESTURE_OPEN_PALM, center=(0.30, 0.50), size=0.20)
         extra = hand_state(GESTURE_TWO_FINGERS, center=(0.80, 0.50), size=0.20)
 
-        session.evaluate([active], now=0.0)
+        self._activate_with_two_palms(session, active)
         decision = session.evaluate([extra, active], now=0.1)
 
         self.assertTrue(decision.activated)
         self.assertIsNone(decision.command_gesture)
         self._assert_zoom_bounds(decision.zoom_landmarks[0], (0.20, 0.40), (0.40, 0.60))
         self.assertIn("active_index=1", decision.debug_message)
+
+    def test_remaining_open_palm_continues_after_active_hand_drops_off(self) -> None:
+        session = GestureSession(app_config(active_hand_match_max_distance=0.10))
+        active = hand_state(GESTURE_OPEN_PALM, center=(0.25, 0.50), size=0.20)
+        remaining = hand_state(GESTURE_OPEN_PALM, center=(0.75, 0.50), size=0.20)
+
+        session.evaluate([active, remaining], now=0.0)
+        decision = session.evaluate([remaining], now=0.1)
+
+        self.assertTrue(decision.activated)
+        self.assertFalse(decision.active_temporarily_lost)
+        self.assertIn("active_index=0", decision.debug_message)
+
+    def test_remaining_open_palm_handoff_clears_pending_select(self) -> None:
+        session = GestureSession(app_config(active_hand_match_max_distance=0.10))
+        active = hand_state(GESTURE_OPEN_PALM, center=(0.25, 0.50), size=0.20)
+        remaining = hand_state(GESTURE_OPEN_PALM, center=(0.75, 0.50), size=0.20)
+        fist = hand_state(GESTURE_FIST, center=(0.25, 0.50), size=0.20)
+
+        session.evaluate([active, remaining], now=0.0)
+        session.evaluate([fist], now=0.1)
+        decision = session.evaluate([remaining], now=0.2)
+
+        self.assertTrue(decision.activated)
+        self.assertIsNone(decision.command_gesture)
 
     def _assert_zoom_bounds(
         self,
@@ -280,6 +300,20 @@ class SessionActivationTests(unittest.TestCase):
         self.assertAlmostEqual(landmarks[0].y, expected_min[1])
         self.assertAlmostEqual(landmarks[1].x, expected_max[0])
         self.assertAlmostEqual(landmarks[1].y, expected_max[1])
+
+    def _activate_with_two_palms(
+        self,
+        session: GestureSession,
+        active=None,
+        now: float = 0.0,
+    ):
+        active_hand = active or hand_state(
+            GESTURE_OPEN_PALM,
+            center=(0.20, 0.50),
+            size=0.20,
+        )
+        other_hand = hand_state(GESTURE_OPEN_PALM, center=(0.80, 0.50), size=0.20)
+        return session.evaluate([active_hand, other_hand], now=now)
 
 
 if __name__ == "__main__":

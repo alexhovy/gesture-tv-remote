@@ -19,8 +19,9 @@ from tests.helpers.config_helpers import app_config
 def evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> str | None:
     session = GestureSession(app_config())
     open_hand = hand_state(GESTURE_OPEN_PALM, center=(start_x, 0.50), size=hand_size)
+    other_hand = hand_state(GESTURE_OPEN_PALM, center=(0.90, 0.50), size=hand_size)
 
-    session.evaluate([open_hand], now=0.0)
+    session.evaluate([open_hand, other_hand], now=0.0)
     session.evaluate(
         [
             hand_state(
@@ -61,8 +62,9 @@ def evaluate_pointer_move(hand_size: float, start_x: float, end_x: float) -> str
 def evaluate_volume_move(hand_size: float, start_y: float, end_y: float) -> str | None:
     session = GestureSession(app_config())
     open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.70, start_y), size=hand_size)
+    other_hand = hand_state(GESTURE_OPEN_PALM, center=(0.30, start_y), size=hand_size)
 
-    session.evaluate([open_hand], now=0.0)
+    session.evaluate([open_hand, other_hand], now=0.0)
     session.evaluate(
         [hand_state(GESTURE_PINCH, center=(0.70, start_y), size=hand_size)],
         now=0.1,

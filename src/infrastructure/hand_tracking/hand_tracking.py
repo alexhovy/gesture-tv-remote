@@ -16,6 +16,7 @@ from src.application.ports.hand_tracker import DetectedHand
 from src.domain.constants import HANDEDNESS_RIGHT
 from src.domain.gestures.gesture_preprocessing import (
     RawDetectedHandState,
+    deduplicate_hands_by_landmarks,
     raw_hand_to_state,
 )
 from src.domain.session.session_types import HandState
@@ -60,7 +61,9 @@ class MediaPipeHandTracker:
     def _handle_result(self, results, output_image, timestamp_ms: int) -> None:
         del output_image, timestamp_ms
         hand_states = []
-        detected_hands = self._get_detected_hands(results)
+        detected_hands = self._deduplicate_detected_hands(
+            self._get_detected_hands(results)
+        )
         for detected_hand in detected_hands:
             hand_states.append(
                 raw_hand_to_state(
@@ -95,3 +98,12 @@ class MediaPipeHandTracker:
             )
 
         return detected_hands
+
+    @staticmethod
+    def _deduplicate_detected_hands(
+        detected_hands: list[DetectedHand],
+    ) -> list[DetectedHand]:
+        return deduplicate_hands_by_landmarks(
+            detected_hands,
+            lambda detected_hand: detected_hand.landmarks,
+        )

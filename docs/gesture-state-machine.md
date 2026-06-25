@@ -6,8 +6,9 @@ audio, or TV adapter libraries.
 ## Data Flow
 
 1. Infrastructure detects raw hands with landmarks and handedness.
-2. `domain/gestures/gesture_preprocessing.py` normalizes raw detected hands
-   into center, size, upright status, and original landmarks.
+2. `domain/gestures/gesture_preprocessing.py` collapses duplicate detections
+   of the same physical hand, then normalizes raw detected hands into center,
+   size, upright status, and original landmarks.
 3. `domain/gestures/gesture_classification.py` classifies static hand poses.
 4. `GestureSession` in `domain/session/` dispatches to inactive, lost, or
    active session evaluators.

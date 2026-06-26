@@ -22,6 +22,8 @@ class ConfigTests(unittest.TestCase):
             config.tv.android_cert_file, DEFAULT_CONFIG.tv.android_cert_file
         )
         self.assertEqual(config.model.file, DEFAULT_CONFIG.model.file)
+        self.assertEqual(config.tv.voice_input_target, "app")
+        self.assertEqual(config.tv.voice_app_trigger_command, "")
 
     def test_load_config_applies_env_overrides(self) -> None:
         config = load_config_from_env(

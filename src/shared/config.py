@@ -77,7 +77,7 @@ class TvConfig:
     webos_client_key_file: Path = Path("certs/webos/client_key.txt")
     roku_port: int = 8060
     voice_input_target: str = VoiceInputTarget.APP.value
-    voice_app_trigger_command: str = "DPAD_CENTER"
+    voice_app_trigger_command: str = ""
     voice_app_trigger_delay_seconds: float = 0.2
     voice_capture_seconds: float = 5.0
 

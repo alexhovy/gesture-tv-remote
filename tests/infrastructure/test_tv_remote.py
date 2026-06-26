@@ -199,9 +199,23 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
 
 
 class AndroidTvRemoteTests(unittest.IsolatedAsyncioTestCase):
-    async def test_app_voice_input_triggers_focused_control_then_starts_stream(
+    async def test_app_voice_input_waits_for_app_voice_session_without_search(
         self,
     ) -> None:
+        client = AndroidTvRemoteClient(
+            app_config(
+                voice_app_trigger_delay_seconds=0.0,
+            )
+        )
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        stream = await client.start_voice(VoiceInputMode.APP_VOICE_INPUT)
+
+        self.assertIs(stream, remote.app_voice_stream)
+        self.assertEqual(remote.operations, ["start_app_voice"])
+
+    async def test_app_voice_input_can_trigger_focused_control_first(self) -> None:
         client = AndroidTvRemoteClient(
             app_config(
                 voice_app_trigger_command=TV_COMMAND_DPAD_CENTER,
@@ -213,23 +227,8 @@ class AndroidTvRemoteTests(unittest.IsolatedAsyncioTestCase):
 
         stream = await client.start_voice(VoiceInputMode.APP_VOICE_INPUT)
 
-        self.assertIs(stream, remote.voice_stream)
-        self.assertEqual(remote.operations, ["send:DPAD_CENTER", "start_voice"])
-
-    async def test_app_voice_input_can_stream_without_trigger_command(self) -> None:
-        client = AndroidTvRemoteClient(
-            app_config(
-                voice_app_trigger_command="",
-                voice_app_trigger_delay_seconds=0.0,
-            )
-        )
-        remote = FakeAndroidRemote()
-        client._remote = remote
-
-        stream = await client.start_voice(VoiceInputMode.APP_VOICE_INPUT)
-
-        self.assertIs(stream, remote.voice_stream)
-        self.assertEqual(remote.operations, ["start_voice"])
+        self.assertIs(stream, remote.app_voice_stream)
+        self.assertEqual(remote.operations, ["send:DPAD_CENTER", "start_app_voice"])
 
     async def test_native_voice_search_sends_search_key_without_streaming(self) -> None:
         client = AndroidTvRemoteClient(app_config())
@@ -409,6 +408,8 @@ class FakeAndroidRemote:
     def __init__(self) -> None:
         self.operations = []
         self.voice_stream = object()
+        self.app_voice_stream = object()
+        self._remote_message_protocol = FakeAndroidProtocol(self)
 
     def send_key_command(self, command: str) -> None:
         self.operations.append(f"send:{command}")
@@ -416,6 +417,15 @@ class FakeAndroidRemote:
     async def start_voice(self):
         self.operations.append("start_voice")
         return self.voice_stream
+
+
+class FakeAndroidProtocol:
+    def __init__(self, remote: FakeAndroidRemote) -> None:
+        self._remote = remote
+
+    async def start_app_voice(self, timeout: float):
+        self._remote.operations.append("start_app_voice")
+        return self._remote.app_voice_stream
 
 
 def _install_fake_roku(fail_first_send: bool = False):

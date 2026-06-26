@@ -46,9 +46,10 @@ Set `GESTURE_TV_ADAPTER` to select the TV integration:
 Holding the active hand in a two-finger pose for about one second starts
 microphone capture for the configured voice target. `voice_input_target=app`
 streams microphone audio into a foreground app voice listener when the adapter
-supports it. Android TV supports this path by optionally sending
-`voice_app_trigger_command` first, waiting `voice_app_trigger_delay_seconds`,
-and then opening the Android TV Remote Protocol voice stream.
+supports it. Android TV supports this path by waiting for the app-requested
+Android TV Remote Protocol voice session. Set `voice_app_trigger_command` only
+for apps where the focused on-screen mic control must be pressed first; the
+default is empty so app voice does not send SELECT.
 
 Use `voice_input_target=remote_search` for Android TV remote microphone search,
 or `voice_input_target=native_search` to ask adapters such as Roku and Samsung
@@ -146,7 +147,7 @@ will not override that environment value.
 | `GESTURE_TV_WEBOS_CLIENT_KEY_FILE` | `certs/webos/client_key.txt` |
 | `GESTURE_TV_ROKU_PORT` | `8060` |
 | `GESTURE_TV_VOICE_INPUT_TARGET` | `app` |
-| `GESTURE_TV_VOICE_APP_TRIGGER_COMMAND` | `DPAD_CENTER` |
+| `GESTURE_TV_VOICE_APP_TRIGGER_COMMAND` | empty |
 | `GESTURE_TV_VOICE_APP_TRIGGER_DELAY_SECONDS` | `0.2` |
 | `GESTURE_TV_VOICE_CAPTURE_SECONDS` | `5.0` |
 | `GESTURE_TV_MODEL_FILE` | `models/hand_landmarker.task` |

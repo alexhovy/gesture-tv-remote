@@ -50,7 +50,8 @@ Voice input is split by protocol capability:
   Roku uses ECP `Search`; Samsung uses `KEY_VOICE`; neither path accepts this
   app's microphone audio through the current adapter.
 - app voice input: this app sends microphone PCM audio to a foreground app's
-  active voice listener. Android TV supports this by optionally triggering the
-  focused app control and then starting an Android TV Remote Protocol voice
-  stream. Roku, Samsung, and webOS do not expose public raw microphone upload
-  paths for arbitrary foreground apps through the current adapters.
+  active voice listener. Android TV supports this by attaching to an
+  app-requested Android TV Remote Protocol voice session, with an optional
+  configured trigger for focused mic controls. Roku, Samsung, and webOS do not
+  expose public raw microphone upload paths for arbitrary foreground apps
+  through the current adapters.

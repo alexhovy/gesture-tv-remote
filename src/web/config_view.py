@@ -116,10 +116,10 @@ FIELD_HELP: dict[str, str] = {
         "Voice target for the MIC gesture: app, remote_search, or native_search."
     ),
     "voice_app_trigger_command": (
-        "Common command sent before Android app voice streaming. Leave empty to skip."
+        "Optional command for pressing a focused Android app mic control."
     ),
     "voice_app_trigger_delay_seconds": (
-        "Delay after the app voice trigger before microphone streaming starts."
+        "Delay after the optional app voice trigger before waiting for voice input."
     ),
     "voice_capture_seconds": "Microphone capture duration in seconds.",
     "webcam_index": "Usually 0 for the default webcam.",

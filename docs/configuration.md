@@ -38,15 +38,16 @@ Set `GESTURE_TV_ADAPTER` to select the TV integration:
 
 | Value | Library | Notes |
 | --- | --- | --- |
-| `androidtv` | `androidtvremote2` | Supports pairing, TV commands, and voice capture. |
+| `androidtv` | `androidtvremote2` | Supports pairing, TV commands, and remote microphone streaming. |
 | `samsung` | `samsungtvws` | Supports TV commands. Accept the pairing prompt on the TV when required. |
 | `webos` | `aiowebostv` | Supports TV commands. Accept the pairing prompt on the TV when required. |
 | `roku` | `rokuecp` | Supports ECP TV commands. |
 
-Voice capture is available only when the selected adapter returns a voice
-stream. Holding the active hand in a two-finger pose for about one second starts
-microphone capture. Android TV supports this path; Samsung, webOS, and Roku
-currently report voice capture as unsupported.
+Remote microphone streaming is available only when the selected adapter returns
+a voice stream. Holding the active hand in a two-finger pose for about one
+second starts microphone capture. Android TV supports this path. Roku and
+Samsung can only attempt native voice UI launch through remote keys, and webOS
+has no public voice input path in the current adapter.
 
 ## Model File
 

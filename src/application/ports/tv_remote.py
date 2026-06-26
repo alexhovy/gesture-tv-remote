@@ -9,6 +9,21 @@ class CapabilityStatus(StrEnum):
     UNSUPPORTED = "unsupported"
 
 
+class VoiceInputMode(StrEnum):
+    REMOTE_MIC_STREAM = "remote_mic_stream"
+    NATIVE_VOICE_SEARCH = "native_voice_search"
+    APP_VOICE_INPUT = "app_voice_input"
+
+
+@dataclass(frozen=True)
+class VoiceInputCapabilities:
+    remote_mic_stream: CapabilityStatus
+    native_voice_search: CapabilityStatus
+    app_voice_input: CapabilityStatus
+    app_text_input: CapabilityStatus
+    notes: tuple[str, ...] = ()
+
+
 @dataclass(frozen=True)
 class TvAdapterCapabilities:
     power: CapabilityStatus
@@ -19,7 +34,7 @@ class TvAdapterCapabilities:
     source_selection: CapabilityStatus
     wake_on_lan: CapabilityStatus
     pairing: CapabilityStatus
-    voice_capture: CapabilityStatus
+    voice_input: VoiceInputCapabilities
     connection_type: str
     known_limitations: tuple[str, ...] = ()
 
@@ -37,6 +52,6 @@ class TVRemotePort(Protocol):
 
     async def send_command(self, command: str) -> None: ...
 
-    async def start_voice(self) -> VoiceStreamPort | None: ...
+    async def start_voice(self, mode: VoiceInputMode) -> VoiceStreamPort | None: ...
 
     async def disconnect(self) -> None: ...

@@ -7,7 +7,7 @@ import unittest
 from pathlib import Path
 from unittest.mock import patch
 
-from src.application.ports.tv_remote import CapabilityStatus
+from src.application.ports.tv_remote import CapabilityStatus, VoiceInputMode
 from src.domain.constants import (
     TV_COMMAND_BACK,
     TV_COMMAND_DPAD_CENTER,
@@ -81,9 +81,21 @@ class TvRemoteTests(unittest.TestCase):
         ).capabilities()
 
         self.assertEqual(
-            android_capabilities.voice_capture, CapabilityStatus.IMPLEMENTED
+            android_capabilities.voice_input.remote_mic_stream,
+            CapabilityStatus.IMPLEMENTED,
         )
-        self.assertEqual(roku_capabilities.voice_capture, CapabilityStatus.UNSUPPORTED)
+        self.assertEqual(
+            android_capabilities.voice_input.native_voice_search,
+            CapabilityStatus.IMPLEMENTED,
+        )
+        self.assertEqual(
+            roku_capabilities.voice_input.remote_mic_stream,
+            CapabilityStatus.UNSUPPORTED,
+        )
+        self.assertEqual(
+            roku_capabilities.voice_input.native_voice_search,
+            CapabilityStatus.IMPLEMENTED,
+        )
         self.assertEqual(roku_capabilities.power, CapabilityStatus.NOT_IMPLEMENTED)
         self.assertEqual(roku_capabilities.pairing, CapabilityStatus.UNSUPPORTED)
 
@@ -238,6 +250,26 @@ class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
             ["init", "open", "send:KEY_RIGHT", "close"],
         )
 
+    async def test_native_voice_search_sends_voice_key(self) -> None:
+        fake_remote = _install_fake_samsung()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = SamsungTvRemoteClient(
+                app_config(
+                    tv_host="tv.local",
+                    samsung_token_file=Path(temp_dir) / "token.txt",
+                )
+            )
+
+            self.assertTrue(await client.connect())
+            await client.start_voice(VoiceInputMode.NATIVE_VOICE_SEARCH)
+            await client.disconnect()
+
+        instance = fake_remote.instances[0]
+        self.assertEqual(
+            [name for name, _ in instance.operations],
+            ["init", "open", "send:KEY_VOICE", "close"],
+        )
+
 
 class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -281,6 +313,20 @@ class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(
             [name for name, _ in fake_remote.instances[1].operations],
             ["init", "keypress:Down", "close"],
+        )
+
+    async def test_native_voice_search_sends_search_key(self) -> None:
+        fake_remote = _install_fake_roku()
+        client = RokuRemoteClient(app_config(tv_host="roku.local"))
+
+        self.assertTrue(await client.connect())
+        await client.start_voice(VoiceInputMode.NATIVE_VOICE_SEARCH)
+        await client.disconnect()
+
+        instance = fake_remote.instances[0]
+        self.assertEqual(
+            [name for name, _ in instance.operations],
+            ["init", "keypress:Search", "close"],
         )
 
 

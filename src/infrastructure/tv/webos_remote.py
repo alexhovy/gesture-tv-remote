@@ -1,4 +1,9 @@
-from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
+from src.application.ports.tv_remote import (
+    CapabilityStatus,
+    TvAdapterCapabilities,
+    VoiceInputCapabilities,
+    VoiceInputMode,
+)
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_WEBOS
@@ -24,11 +29,22 @@ class WebOsRemoteClient:
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
             wake_on_lan=CapabilityStatus.NOT_IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
-            voice_capture=CapabilityStatus.UNSUPPORTED,
+            voice_input=VoiceInputCapabilities(
+                remote_mic_stream=CapabilityStatus.UNSUPPORTED,
+                native_voice_search=CapabilityStatus.UNSUPPORTED,
+                app_voice_input=CapabilityStatus.UNSUPPORTED,
+                app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
+                notes=(
+                    "webOS SSAP/input-control does not expose raw microphone "
+                    "streaming.",
+                    "Magic Remote and ThinQ voice paths are not exposed through "
+                    "the current public adapter.",
+                ),
+            ),
             connection_type="aiowebostv websocket",
             known_limitations=(
                 "Only input-control navigation and volume commands are implemented.",
-                "Voice capture, text input, source selection, and Wake-on-LAN "
+                "Voice input, text input, source selection, and Wake-on-LAN "
                 "are not implemented.",
             ),
         )
@@ -78,8 +94,8 @@ class WebOsRemoteClient:
         except Exception as error:
             self._logger.error(f"webOS TV command {adapter_command} failed: {error}")
 
-    async def start_voice(self):
-        self._logger.info("Voice capture is not supported for webOS TV.")
+    async def start_voice(self, mode: VoiceInputMode):
+        self._logger.info(f"webOS voice input mode is not supported: {mode.value}")
         return None
 
     async def disconnect(self) -> None:

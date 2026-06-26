@@ -1,6 +1,11 @@
 import asyncio
 
-from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
+from src.application.ports.tv_remote import (
+    CapabilityStatus,
+    TvAdapterCapabilities,
+    VoiceInputCapabilities,
+    VoiceInputMode,
+)
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV
@@ -24,10 +29,21 @@ class AndroidTvRemoteClient:
             source_selection=CapabilityStatus.UNSUPPORTED,
             wake_on_lan=CapabilityStatus.UNSUPPORTED,
             pairing=CapabilityStatus.IMPLEMENTED,
-            voice_capture=CapabilityStatus.IMPLEMENTED,
+            voice_input=VoiceInputCapabilities(
+                remote_mic_stream=CapabilityStatus.IMPLEMENTED,
+                native_voice_search=CapabilityStatus.IMPLEMENTED,
+                app_voice_input=CapabilityStatus.NOT_IMPLEMENTED,
+                app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
+                notes=(
+                    "Remote microphone streaming uses Android TV Remote Protocol "
+                    "voice sessions.",
+                    "Foreground app voice requests need lower-level protocol "
+                    "support not exposed by the current adapter.",
+                ),
+            ),
             connection_type="androidtvremote2 TLS remote protocol",
             known_limitations=(
-                "Only key commands and voice capture are implemented.",
+                "Only key commands and remote microphone streaming are implemented.",
                 "Power, text input, source selection, and media controls are "
                 "not mapped.",
             ),
@@ -100,10 +116,22 @@ class AndroidTvRemoteClient:
         except ValueError as error:
             self._logger.error(f"Invalid Android TV command {adapter_command}: {error}")
 
-    async def start_voice(self):
+    async def start_voice(self, mode: VoiceInputMode):
         if self._remote is None:
             return None
-        return await self._remote.start_voice()
+        if mode == VoiceInputMode.REMOTE_MIC_STREAM:
+            return await self._remote.start_voice()
+        if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
+            await call_remote_method(
+                self._remote.send_key_command,
+                "SEARCH",
+                offload_sync=False,
+            )
+            return None
+        self._logger.info(
+            f"Android TV voice input mode is not implemented: {mode.value}"
+        )
+        return None
 
     async def disconnect(self) -> None:
         if self._remote is not None:

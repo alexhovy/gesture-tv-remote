@@ -11,12 +11,12 @@ Capability status is explicit:
 - `unsupported`: not supported by the current protocol path or intentionally not
   available through this adapter.
 
-| Adapter | Connection | Power | Volume | Navigation | Media Controls | Text Input | Source Selection | Wake-on-LAN | Pairing | Voice Capture |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` |
-| Samsung TV | `samsungtvws` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` |
-| LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` |
-| Roku | Roku ECP HTTP | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `unsupported` |
+| Adapter | Connection | Power | Volume | Navigation | Media Controls | Text Input | Source Selection | Wake-on-LAN | Pairing | Remote Mic Stream | Native Voice UI | App Voice Input |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` | `implemented` | `not_implemented` |
+| Samsung TV | `samsungtvws` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
+| LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
+| Roku | Roku ECP HTTP | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
 
 ## Common Commands
 
@@ -42,7 +42,12 @@ the current gesture command surface. They are tracked as `not_implemented`
 when an adapter extension could reasonably add them without changing the
 gesture pipeline.
 
-Voice capture is not part of the TV-command table. A sustained two-finger
-gesture starts microphone capture when the selected adapter provides a voice
-stream. Android TV supports this path; Samsung, webOS, and Roku currently
-report voice capture as unsupported.
+Voice input is split by protocol capability:
+
+- remote mic stream: this app sends microphone PCM audio to the TV. Android TV
+  supports this through Android TV Remote Protocol voice payloads.
+- native voice UI: this app only asks the TV to open its own voice listener.
+  Roku uses ECP `Search`; Samsung uses `KEY_VOICE`; neither path accepts this
+  app's microphone audio through the current adapter.
+- app voice input: foreground app-requested microphone sessions are tracked
+  separately and are not implemented by the current adapters.

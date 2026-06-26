@@ -1,4 +1,9 @@
-from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
+from src.application.ports.tv_remote import (
+    CapabilityStatus,
+    TvAdapterCapabilities,
+    VoiceInputCapabilities,
+    VoiceInputMode,
+)
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_SAMSUNG
@@ -23,11 +28,22 @@ class SamsungTvRemoteClient:
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
             wake_on_lan=CapabilityStatus.NOT_IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
-            voice_capture=CapabilityStatus.UNSUPPORTED,
+            voice_input=VoiceInputCapabilities(
+                remote_mic_stream=CapabilityStatus.UNSUPPORTED,
+                native_voice_search=CapabilityStatus.IMPLEMENTED,
+                app_voice_input=CapabilityStatus.UNSUPPORTED,
+                app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
+                notes=(
+                    "Samsung websocket control does not expose raw microphone "
+                    "audio streaming.",
+                    "Native voice UI is attempted with the KEY_VOICE remote key; "
+                    "model support may vary.",
+                ),
+            ),
             connection_type="samsungtvws websocket",
             known_limitations=(
-                "Only key commands are implemented.",
-                "Voice capture, text input, source selection, and Wake-on-LAN "
+                "Only key commands and native voice UI key injection are implemented.",
+                "Remote microphone streaming, text input, source selection, and Wake-on-LAN "
                 "are not implemented.",
             ),
         )
@@ -65,8 +81,19 @@ class SamsungTvRemoteClient:
                     f"Samsung TV command {adapter_command} failed: {retry_error}"
                 )
 
-    async def start_voice(self):
-        self._logger.info("Voice capture is not supported for Samsung TV.")
+    async def start_voice(self, mode: VoiceInputMode):
+        if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
+            if self._remote is None:
+                self._logger.info("TV not connected. Skipping Samsung voice input.")
+                return None
+            try:
+                await self._executor.call(self._send_key_sync, "KEY_VOICE")
+            except Exception as error:
+                self._logger.error(f"Samsung native voice input failed: {error}")
+            return None
+        self._logger.info(
+            f"Samsung voice input mode is not supported: {mode.value}"
+        )
         return None
 
     async def disconnect(self) -> None:

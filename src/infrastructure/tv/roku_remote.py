@@ -1,4 +1,9 @@
-from src.application.ports.tv_remote import CapabilityStatus, TvAdapterCapabilities
+from src.application.ports.tv_remote import (
+    CapabilityStatus,
+    TvAdapterCapabilities,
+    VoiceInputCapabilities,
+    VoiceInputMode,
+)
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU
@@ -23,11 +28,21 @@ class RokuRemoteClient:
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
             wake_on_lan=CapabilityStatus.UNSUPPORTED,
             pairing=CapabilityStatus.UNSUPPORTED,
-            voice_capture=CapabilityStatus.UNSUPPORTED,
+            voice_input=VoiceInputCapabilities(
+                remote_mic_stream=CapabilityStatus.UNSUPPORTED,
+                native_voice_search=CapabilityStatus.IMPLEMENTED,
+                app_voice_input=CapabilityStatus.UNSUPPORTED,
+                app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
+                notes=(
+                    "Roku ECP exposes a Search key that opens the Roku voice "
+                    "heads-up display.",
+                    "ECP does not expose raw microphone audio upload.",
+                ),
+            ),
             connection_type="Roku ECP HTTP",
             known_limitations=(
-                "Only ECP keypress commands are implemented.",
-                "Voice capture, pairing, text input, source selection, and "
+                "Only ECP keypress commands and native voice UI launch are implemented.",
+                "Remote microphone streaming, pairing, text input, source selection, and "
                 "Wake-on-LAN are not implemented.",
             ),
         )
@@ -65,8 +80,17 @@ class RokuRemoteClient:
                     f"Roku command {adapter_command} failed: {retry_error}"
                 )
 
-    async def start_voice(self):
-        self._logger.info("Voice capture is not supported for Roku.")
+    async def start_voice(self, mode: VoiceInputMode):
+        if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
+            if self._remote is None:
+                self._logger.info("TV not connected. Skipping Roku voice input.")
+                return None
+            try:
+                await self._executor.call(self._send_key_sync, "Search")
+            except Exception as error:
+                self._logger.error(f"Roku native voice input failed: {error}")
+            return None
+        self._logger.info(f"Roku voice input mode is not supported: {mode.value}")
         return None
 
     async def disconnect(self) -> None:

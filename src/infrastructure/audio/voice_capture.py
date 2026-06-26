@@ -2,7 +2,11 @@ import asyncio
 import time
 
 from src.application.ports.logger import LoggerPort
-from src.application.ports.tv_remote import TVRemotePort
+from src.application.ports.tv_remote import (
+    CapabilityStatus,
+    TVRemotePort,
+    VoiceInputMode,
+)
 from src.infrastructure.tv.async_call import call_remote_method
 from src.shared.config import AppConfig
 
@@ -26,8 +30,16 @@ class MicrophoneVoiceCapture:
     async def capture(self) -> None:
         voice_stream = None
         try:
-            voice_stream = await self._remote.start_voice()
+            mode = _select_voice_input_mode(self._remote)
+            if mode is None:
+                self._logger.info("TV adapter does not support voice input.")
+                return
+
+            voice_stream = await self._remote.start_voice(mode)
             if voice_stream is None:
+                if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
+                    self._logger.info("TV native voice input requested.")
+                    return
                 self._logger.info(
                     "TV did not provide a voice stream. Skipping microphone capture."
                 )
@@ -110,6 +122,15 @@ def _put_latest_chunk(chunks: asyncio.Queue[bytes], chunk: bytes) -> None:
         except asyncio.QueueEmpty:
             pass
     chunks.put_nowait(chunk)
+
+
+def _select_voice_input_mode(remote: TVRemotePort) -> VoiceInputMode | None:
+    voice = remote.capabilities().voice_input
+    if voice.remote_mic_stream == CapabilityStatus.IMPLEMENTED:
+        return VoiceInputMode.REMOTE_MIC_STREAM
+    if voice.native_voice_search == CapabilityStatus.IMPLEMENTED:
+        return VoiceInputMode.NATIVE_VOICE_SEARCH
+    return None
 
 
 def _pcm16_chunk_stats(chunk: bytes) -> tuple[int, int]:

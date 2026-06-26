@@ -3,6 +3,12 @@ import sys
 import types
 import unittest
 
+from src.application.ports.tv_remote import (
+    CapabilityStatus,
+    TvAdapterCapabilities,
+    VoiceInputCapabilities,
+    VoiceInputMode,
+)
 from src.infrastructure.audio.voice_capture import MicrophoneVoiceCapture
 from tests.helpers.config_helpers import app_config
 
@@ -17,22 +23,31 @@ class UnsupportedVoiceRemote:
     async def send_command(self, command: str) -> None:
         pass
 
-    async def start_voice(self):
+    async def start_voice(self, mode: VoiceInputMode):
+        self.voice_mode = mode
         self.started_voice = True
         return None
 
     async def disconnect(self) -> None:
         pass
 
+    def capabilities(self) -> TvAdapterCapabilities:
+        return _capabilities(
+            remote_mic_stream=CapabilityStatus.UNSUPPORTED,
+            native_voice_search=CapabilityStatus.UNSUPPORTED,
+        )
+
 
 class VoiceCaptureTests(unittest.TestCase):
-    def test_unsupported_voice_returns_without_microphone_dependency(self) -> None:
+    def test_unsupported_voice_returns_without_starting_microphone(self) -> None:
         remote = UnsupportedVoiceRemote()
-        service = MicrophoneVoiceCapture(remote, app_config(), FakeLogger())
+        logger = FakeLogger()
+        service = MicrophoneVoiceCapture(remote, app_config(), logger)
 
         asyncio.run(service.capture())
 
-        self.assertTrue(remote.started_voice)
+        self.assertFalse(remote.started_voice)
+        self.assertIn("TV adapter does not support voice input.", logger.messages)
 
     def test_voice_capture_logs_sent_audio_chunks(self) -> None:
         remote = SupportedVoiceRemote()
@@ -56,12 +71,25 @@ class VoiceCaptureTests(unittest.TestCase):
                 sys.modules["sounddevice"] = previous
 
         self.assertEqual(remote.voice_stream.chunks, [b"1" * 16384])
+        self.assertEqual(remote.voice_mode, VoiceInputMode.REMOTE_MIC_STREAM)
         self.assertTrue(remote.voice_stream.ended)
         self.assertIn(
             "Microphone: finished. sent_chunks=1 sent_bytes=16384 "
             "max_abs_sample=12593 nonzero_samples=8192",
             logger.messages,
         )
+
+    def test_voice_capture_requests_native_voice_when_stream_is_unavailable(
+        self,
+    ) -> None:
+        remote = NativeVoiceRemote()
+        logger = FakeLogger()
+        service = MicrophoneVoiceCapture(remote, app_config(), logger)
+
+        asyncio.run(service.capture())
+
+        self.assertEqual(remote.voice_mode, VoiceInputMode.NATIVE_VOICE_SEARCH)
+        self.assertIn("TV native voice input requested.", logger.messages)
 
 class FakeLogger:
     def __init__(self) -> None:
@@ -81,8 +109,30 @@ class SupportedVoiceRemote:
     def __init__(self) -> None:
         self.voice_stream = FakeVoiceStream()
 
-    async def start_voice(self):
+    async def start_voice(self, mode: VoiceInputMode):
+        self.voice_mode = mode
         return self.voice_stream
+
+    def capabilities(self) -> TvAdapterCapabilities:
+        return _capabilities(
+            remote_mic_stream=CapabilityStatus.IMPLEMENTED,
+            native_voice_search=CapabilityStatus.IMPLEMENTED,
+        )
+
+
+class NativeVoiceRemote:
+    def __init__(self) -> None:
+        self.voice_mode = None
+
+    async def start_voice(self, mode: VoiceInputMode):
+        self.voice_mode = mode
+        return None
+
+    def capabilities(self) -> TvAdapterCapabilities:
+        return _capabilities(
+            remote_mic_stream=CapabilityStatus.UNSUPPORTED,
+            native_voice_search=CapabilityStatus.IMPLEMENTED,
+        )
 
 
 class FakeVoiceStream:
@@ -108,6 +158,30 @@ class FakeRawInputStream:
 
     def __exit__(self, exc_type, exc, tb) -> None:
         pass
+
+
+def _capabilities(
+    *,
+    remote_mic_stream: CapabilityStatus,
+    native_voice_search: CapabilityStatus,
+) -> TvAdapterCapabilities:
+    return TvAdapterCapabilities(
+        power=CapabilityStatus.UNSUPPORTED,
+        volume=CapabilityStatus.UNSUPPORTED,
+        directional_navigation=CapabilityStatus.UNSUPPORTED,
+        media_controls=CapabilityStatus.UNSUPPORTED,
+        text_input=CapabilityStatus.UNSUPPORTED,
+        source_selection=CapabilityStatus.UNSUPPORTED,
+        wake_on_lan=CapabilityStatus.UNSUPPORTED,
+        pairing=CapabilityStatus.UNSUPPORTED,
+        voice_input=VoiceInputCapabilities(
+            remote_mic_stream=remote_mic_stream,
+            native_voice_search=native_voice_search,
+            app_voice_input=CapabilityStatus.UNSUPPORTED,
+            app_text_input=CapabilityStatus.UNSUPPORTED,
+        ),
+        connection_type="fake",
+    )
 
 
 if __name__ == "__main__":

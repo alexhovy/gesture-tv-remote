@@ -11,6 +11,7 @@ remaining hand becomes the active controller. An open palm is neutral.
 | Open palm closes to fist, then opens again | SELECT / DPAD_CENTER |
 | Fist held past the hold threshold | HOME |
 | Two fingers held briefly, then open palm | BACK |
+| Two fingers held for about one second | Microphone / voice search |
 | Pinch moves up | VOLUME_UP |
 | Pinch moves down | VOLUME_DOWN |
 | Pointing hand moves left | DPAD_LEFT |
@@ -51,6 +52,12 @@ frames and then returns to an open palm. A single unclassified active-hand frame
 is tolerated while two-finger BACK is pending. A single two-finger misread does
 not emit BACK, and point, pinch, fist, repeated unknown, or missing-hand frames
 reset the pending BACK gesture.
+
+Holding two fingers for about one second starts microphone voice capture
+instead of BACK. Releasing to an open palm after microphone capture has been
+triggered does not emit BACK. Voice capture requires a TV adapter that provides
+a voice stream; Android TV supports this path, while Samsung, webOS, and Roku
+currently log that voice capture is unsupported.
 
 Point navigation tracks the active hand's index fingertip so left/right intent
 does not depend on moving the whole hand. The first point frame captures a fixed

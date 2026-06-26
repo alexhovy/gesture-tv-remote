@@ -6,6 +6,8 @@ from src.application.ports.tv_remote import TVRemotePort
 from src.infrastructure.tv.async_call import call_remote_method
 from src.shared.config import AppConfig
 
+VOICE_SAMPLE_RATE = 8000
+VOICE_FRAMES_PER_BUFFER = 8192
 
 class MicrophoneVoiceCapture:
     def __init__(
@@ -26,7 +28,9 @@ class MicrophoneVoiceCapture:
         try:
             voice_stream = await self._remote.start_voice()
             if voice_stream is None:
-                self._logger.info("TV not connected. Skipping microphone capture.")
+                self._logger.info(
+                    "TV did not provide a voice stream. Skipping microphone capture."
+                )
                 return
 
             try:
@@ -51,11 +55,15 @@ class MicrophoneVoiceCapture:
                 loop.call_soon_threadsafe(_put_latest_chunk, chunks, bytes(indata))
 
             self._logger.info("Microphone: listening...")
+            sent_chunks = 0
+            sent_bytes = 0
+            max_abs_sample = 0
+            nonzero_samples = 0
             with sd.RawInputStream(
-                samplerate=8000,
+                samplerate=VOICE_SAMPLE_RATE,
                 channels=1,
                 dtype="int16",
-                blocksize=4096,
+                blocksize=VOICE_FRAMES_PER_BUFFER,
                 callback=audio_callback,
             ):
                 deadline = time.monotonic() + self._config.tv.voice_capture_seconds
@@ -65,8 +73,25 @@ class MicrophoneVoiceCapture:
                         chunk = await asyncio.wait_for(chunks.get(), timeout=timeout)
                     except TimeoutError:
                         break
-                    await call_remote_method(voice_stream.send_chunk, chunk)
-            self._logger.info("Microphone: finished.")
+                    chunk_max_abs, chunk_nonzero_samples = _pcm16_chunk_stats(chunk)
+                    max_abs_sample = max(max_abs_sample, chunk_max_abs)
+                    nonzero_samples += chunk_nonzero_samples
+                    sent = await call_remote_method(
+                        voice_stream.send_chunk,
+                        chunk,
+                        offload_sync=False,
+                    )
+                    if sent is False:
+                        self._logger.info("TV voice stream closed while sending audio.")
+                        break
+                    sent_chunks += 1
+                    sent_bytes += len(chunk)
+            self._logger.info(
+                "Microphone: finished. "
+                f"sent_chunks={sent_chunks} sent_bytes={sent_bytes} "
+                f"max_abs_sample={max_abs_sample} "
+                f"nonzero_samples={nonzero_samples}"
+            )
         except TimeoutError:
             self._logger.error("TV did not start a voice session.")
         except (OSError, RuntimeError) as error:
@@ -75,7 +100,7 @@ class MicrophoneVoiceCapture:
             self._logger.error(f"TV voice session failed: {error}")
         finally:
             if voice_stream is not None:
-                await call_remote_method(voice_stream.end)
+                await call_remote_method(voice_stream.end, offload_sync=False)
 
 
 def _put_latest_chunk(chunks: asyncio.Queue[bytes], chunk: bytes) -> None:
@@ -85,3 +110,14 @@ def _put_latest_chunk(chunks: asyncio.Queue[bytes], chunk: bytes) -> None:
         except asyncio.QueueEmpty:
             pass
     chunks.put_nowait(chunk)
+
+
+def _pcm16_chunk_stats(chunk: bytes) -> tuple[int, int]:
+    max_abs_sample = 0
+    nonzero_samples = 0
+    for index in range(0, len(chunk) - 1, 2):
+        sample = int.from_bytes(chunk[index : index + 2], "little", signed=True)
+        if sample != 0:
+            nonzero_samples += 1
+            max_abs_sample = max(max_abs_sample, abs(sample))
+    return max_abs_sample, nonzero_samples

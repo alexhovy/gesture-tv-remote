@@ -82,7 +82,10 @@ class ActiveSessionEvaluator:
             command_gesture = motion_result.command_gesture
 
         if command_gesture is None:
-            two_finger_back_gesture = state.two_finger_back.evaluate(active_gesture)
+            two_finger_back_gesture = state.two_finger_back.evaluate(
+                active_gesture,
+                now,
+            )
             command_gesture = two_finger_back_gesture
 
         state.active.previous_gesture = active_gesture

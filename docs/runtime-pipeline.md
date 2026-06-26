@@ -57,8 +57,9 @@ Samsung and Roku clients use one thread-bound executor each because their
 libraries are synchronous. That keeps each TV connection opened, used, retried,
 and closed on one worker thread.
 
-Voice capture remains adapter-scoped infrastructure, but no default gesture
-currently starts it. Its audio queue is bounded and drops stale chunks.
+Voice capture remains adapter-scoped infrastructure. A sustained two-finger
+gesture starts microphone capture when the selected TV adapter returns a voice
+stream. Its audio queue is bounded and drops stale chunks.
 
 Shutdown is owned by `GestureRemoteService._cleanup`. It cancels voice capture,
 stops frame capture, closes MediaPipe, releases the camera, closes OpenCV

@@ -9,6 +9,7 @@ from src.domain.constants import (
     GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
+    GESTURE_MIC,
     GESTURE_OPEN_PALM,
     GESTURE_OPEN_TO_FIST,
     GESTURE_POINT,
@@ -236,46 +237,65 @@ class TwoFingerBackDecisionTests(unittest.TestCase):
     def test_three_two_finger_frames_then_open_emits_back(self) -> None:
         decision = TwoFingerBackDecision()
 
-        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS))
-        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS))
-        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS))
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=0.0))
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=0.1))
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=0.2))
 
-        self.assertEqual(decision.evaluate(GESTURE_OPEN_PALM), GESTURE_BACK)
+        self.assertEqual(
+            decision.evaluate(GESTURE_OPEN_PALM, now=0.3),
+            GESTURE_BACK,
+        )
 
     def test_single_two_finger_frame_does_not_emit_back(self) -> None:
         decision = TwoFingerBackDecision()
 
-        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS))
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=0.0))
 
-        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM))
+        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM, now=0.1))
 
     def test_other_gesture_resets_armed_back(self) -> None:
         decision = TwoFingerBackDecision()
-        decision.evaluate(GESTURE_TWO_FINGERS)
-        decision.evaluate(GESTURE_TWO_FINGERS)
-        decision.evaluate(GESTURE_TWO_FINGERS)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.0)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.1)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.2)
 
-        self.assertIsNone(decision.evaluate(GESTURE_POINT))
-        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM))
+        self.assertIsNone(decision.evaluate(GESTURE_POINT, now=0.3))
+        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM, now=0.4))
 
     def test_single_unknown_frame_does_not_reset_two_finger_back(self) -> None:
         decision = TwoFingerBackDecision()
-        decision.evaluate(GESTURE_TWO_FINGERS)
-        decision.evaluate(GESTURE_TWO_FINGERS)
-        self.assertIsNone(decision.evaluate(None))
-        decision.evaluate(GESTURE_TWO_FINGERS)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.0)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.1)
+        self.assertIsNone(decision.evaluate(None, now=0.2))
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.3)
 
-        self.assertEqual(decision.evaluate(GESTURE_OPEN_PALM), GESTURE_BACK)
+        self.assertEqual(
+            decision.evaluate(GESTURE_OPEN_PALM, now=0.4),
+            GESTURE_BACK,
+        )
 
     def test_second_unknown_frame_resets_two_finger_back(self) -> None:
         decision = TwoFingerBackDecision()
-        decision.evaluate(GESTURE_TWO_FINGERS)
-        decision.evaluate(GESTURE_TWO_FINGERS)
-        decision.evaluate(GESTURE_TWO_FINGERS)
-        self.assertIsNone(decision.evaluate(None))
-        self.assertIsNone(decision.evaluate(None))
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.0)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.1)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.2)
+        self.assertIsNone(decision.evaluate(None, now=0.3))
+        self.assertIsNone(decision.evaluate(None, now=0.4))
 
-        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM))
+        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM, now=0.5))
+
+    def test_sustained_two_fingers_emits_mic_once(self) -> None:
+        decision = TwoFingerBackDecision()
+
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=0.0))
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=0.1))
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=0.2))
+        self.assertEqual(
+            decision.evaluate(GESTURE_TWO_FINGERS, now=1.0),
+            GESTURE_MIC,
+        )
+        self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=1.1))
+        self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM, now=1.2))
 
 
 if __name__ == "__main__":

@@ -4,6 +4,7 @@ from src.domain.constants import (
     GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
+    GESTURE_MIC,
     GESTURE_OPEN_PALM,
     GESTURE_OPEN_TO_FIST,
     GESTURE_TWO_FINGERS,
@@ -88,22 +89,37 @@ class CommandDecision:
 @dataclass
 class TwoFingerBackDecision:
     required_frames: int = 3
+    mic_hold_seconds: float = 1.0
     unknown_grace_frames: int = 1
     two_finger_frames: int = 0
     unknown_frames: int = 0
+    started_at: float | None = None
     armed: bool = False
+    mic_emitted: bool = False
 
     def reset(self) -> None:
         self.two_finger_frames = 0
         self.unknown_frames = 0
+        self.started_at = None
         self.armed = False
+        self.mic_emitted = False
 
-    def evaluate(self, gesture: str | None) -> str | None:
+    def evaluate(self, gesture: str | None, now: float) -> str | None:
         if gesture == GESTURE_TWO_FINGERS:
             self.unknown_frames = 0
+            if self.two_finger_frames == 0:
+                self.started_at = now
             self.two_finger_frames += 1
             if self.two_finger_frames >= self.required_frames:
                 self.armed = True
+            if (
+                self.armed
+                and not self.mic_emitted
+                and self.started_at is not None
+                and now - self.started_at >= self.mic_hold_seconds
+            ):
+                self.mic_emitted = True
+                return GESTURE_MIC
             return None
 
         if gesture is None and (self.two_finger_frames > 0 or self.armed):
@@ -111,7 +127,7 @@ class TwoFingerBackDecision:
             if self.unknown_frames <= self.unknown_grace_frames:
                 return None
 
-        if gesture == GESTURE_OPEN_PALM and self.armed:
+        if gesture == GESTURE_OPEN_PALM and self.armed and not self.mic_emitted:
             self.reset()
             return GESTURE_BACK
 

@@ -44,7 +44,9 @@ Set `GESTURE_TV_ADAPTER` to select the TV integration:
 | `roku` | `rokuecp` | Supports ECP TV commands. |
 
 Voice capture is available only when the selected adapter returns a voice
-stream. No default gesture currently starts microphone capture.
+stream. Holding the active hand in a two-finger pose for about one second starts
+microphone capture. Android TV supports this path; Samsung, webOS, and Roku
+currently report voice capture as unsupported.
 
 ## Model File
 
@@ -135,6 +137,7 @@ will not override that environment value.
 | `GESTURE_TV_SAMSUNG_PORT` | `8002` |
 | `GESTURE_TV_WEBOS_CLIENT_KEY_FILE` | `certs/webos/client_key.txt` |
 | `GESTURE_TV_ROKU_PORT` | `8060` |
+| `GESTURE_TV_VOICE_CAPTURE_SECONDS` | `5.0` |
 | `GESTURE_TV_MODEL_FILE` | `models/hand_landmarker.task` |
 | `GESTURE_TV_MODEL_URL` | MediaPipe hand landmarker URL |
 | `GESTURE_TV_MODEL_DOWNLOAD_TIMEOUT_SECONDS` | `20.0` |

@@ -162,6 +162,25 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
         ):
             self.assertEqual(await call_remote_method(lambda: result()), "ok")
 
+    async def test_sync_remote_method_can_stay_on_event_loop_thread(self) -> None:
+        calls = []
+
+        def sync_method(command: str) -> str:
+            calls.append((command, threading.get_ident()))
+            return command
+
+        loop_thread_id = threading.get_ident()
+        with patch("src.infrastructure.tv.async_call.asyncio.to_thread") as to_thread:
+            result = await call_remote_method(
+                sync_method,
+                "KEY_HOME",
+                offload_sync=False,
+            )
+
+        self.assertEqual(result, "KEY_HOME")
+        self.assertEqual(calls, [("KEY_HOME", loop_thread_id)])
+        to_thread.assert_not_called()
+
 
 class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:

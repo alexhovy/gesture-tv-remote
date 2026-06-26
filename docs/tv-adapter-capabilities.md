@@ -42,5 +42,7 @@ the current gesture command surface. They are tracked as `not_implemented`
 when an adapter extension could reasonably add them without changing the
 gesture pipeline.
 
-Voice capture is not part of the TV-command table. Android TV can provide a
-voice stream, but no default gesture currently starts voice capture.
+Voice capture is not part of the TV-command table. A sustained two-finger
+gesture starts microphone capture when the selected adapter provides a voice
+stream. Android TV supports this path; Samsung, webOS, and Roku currently
+report voice capture as unsupported.

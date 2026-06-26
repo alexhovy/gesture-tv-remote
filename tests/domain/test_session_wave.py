@@ -3,6 +3,7 @@ import unittest
 from src.domain.constants import (
     GESTURE_BACK,
     GESTURE_FIST,
+    GESTURE_MIC,
     GESTURE_OPEN_PALM,
     GESTURE_PINCH,
     GESTURE_POINT,
@@ -32,6 +33,19 @@ class SessionWaveTests(unittest.TestCase):
         decision = self._open(session, 0.50, now=0.2)
 
         self.assertIsNone(decision.command_gesture)
+
+    def test_sustained_two_fingers_emits_mic(self) -> None:
+        session = GestureSession(app_config())
+        self._open(session, 0.50, now=0.0)
+        self._two_fingers(session, now=0.1)
+        self._two_fingers(session, now=0.2)
+        self._two_fingers(session, now=0.3)
+        mic = self._two_fingers(session, now=1.1)
+        open_palm = self._open(session, 0.50, now=1.2)
+
+        self.assertEqual(mic.command_gesture, GESTURE_MIC)
+        self.assertIn("two_finger_back=MIC", mic.debug_message)
+        self.assertIsNone(open_palm.command_gesture)
 
     def test_unknown_between_two_fingers_resets_back(self) -> None:
         session = GestureSession(app_config())

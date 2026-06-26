@@ -7,6 +7,7 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 from src.domain.constants import (
+    GESTURE_MIC,
     TV_COMMAND_DPAD_DOWN,
     TV_COMMAND_HOME,
     TV_COMMAND_VOLUME_DOWN,
@@ -406,6 +407,29 @@ class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(voice_task)
         self.assertFalse(gesture_session.idle_recorded)
 
+    async def test_mic_decision_starts_voice_capture(self) -> None:
+        voice_capture = FakeVoiceCapture()
+        command_dispatcher = FakeCommandDispatcher()
+        pipeline = CommandDispatchPipeline(
+            FakeGestureSession(),
+            voice_capture,
+            command_dispatcher,
+            None,
+            FakeLogger(),
+        )
+
+        voice_task = await pipeline.handle_decision(
+            command_gesture=GESTURE_MIC,
+            activated=True,
+            now=1.0,
+            voice_task=None,
+        )
+        self.assertIsNotNone(voice_task)
+        await voice_task
+
+        self.assertEqual(voice_capture.capture_count, 1)
+        self.assertEqual(command_dispatcher.enqueued, [])
+
 
 class PipelineMetricsTests(unittest.TestCase):
     def test_dispatch_snapshot_includes_dropped_commands(self) -> None:
@@ -617,6 +641,9 @@ class FakeLogger:
     def error(self, message: str) -> None:
         self.messages.append(message)
 
+    def debug(self, message: str) -> None:
+        self.messages.append(message)
+
 
 class FakeReloadableConfig:
     def __init__(self) -> None:
@@ -660,8 +687,11 @@ class FakeDecisionSession:
 
 
 class FakeVoiceCapture:
+    def __init__(self) -> None:
+        self.capture_count = 0
+
     async def capture(self) -> None:
-        pass
+        self.capture_count += 1
 
 
 class FakeCommandDispatcher:
@@ -669,8 +699,11 @@ class FakeCommandDispatcher:
     last_send_latency_seconds = None
     dropped_commands = 0
 
+    def __init__(self) -> None:
+        self.enqueued = []
+
     def enqueue(self, gesture, command) -> None:
-        pass
+        self.enqueued.append((gesture, command))
 
 
 def _landmark(x: float, y: float, **attributes):

@@ -47,14 +47,20 @@ class VoiceCaptureTests(unittest.TestCase):
         asyncio.run(service.capture())
 
         self.assertFalse(remote.started_voice)
-        self.assertIn("TV adapter does not support voice input.", logger.messages)
+        self.assertIn(
+            "TV adapter does not support configured voice input target: app",
+            logger.messages,
+        )
 
     def test_voice_capture_logs_sent_audio_chunks(self) -> None:
         remote = SupportedVoiceRemote()
         logger = FakeLogger()
         service = MicrophoneVoiceCapture(
             remote,
-            app_config(voice_capture_seconds=0.01),
+            app_config(
+                voice_capture_seconds=0.01,
+                voice_input_target="remote_search",
+            ),
             logger,
         )
         sounddevice = types.ModuleType("sounddevice")
@@ -84,12 +90,40 @@ class VoiceCaptureTests(unittest.TestCase):
     ) -> None:
         remote = NativeVoiceRemote()
         logger = FakeLogger()
-        service = MicrophoneVoiceCapture(remote, app_config(), logger)
+        service = MicrophoneVoiceCapture(
+            remote,
+            app_config(voice_input_target="native_search"),
+            logger,
+        )
 
         asyncio.run(service.capture())
 
         self.assertEqual(remote.voice_mode, VoiceInputMode.NATIVE_VOICE_SEARCH)
         self.assertIn("TV native voice input requested.", logger.messages)
+
+    def test_voice_capture_prefers_configured_app_voice_input(self) -> None:
+        remote = AppVoiceRemote()
+        logger = FakeLogger()
+        service = MicrophoneVoiceCapture(
+            remote,
+            app_config(voice_capture_seconds=0.01),
+            logger,
+        )
+        sounddevice = types.ModuleType("sounddevice")
+        sounddevice.RawInputStream = FakeRawInputStream
+
+        previous = sys.modules.get("sounddevice")
+        sys.modules["sounddevice"] = sounddevice
+        try:
+            asyncio.run(service.capture())
+        finally:
+            if previous is None:
+                sys.modules.pop("sounddevice", None)
+            else:
+                sys.modules["sounddevice"] = previous
+
+        self.assertEqual(remote.voice_mode, VoiceInputMode.APP_VOICE_INPUT)
+        self.assertEqual(remote.voice_stream.chunks, [b"1" * 16384])
 
 class FakeLogger:
     def __init__(self) -> None:
@@ -135,6 +169,23 @@ class NativeVoiceRemote:
         )
 
 
+class AppVoiceRemote:
+    def __init__(self) -> None:
+        self.voice_stream = FakeVoiceStream()
+        self.voice_mode = None
+
+    async def start_voice(self, mode: VoiceInputMode):
+        self.voice_mode = mode
+        return self.voice_stream
+
+    def capabilities(self) -> TvAdapterCapabilities:
+        return _capabilities(
+            remote_mic_stream=CapabilityStatus.IMPLEMENTED,
+            native_voice_search=CapabilityStatus.IMPLEMENTED,
+            app_voice_input=CapabilityStatus.IMPLEMENTED,
+        )
+
+
 class FakeVoiceStream:
     def __init__(self) -> None:
         self.chunks = []
@@ -164,6 +215,7 @@ def _capabilities(
     *,
     remote_mic_stream: CapabilityStatus,
     native_voice_search: CapabilityStatus,
+    app_voice_input: CapabilityStatus = CapabilityStatus.UNSUPPORTED,
 ) -> TvAdapterCapabilities:
     return TvAdapterCapabilities(
         power=CapabilityStatus.UNSUPPORTED,
@@ -177,7 +229,7 @@ def _capabilities(
         voice_input=VoiceInputCapabilities(
             remote_mic_stream=remote_mic_stream,
             native_voice_search=native_voice_search,
-            app_voice_input=CapabilityStatus.UNSUPPORTED,
+            app_voice_input=app_voice_input,
             app_text_input=CapabilityStatus.UNSUPPORTED,
         ),
         connection_type="fake",

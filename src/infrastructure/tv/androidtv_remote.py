@@ -32,18 +32,19 @@ class AndroidTvRemoteClient:
             voice_input=VoiceInputCapabilities(
                 remote_mic_stream=CapabilityStatus.IMPLEMENTED,
                 native_voice_search=CapabilityStatus.IMPLEMENTED,
-                app_voice_input=CapabilityStatus.NOT_IMPLEMENTED,
+                app_voice_input=CapabilityStatus.IMPLEMENTED,
                 app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
                 notes=(
                     "Remote microphone streaming uses Android TV Remote Protocol "
                     "voice sessions.",
-                    "Foreground app voice requests need lower-level protocol "
-                    "support not exposed by the current adapter.",
+                    "Foreground app voice input uses the same PCM voice stream "
+                    "after optionally triggering the focused app control.",
                 ),
             ),
             connection_type="androidtvremote2 TLS remote protocol",
             known_limitations=(
-                "Only key commands and remote microphone streaming are implemented.",
+                "Only key commands and Android TV Remote Protocol microphone "
+                "streaming are implemented.",
                 "Power, text input, source selection, and media controls are "
                 "not mapped.",
             ),
@@ -120,6 +121,20 @@ class AndroidTvRemoteClient:
         if self._remote is None:
             return None
         if mode == VoiceInputMode.REMOTE_MIC_STREAM:
+            return await self._remote.start_voice()
+        if mode == VoiceInputMode.APP_VOICE_INPUT:
+            trigger_command = self._config.tv.voice_app_trigger_command.strip()
+            if trigger_command:
+                adapter_command = translate_tv_command(
+                    TV_ADAPTER_ANDROIDTV,
+                    trigger_command,
+                )
+                await call_remote_method(
+                    self._remote.send_key_command,
+                    adapter_command,
+                    offload_sync=False,
+                )
+                await asyncio.sleep(self._config.tv.voice_app_trigger_delay_seconds)
             return await self._remote.start_voice()
         if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
             await call_remote_method(

@@ -8,7 +8,7 @@ from src.application.ports.tv_remote import (
     VoiceInputMode,
 )
 from src.infrastructure.tv.async_call import call_remote_method
-from src.shared.config import AppConfig
+from src.shared.config import AppConfig, VoiceInputTarget
 
 VOICE_SAMPLE_RATE = 8000
 VOICE_FRAMES_PER_BUFFER = 8192
@@ -30,11 +30,18 @@ class MicrophoneVoiceCapture:
     async def capture(self) -> None:
         voice_stream = None
         try:
-            mode = _select_voice_input_mode(self._remote)
+            mode = _select_voice_input_mode(
+                self._remote,
+                self._config.tv.voice_input_target,
+            )
             if mode is None:
-                self._logger.info("TV adapter does not support voice input.")
+                self._logger.info(
+                    "TV adapter does not support configured voice input target: "
+                    f"{self._config.tv.voice_input_target}"
+                )
                 return
 
+            self._logger.info(f"TV voice input mode: {mode.value}")
             voice_stream = await self._remote.start_voice(mode)
             if voice_stream is None:
                 if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
@@ -124,11 +131,25 @@ def _put_latest_chunk(chunks: asyncio.Queue[bytes], chunk: bytes) -> None:
     chunks.put_nowait(chunk)
 
 
-def _select_voice_input_mode(remote: TVRemotePort) -> VoiceInputMode | None:
+def _select_voice_input_mode(
+    remote: TVRemotePort,
+    target: str,
+) -> VoiceInputMode | None:
     voice = remote.capabilities().voice_input
-    if voice.remote_mic_stream == CapabilityStatus.IMPLEMENTED:
+    if (
+        target == VoiceInputTarget.APP.value
+        and voice.app_voice_input == CapabilityStatus.IMPLEMENTED
+    ):
+        return VoiceInputMode.APP_VOICE_INPUT
+    if (
+        target == VoiceInputTarget.REMOTE_SEARCH.value
+        and voice.remote_mic_stream == CapabilityStatus.IMPLEMENTED
+    ):
         return VoiceInputMode.REMOTE_MIC_STREAM
-    if voice.native_voice_search == CapabilityStatus.IMPLEMENTED:
+    if (
+        target == VoiceInputTarget.NATIVE_SEARCH.value
+        and voice.native_voice_search == CapabilityStatus.IMPLEMENTED
+    ):
         return VoiceInputMode.NATIVE_VOICE_SEARCH
     return None
 

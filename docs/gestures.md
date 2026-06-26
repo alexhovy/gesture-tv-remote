@@ -53,12 +53,13 @@ is tolerated while two-finger BACK is pending. A single two-finger misread does
 not emit BACK, and point, pinch, fist, repeated unknown, or missing-hand frames
 reset the pending BACK gesture.
 
-Holding two fingers for about one second starts remote microphone streaming
-instead of BACK. Releasing to an open palm after microphone capture has been
-triggered does not emit BACK. Remote microphone streaming requires a TV adapter
-that provides a voice stream; Android TV supports this path. Roku and Samsung
-can only try to open the TV's native voice UI through remote keys, and webOS has
-no public voice input path in the current adapter.
+Holding two fingers for about one second starts microphone capture for the
+configured voice target instead of BACK. Releasing to an open palm after
+microphone capture has been triggered does not emit BACK. The default target is
+foreground app voice input: Android TV can optionally press the focused app
+control and then stream microphone audio into the app's active voice listener.
+Roku and Samsung can only try to open the TV's native voice UI through remote
+keys, and webOS has no public raw microphone input path in the current adapter.
 
 Point navigation tracks the active hand's index fingertip so left/right intent
 does not depend on moving the whole hand. The first point frame captures a fixed

@@ -13,7 +13,7 @@ Capability status is explicit:
 
 | Adapter | Connection | Power | Volume | Navigation | Media Controls | Text Input | Source Selection | Wake-on-LAN | Pairing | Remote Mic Stream | Native Voice UI | App Voice Input |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` | `implemented` | `not_implemented` |
+| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` | `implemented` | `implemented` |
 | Samsung TV | `samsungtvws` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
 | LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
 | Roku | Roku ECP HTTP | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
@@ -49,5 +49,8 @@ Voice input is split by protocol capability:
 - native voice UI: this app only asks the TV to open its own voice listener.
   Roku uses ECP `Search`; Samsung uses `KEY_VOICE`; neither path accepts this
   app's microphone audio through the current adapter.
-- app voice input: foreground app-requested microphone sessions are tracked
-  separately and are not implemented by the current adapters.
+- app voice input: this app sends microphone PCM audio to a foreground app's
+  active voice listener. Android TV supports this by optionally triggering the
+  focused app control and then starting an Android TV Remote Protocol voice
+  stream. Roku, Samsung, and webOS do not expose public raw microphone upload
+  paths for arbitrary foreground apps through the current adapters.

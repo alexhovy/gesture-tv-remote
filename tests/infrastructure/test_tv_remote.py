@@ -89,6 +89,10 @@ class TvRemoteTests(unittest.TestCase):
             CapabilityStatus.IMPLEMENTED,
         )
         self.assertEqual(
+            android_capabilities.voice_input.app_voice_input,
+            CapabilityStatus.IMPLEMENTED,
+        )
+        self.assertEqual(
             roku_capabilities.voice_input.remote_mic_stream,
             CapabilityStatus.UNSUPPORTED,
         )
@@ -192,6 +196,50 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result, "KEY_HOME")
         self.assertEqual(calls, [("KEY_HOME", loop_thread_id)])
         to_thread.assert_not_called()
+
+
+class AndroidTvRemoteTests(unittest.IsolatedAsyncioTestCase):
+    async def test_app_voice_input_triggers_focused_control_then_starts_stream(
+        self,
+    ) -> None:
+        client = AndroidTvRemoteClient(
+            app_config(
+                voice_app_trigger_command=TV_COMMAND_DPAD_CENTER,
+                voice_app_trigger_delay_seconds=0.0,
+            )
+        )
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        stream = await client.start_voice(VoiceInputMode.APP_VOICE_INPUT)
+
+        self.assertIs(stream, remote.voice_stream)
+        self.assertEqual(remote.operations, ["send:DPAD_CENTER", "start_voice"])
+
+    async def test_app_voice_input_can_stream_without_trigger_command(self) -> None:
+        client = AndroidTvRemoteClient(
+            app_config(
+                voice_app_trigger_command="",
+                voice_app_trigger_delay_seconds=0.0,
+            )
+        )
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        stream = await client.start_voice(VoiceInputMode.APP_VOICE_INPUT)
+
+        self.assertIs(stream, remote.voice_stream)
+        self.assertEqual(remote.operations, ["start_voice"])
+
+    async def test_native_voice_search_sends_search_key_without_streaming(self) -> None:
+        client = AndroidTvRemoteClient(app_config())
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        stream = await client.start_voice(VoiceInputMode.NATIVE_VOICE_SEARCH)
+
+        self.assertIsNone(stream)
+        self.assertEqual(remote.operations, ["send:SEARCH"])
 
 
 class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
@@ -355,6 +403,19 @@ def _install_fake_samsung(fail_first_send: bool = False):
     module = types.SimpleNamespace(SamsungTVWS=FakeSamsungTVWS)
     sys.modules["samsungtvws"] = module
     return FakeSamsungTVWS
+
+
+class FakeAndroidRemote:
+    def __init__(self) -> None:
+        self.operations = []
+        self.voice_stream = object()
+
+    def send_key_command(self, command: str) -> None:
+        self.operations.append(f"send:{command}")
+
+    async def start_voice(self):
+        self.operations.append("start_voice")
+        return self.voice_stream
 
 
 def _install_fake_roku(fail_first_send: bool = False):

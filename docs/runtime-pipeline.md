@@ -58,10 +58,12 @@ libraries are synchronous. That keeps each TV connection opened, used, retried,
 and closed on one worker thread.
 
 Voice input remains adapter-scoped infrastructure. A sustained two-finger
-gesture requests remote microphone streaming, which only succeeds when the
-selected TV adapter returns a voice stream. Native TV voice UI launch is tracked
-as a separate adapter capability because it does not accept this app's
-microphone audio. The microphone audio queue is bounded and drops stale chunks.
+gesture requests the configured voice target. App voice input streams
+microphone audio to a foreground app voice listener when the adapter supports
+it; Android TV can trigger the focused app control before opening the PCM voice
+stream. Remote microphone search and native TV voice UI launch are separate
+targets because native voice UI paths do not accept this app's microphone audio.
+The microphone audio queue is bounded and drops stale chunks.
 
 Shutdown is owned by `GestureRemoteService._cleanup`. It cancels voice capture,
 stops frame capture, closes MediaPipe, releases the camera, closes OpenCV

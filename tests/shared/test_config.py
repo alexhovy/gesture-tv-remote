@@ -46,6 +46,9 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.SAMSUNG_PORT: "8001",
                 EnvVar.WEBOS_CLIENT_KEY_FILE: "local/webos/client_key.txt",
                 EnvVar.ROKU_PORT: "8061",
+                EnvVar.VOICE_INPUT_TARGET: "remote_search",
+                EnvVar.VOICE_APP_TRIGGER_COMMAND: "",
+                EnvVar.VOICE_APP_TRIGGER_DELAY_SECONDS: "0.4",
                 EnvVar.MODEL_DOWNLOAD_TIMEOUT_SECONDS: "3.5",
                 EnvVar.MODEL_DOWNLOAD_RETRIES: "4",
                 EnvVar.DEBOUNCE_SECONDS: "0.25",
@@ -84,6 +87,9 @@ class ConfigTests(unittest.TestCase):
             Path("local/webos/client_key.txt"),
         )
         self.assertEqual(config.tv.roku_port, 8061)
+        self.assertEqual(config.tv.voice_input_target, "remote_search")
+        self.assertEqual(config.tv.voice_app_trigger_command, "")
+        self.assertEqual(config.tv.voice_app_trigger_delay_seconds, 0.4)
         self.assertEqual(config.model.download_timeout_seconds, 3.5)
         self.assertEqual(config.model.download_retries, 4)
         self.assertEqual(config.gesture.debounce_seconds, 0.25)
@@ -157,6 +163,14 @@ class ConfigTests(unittest.TestCase):
     def test_load_config_rejects_invalid_adapter_port(self) -> None:
         with self.assertRaisesRegex(ValueError, "roku_port"):
             load_config_from_env({EnvVar.ROKU_PORT: "0"})
+
+    def test_load_config_rejects_unknown_voice_input_target(self) -> None:
+        with self.assertRaisesRegex(ValueError, "voice_input_target"):
+            load_config_from_env({EnvVar.VOICE_INPUT_TARGET: "assistant"})
+
+    def test_load_config_rejects_invalid_voice_trigger_delay(self) -> None:
+        with self.assertRaisesRegex(ValueError, "voice_app_trigger_delay_seconds"):
+            load_config_from_env({EnvVar.VOICE_APP_TRIGGER_DELAY_SECONDS: "-1"})
 
     def test_load_config_rejects_invalid_config_web_port(self) -> None:
         with self.assertRaisesRegex(ValueError, "config_web_port"):

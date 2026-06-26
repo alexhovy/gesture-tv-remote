@@ -1,6 +1,7 @@
 import os
 from collections.abc import Callable
 from dataclasses import dataclass, replace
+from enum import StrEnum
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,9 @@ class EnvVar:
     SAMSUNG_PORT = "GESTURE_TV_SAMSUNG_PORT"
     WEBOS_CLIENT_KEY_FILE = "GESTURE_TV_WEBOS_CLIENT_KEY_FILE"
     ROKU_PORT = "GESTURE_TV_ROKU_PORT"
+    VOICE_INPUT_TARGET = "GESTURE_TV_VOICE_INPUT_TARGET"
+    VOICE_APP_TRIGGER_COMMAND = "GESTURE_TV_VOICE_APP_TRIGGER_COMMAND"
+    VOICE_APP_TRIGGER_DELAY_SECONDS = "GESTURE_TV_VOICE_APP_TRIGGER_DELAY_SECONDS"
     MODEL_FILE = "GESTURE_TV_MODEL_FILE"
     MODEL_URL = "GESTURE_TV_MODEL_URL"
     MODEL_DOWNLOAD_TIMEOUT_SECONDS = "GESTURE_TV_MODEL_DOWNLOAD_TIMEOUT_SECONDS"
@@ -56,6 +60,12 @@ class EnvVar:
     METRICS_LOG_SECONDS = "GESTURE_TV_METRICS_LOG_SECONDS"
 
 
+class VoiceInputTarget(StrEnum):
+    APP = "app"
+    REMOTE_SEARCH = "remote_search"
+    NATIVE_SEARCH = "native_search"
+
+
 @dataclass(frozen=True)
 class TvConfig:
     adapter: str = "samsung"
@@ -66,6 +76,9 @@ class TvConfig:
     samsung_port: int = 8002
     webos_client_key_file: Path = Path("certs/webos/client_key.txt")
     roku_port: int = 8060
+    voice_input_target: str = VoiceInputTarget.APP.value
+    voice_app_trigger_command: str = "DPAD_CENTER"
+    voice_app_trigger_delay_seconds: float = 0.2
     voice_capture_seconds: float = 5.0
 
 
@@ -169,6 +182,9 @@ RELOADABLE_CONFIG_FIELDS = (
     "pinch_distance_ratio",
     "require_upright_hands",
     "hand_upright_max_tilt_ratio",
+    "voice_input_target",
+    "voice_app_trigger_command",
+    "voice_app_trigger_delay_seconds",
     "voice_capture_seconds",
     "debug_log_seconds",
     "active_hand_lost_grace_seconds",
@@ -214,6 +230,15 @@ def validate_config(config: AppConfig) -> None:
         raise ValueError("tv_host must not be empty")
     _require_between(config.tv.samsung_port, "samsung_port", 1, 65535)
     _require_between(config.tv.roku_port, "roku_port", 1, 65535)
+    supported_voice_targets = {target.value for target in VoiceInputTarget}
+    if config.tv.voice_input_target not in supported_voice_targets:
+        supported = ", ".join(target.value for target in VoiceInputTarget)
+        raise ValueError(f"voice_input_target must be one of: {supported}")
+    _require_at_least(
+        config.tv.voice_app_trigger_delay_seconds,
+        "voice_app_trigger_delay_seconds",
+        0.0,
+    )
     _require_at_least(config.gesture.debounce_seconds, "debounce_seconds", 0.0)
     _require_at_least(
         config.gesture.fist_hold_home_seconds,
@@ -350,6 +375,11 @@ def _str(values: dict[str, str], name: str, default: object) -> str:
     return raw_value if raw_value else str(default)
 
 
+def _str_allow_empty(values: dict[str, str], name: str, default: object) -> str:
+    raw_value = values.get(name)
+    return raw_value if raw_value is not None else str(default)
+
+
 def _path(values: dict[str, str], name: str, default: object) -> Path:
     raw_value = values.get(name)
     return Path(raw_value) if raw_value else default
@@ -433,6 +463,27 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         _path,
     ),
     ConfigField("roku_port", EnvVar.ROKU_PORT, "tv", "roku_port", _int),
+    ConfigField(
+        "voice_input_target",
+        EnvVar.VOICE_INPUT_TARGET,
+        "tv",
+        "voice_input_target",
+        _str,
+    ),
+    ConfigField(
+        "voice_app_trigger_command",
+        EnvVar.VOICE_APP_TRIGGER_COMMAND,
+        "tv",
+        "voice_app_trigger_command",
+        _str_allow_empty,
+    ),
+    ConfigField(
+        "voice_app_trigger_delay_seconds",
+        EnvVar.VOICE_APP_TRIGGER_DELAY_SECONDS,
+        "tv",
+        "voice_app_trigger_delay_seconds",
+        _float,
+    ),
     ConfigField("model_file", EnvVar.MODEL_FILE, "model", "file", _path),
     ConfigField("model_url", EnvVar.MODEL_URL, "model", "url", _str),
     ConfigField(

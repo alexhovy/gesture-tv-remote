@@ -54,7 +54,16 @@ Before making changes, agents must:
 
 ## Testing Standards
 - Use the existing `unittest` style unless the test framework is intentionally changed.
-- Run relevant tests before concluding work:
+- After modifying repository files, run the full quality gate before concluding work:
+
+```bash
+uv run python scripts/quality.py
+```
+
+This reformats tracked and unignored `.py`, `.md`, and `pyproject.toml` files
+to normal LF line breaks, then runs Ruff, Black, mypy, and the test suite. If
+the quality gate cannot be run or fails, report the exact command and failure.
+- For test-only validation while iterating, run relevant tests:
 
 ```bash
 python -m unittest discover -s tests

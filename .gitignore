@@ -3,6 +3,7 @@ __pycache__/
 *.py[cod]
 .uv-cache/
 .ruff_cache/
+.mypy_cache/
 .agents/
 .codex/
 

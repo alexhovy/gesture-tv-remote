@@ -52,6 +52,18 @@ hardware settings still require restarting it.
 
 ## Test
 
+Run the standard quality gate before finishing a change:
+
+```bash
+uv run python scripts/quality.py
+```
+
+The quality gate normalizes tracked and unignored `.py`, `.md`, and
+`pyproject.toml` files to LF line breaks, runs Ruff with fixes, formats with
+Black, reruns Ruff, runs mypy, and then runs the full unittest suite.
+
+When iterating on tests only, run:
+
 ```bash
 uv run python -m unittest discover -s tests
 ```

@@ -42,9 +42,10 @@ class RokuRemoteClient:
             ),
             connection_type="Roku ECP HTTP",
             known_limitations=(
-                "Only ECP keypress commands and native voice UI launch are implemented.",
-                "Remote microphone streaming, pairing, text input, source selection, and "
-                "Wake-on-LAN are not implemented.",
+                "Only ECP keypress commands and native voice UI launch are "
+                "implemented.",
+                "Remote microphone streaming, pairing, text input, source "
+                "selection, and Wake-on-LAN are not implemented.",
             ),
         )
 

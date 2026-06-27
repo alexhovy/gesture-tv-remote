@@ -44,8 +44,8 @@ class SamsungTvRemoteClient:
             connection_type="samsungtvws websocket",
             known_limitations=(
                 "Only key commands and native voice UI key injection are implemented.",
-                "Remote microphone streaming, text input, source selection, and Wake-on-LAN "
-                "are not implemented.",
+                "Remote microphone streaming, text input, source selection, and "
+                "Wake-on-LAN are not implemented.",
             ),
         )
 
@@ -98,9 +98,7 @@ class SamsungTvRemoteClient:
             except Exception as error:
                 self._logger.error(f"Samsung native voice input failed: {error}")
             return None
-        self._logger.info(
-            f"Samsung voice input mode is not supported: {mode.value}"
-        )
+        self._logger.info(f"Samsung voice input mode is not supported: {mode.value}")
         return None
 
     async def disconnect(self) -> None:

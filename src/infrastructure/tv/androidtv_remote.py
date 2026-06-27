@@ -228,8 +228,8 @@ class _AndroidAppVoiceSessionBroker:
         if on_voice_begin is not None and not on_voice_begin.done():
             return None
 
-        from google.protobuf.message import DecodeError
         from androidtvremote2.remotemessage_pb2 import RemoteMessage
+        from google.protobuf.message import DecodeError
 
         msg = RemoteMessage()
         try:

@@ -1,7 +1,7 @@
 import math
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Any, TypeVar
+from typing import Any
 
 from src.domain.geometry.landmarks import hand_center, hand_is_upright
 from src.domain.gestures.gesture_classification import classify_static_hand_pose
@@ -10,7 +10,6 @@ from src.shared.config import GestureConfig
 
 DUPLICATE_HAND_MAX_CENTER_DISTANCE_RATIO = 0.35
 DUPLICATE_HAND_MIN_BOX_IOU = 0.55
-T = TypeVar("T")
 
 
 @dataclass(frozen=True)
@@ -71,7 +70,7 @@ def deduplicate_raw_hands(
     )
 
 
-def deduplicate_hands_by_landmarks(
+def deduplicate_hands_by_landmarks[T](
     hands: list[T],
     landmarks_for_hand: Callable[[T], list[Any]],
 ) -> list[T]:
@@ -115,7 +114,7 @@ def hand_landmark_sets_are_duplicates(
     )
 
 
-def _find_duplicate_index(
+def _find_duplicate_index[T](
     hands: list[T],
     candidate: T,
     landmarks_for_hand: Callable[[T], list[Any]],

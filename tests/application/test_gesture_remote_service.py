@@ -48,6 +48,7 @@ from src.application.pipelines import (  # noqa: E402
     FrameCapturePipeline,
     GestureDecisionPipeline,
 )
+from src.application.ports.tv_remote import AppVoiceInputRequest  # noqa: E402
 from src.application.services.gesture_remote_service import (  # noqa: E402
     CONFIG_RELOAD_INTERVAL_SECONDS,
     GestureRemoteService,
@@ -57,7 +58,6 @@ from src.application.services.remote_command_dispatcher import (  # noqa: E402
     MAX_PENDING_COMMANDS,
     RemoteCommandDispatcher,
 )
-from src.application.ports.tv_remote import AppVoiceInputRequest  # noqa: E402
 from src.infrastructure.camera.display import OpenCvDisplay  # noqa: E402
 from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor  # noqa: E402
 from src.shared.config import AppConfig  # noqa: E402

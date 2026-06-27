@@ -5,14 +5,15 @@ from src.application.ports.logger import LoggerPort
 from src.application.ports.tv_remote import (
     CapabilityStatus,
     TVRemotePort,
-    VoiceStreamPort,
     VoiceInputMode,
+    VoiceStreamPort,
 )
 from src.infrastructure.tv.async_call import call_remote_method
 from src.shared.config import AppConfig, VoiceInputTarget
 
 VOICE_SAMPLE_RATE = 8000
 VOICE_FRAMES_PER_BUFFER = 8192
+
 
 class MicrophoneVoiceCapture:
     def __init__(

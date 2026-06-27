@@ -58,13 +58,12 @@ libraries are synchronous. That keeps each TV connection opened, used, retried,
 and closed on one worker thread.
 
 Voice input remains adapter-scoped infrastructure. A sustained two-finger
-gesture requests the configured voice target. The default auto target chooses a
-pending foreground app voice session when the adapter can see one, then falls
-back to the adapter's TV/global voice route. App voice input streams microphone
-audio to a foreground app voice listener when the adapter supports it; Android
-TV attaches only to an app-requested voice session. Remote microphone search
-and native TV voice UI launch are separate targets because native voice UI
-paths do not accept this app's microphone audio.
+gesture requests the configured TV/global voice target. App voice input streams
+microphone audio to a foreground app voice listener only after the adapter sees
+an app-requested voice session; Android TV reports this through the Android TV
+Remote Protocol. Remote microphone search and native TV voice UI launch are
+separate targets because native voice UI paths do not accept this app's
+microphone audio.
 The microphone audio queue is bounded and drops stale chunks.
 
 Shutdown is owned by `GestureRemoteService._cleanup`. It cancels voice capture,

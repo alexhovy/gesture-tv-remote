@@ -1,4 +1,5 @@
 from src.application.ports.tv_remote import (
+    AppVoiceInputHandler,
     CapabilityStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
@@ -13,6 +14,13 @@ class FakeTVRemote:
         self.connect_calls = 0
         self.disconnect_calls = 0
         self.voice_started = False
+        self.app_voice_input_handler: AppVoiceInputHandler | None = None
+
+    def set_app_voice_input_handler(
+        self,
+        handler: AppVoiceInputHandler | None,
+    ) -> None:
+        self.app_voice_input_handler = handler
 
     async def connect(self) -> bool:
         self.connect_calls += 1

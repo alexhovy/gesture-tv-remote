@@ -44,15 +44,17 @@ gesture pipeline.
 
 Voice input is split by protocol capability:
 
-- auto target: the runtime chooses a pending app voice session first, then the
-  adapter's TV/global voice route when no app session is pending.
+- auto target: a gesture-triggered voice request uses the adapter's TV/global
+  voice route. App voice input is started by a TV/app voice-session request,
+  not by the gesture.
 - remote mic stream: this app sends microphone PCM audio to the TV. Android TV
   supports this through Android TV Remote Protocol voice payloads.
 - native voice UI: this app only asks the TV to open its own voice listener.
   Roku uses ECP `Search`; Samsung uses `KEY_VOICE`; neither path accepts this
   app's microphone audio through the current adapter.
 - app voice input: this app sends microphone PCM audio to a foreground app's
-  active voice listener. Android TV supports this by attaching to an
-  app-requested Android TV Remote Protocol voice session. Roku, Samsung, and
-  webOS do not expose public raw microphone upload paths for arbitrary
-  foreground apps through the current adapters.
+  active voice listener after the TV reports that the foreground app requested
+  one. Android TV supports this by attaching to an app-requested Android TV
+  Remote Protocol voice session. Roku, Samsung, and webOS do not expose public
+  raw microphone upload paths for arbitrary foreground apps through the current
+  adapters.

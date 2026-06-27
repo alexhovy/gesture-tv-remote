@@ -4,6 +4,8 @@ from types import MethodType
 from typing import Any
 
 from src.application.ports.tv_remote import (
+    AppVoiceInputHandler,
+    AppVoiceInputRequest,
     CapabilityStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
@@ -21,6 +23,7 @@ class AndroidTvRemoteClient:
         self._config = config
         self._remote = None
         self._logger = AppLogger()
+        self._app_voice_input_handler: AppVoiceInputHandler | None = None
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
@@ -52,6 +55,16 @@ class AndroidTvRemoteClient:
                 "not mapped.",
             ),
         )
+
+    def set_app_voice_input_handler(
+        self,
+        handler: AppVoiceInputHandler | None,
+    ) -> None:
+        self._app_voice_input_handler = handler
+        if self._remote is None:
+            return
+        broker = _AndroidAppVoiceSessionBroker.for_remote(self._remote, self._logger)
+        broker.set_app_voice_input_handler(handler)
 
     async def connect(self) -> bool:
         from androidtvremote2 import (
@@ -98,7 +111,8 @@ class AndroidTvRemoteClient:
             return False
 
         self._remote = remote
-        _AndroidAppVoiceSessionBroker.for_remote(remote, self._logger)
+        broker = _AndroidAppVoiceSessionBroker.for_remote(remote, self._logger)
+        broker.set_app_voice_input_handler(self._app_voice_input_handler)
         self._logger.info(f"Connected to Android TV at {self._config.tv.host}")
         return True
 
@@ -125,18 +139,6 @@ class AndroidTvRemoteClient:
         if self._remote is None:
             return None
         if mode == VoiceInputMode.AUTO:
-            broker = _AndroidAppVoiceSessionBroker.for_remote(
-                self._remote,
-                self._logger,
-            )
-            has_pending_app_session = broker.has_pending_session()
-            self._logger.info(
-                "Android app voice pending: "
-                f"{'yes' if has_pending_app_session else 'no'}"
-            )
-            if has_pending_app_session:
-                self._logger.info("Android voice route: app_pending")
-                return await broker.start_voice()
             self._logger.info("Android voice route: global_search")
             return await self._remote.start_voice()
         if mode == VoiceInputMode.REMOTE_MIC_STREAM:
@@ -190,8 +192,7 @@ class _AndroidAppVoiceSessionBroker:
         self._logger = logger
         self._protocol = self._get_protocol(remote)
         self._loop = self._protocol._loop
-        self._pending_session: _AppVoiceSession | None = None
-        self._waiting_session: asyncio.Future[_AppVoiceSession] | None = None
+        self._app_voice_input_handler: AppVoiceInputHandler | None = None
         self._original_handle_message = self._protocol._handle_message
         self._protocol._handle_message = MethodType(
             _AndroidAppVoiceSessionBroker._handle_message,
@@ -203,54 +204,18 @@ class _AndroidAppVoiceSessionBroker:
         cls,
         remote: Any,
         logger: AppLogger,
-    ) -> "_AndroidAppVoiceSessionBroker | _NativeAppVoiceSessionBroker":
-        protocol = cls._get_protocol(remote)
-        if getattr(protocol, "start_app_voice", None) is not None:
-            return _NativeAppVoiceSessionBroker(protocol)
-
+    ) -> "_AndroidAppVoiceSessionBroker":
         broker = getattr(remote, cls._REMOTE_ATTRIBUTE, None)
         if broker is None:
             broker = cls(remote, logger)
             setattr(remote, cls._REMOTE_ATTRIBUTE, broker)
         return broker
 
-    async def start_voice(self, timeout: float = 2.0) -> _ProtocolVoiceStream:
-        start_app_voice = getattr(self._protocol, "start_app_voice", None)
-        if start_app_voice is not None:
-            return await start_app_voice(timeout)
-
-        if self._protocol.transport is None or self._protocol.transport.is_closing():
-            from androidtvremote2 import ConnectionClosed
-
-            raise ConnectionClosed("Connection has been lost")
-
-        if self._protocol._voice_lock.locked():
-            raise TimeoutError("Voice session already in progress")
-
-        await self._protocol._voice_lock.acquire()
-        try:
-            session = self._pending_session
-            self._pending_session = None
-            if session is None:
-                self._waiting_session = self._loop.create_future()
-                self._logger.info("Waiting for Android app voice input request.")
-                session = await self._protocol._async_wait_for_future_or_con_lost(
-                    self._waiting_session,
-                    timeout,
-                )
-
-            self._logger.info(
-                "Android app voice input session started: "
-                f"session_id={session.session_id} "
-                f"package={session.package_name or 'unknown'}"
-            )
-            return _ProtocolVoiceStream(self._protocol, session)
-        finally:
-            self._waiting_session = None
-            self._protocol._voice_lock.release()
-
-    def has_pending_session(self) -> bool:
-        return self._pending_session is not None
+    def set_app_voice_input_handler(
+        self,
+        handler: AppVoiceInputHandler | None,
+    ) -> None:
+        self._app_voice_input_handler = handler
 
     def _handle_message(self, raw_msg: bytes) -> None:
         app_voice_session = self._parse_app_voice_begin(raw_msg)
@@ -279,21 +244,28 @@ class _AndroidAppVoiceSessionBroker:
         )
 
     def _record_app_voice_begin(self, session: _AppVoiceSession) -> None:
-        if (
-            self._pending_session is not None
-            and self._pending_session.session_id != session.session_id
-        ):
-            self._protocol.end_voice(self._pending_session.session_id)
         self._acknowledge_voice_begin(session)
         self._logger.info(
             "Android app requested voice input: "
             f"session_id={session.session_id} "
             f"package={session.package_name or 'unknown'}"
         )
-        if self._waiting_session is not None and not self._waiting_session.done():
-            self._waiting_session.set_result(session)
+        handler = self._app_voice_input_handler
+        if handler is None:
+            self._logger.info("No Android app voice input handler is registered.")
+            self._protocol.end_voice(session.session_id)
             return
-        self._pending_session = session
+
+        request = AppVoiceInputRequest(
+            stream=_ProtocolVoiceStream(self._protocol, session),
+            session_id=session.session_id,
+            package_name=session.package_name,
+        )
+
+        def schedule_handler() -> None:
+            asyncio.create_task(handler(request))
+
+        self._loop.call_soon_threadsafe(schedule_handler)
 
     def _acknowledge_voice_begin(self, session: _AppVoiceSession) -> None:
         from androidtvremote2.remotemessage_pb2 import RemoteMessage
@@ -308,17 +280,3 @@ class _AndroidAppVoiceSessionBroker:
         if protocol is None:
             raise RuntimeError("Android TV remote protocol is unavailable")
         return protocol
-
-
-class _NativeAppVoiceSessionBroker:
-    def __init__(self, protocol: Any) -> None:
-        self._protocol = protocol
-
-    async def start_voice(self, timeout: float = 2.0):
-        return await self._protocol.start_app_voice(timeout)
-
-    def has_pending_session(self) -> bool:
-        has_pending_session = getattr(self._protocol, "has_pending_app_voice", None)
-        if has_pending_session is None:
-            return False
-        return bool(has_pending_session())

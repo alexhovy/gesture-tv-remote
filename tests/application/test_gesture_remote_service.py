@@ -57,6 +57,7 @@ from src.application.services.remote_command_dispatcher import (  # noqa: E402
     MAX_PENDING_COMMANDS,
     RemoteCommandDispatcher,
 )
+from src.application.ports.tv_remote import AppVoiceInputRequest  # noqa: E402
 from src.infrastructure.camera.display import OpenCvDisplay  # noqa: E402
 from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor  # noqa: E402
 from src.shared.config import AppConfig  # noqa: E402
@@ -430,6 +431,62 @@ class GestureRemoteDecisionTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(voice_capture.capture_count, 1)
         self.assertEqual(command_dispatcher.enqueued, [])
 
+    async def test_app_voice_request_starts_capture_stream(self) -> None:
+        service = GestureRemoteService.__new__(GestureRemoteService)
+        voice_capture = FakeVoiceCapture()
+        service._voice_capture = voice_capture
+        service._voice_task = None
+        service._logger = FakeLogger()
+        stream = FakeVoiceStream()
+
+        await service._handle_app_voice_input(
+            AppVoiceInputRequest(
+                stream=stream,
+                session_id=7,
+                package_name="com.example.app",
+            )
+        )
+        self.assertIsNotNone(service._voice_task)
+        await service._voice_task
+
+        self.assertEqual(
+            voice_capture.capture_streams,
+            [(stream, "android_app_voice session_id=7 package=com.example.app")],
+        )
+        self.assertFalse(stream.ended)
+
+    async def test_app_voice_request_is_rejected_while_capture_is_running(
+        self,
+    ) -> None:
+        service = GestureRemoteService.__new__(GestureRemoteService)
+        service._voice_capture = FakeVoiceCapture()
+        service._logger = FakeLogger()
+        service._voice_task = asyncio.create_task(asyncio.sleep(60.0))
+        stream = FakeVoiceStream()
+
+        try:
+            await service._handle_app_voice_input(
+                AppVoiceInputRequest(
+                    stream=stream,
+                    session_id=8,
+                    package_name="com.example.app",
+                )
+            )
+        finally:
+            service._voice_task.cancel()
+            with self.assertRaises(asyncio.CancelledError):
+                await service._voice_task
+
+        self.assertTrue(stream.ended)
+        self.assertIn(
+            (
+                "Rejecting Android app voice input because microphone capture "
+                "is already running: android_app_voice session_id=8 "
+                "package=com.example.app"
+            ),
+            service._logger.messages,
+        )
+
 
 class PipelineMetricsTests(unittest.TestCase):
     def test_dispatch_snapshot_includes_dropped_commands(self) -> None:
@@ -689,9 +746,25 @@ class FakeDecisionSession:
 class FakeVoiceCapture:
     def __init__(self) -> None:
         self.capture_count = 0
+        self.capture_streams = []
 
     async def capture(self) -> None:
         self.capture_count += 1
+
+    async def capture_stream(self, voice_stream, context: str) -> None:
+        self.capture_streams.append((voice_stream, context))
+
+
+class FakeVoiceStream:
+    def __init__(self) -> None:
+        self.ended = False
+
+    def send_chunk(self, chunk: bytes) -> bool:
+        del chunk
+        return True
+
+    def end(self) -> None:
+        self.ended = True
 
 
 class FakeCommandDispatcher:

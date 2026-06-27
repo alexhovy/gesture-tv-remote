@@ -85,7 +85,8 @@ class VoiceCaptureTests(unittest.TestCase):
         self.assertTrue(remote.voice_stream.ended)
         self.assertIn(
             "Microphone: finished. sent_chunks=1 sent_bytes=16384 "
-            "max_abs_sample=12593 nonzero_samples=8192",
+            "max_abs_sample=12593 nonzero_samples=8192 "
+            "context=remote_mic_stream",
             logger.messages,
         )
 
@@ -127,6 +128,35 @@ class VoiceCaptureTests(unittest.TestCase):
                 sys.modules["sounddevice"] = previous
 
         self.assertEqual(remote.voice_mode, VoiceInputMode.AUTO)
+
+    def test_capture_stream_sends_audio_to_existing_voice_stream(self) -> None:
+        remote = SupportedVoiceRemote()
+        logger = FakeLogger()
+        service = MicrophoneVoiceCapture(
+            remote,
+            app_config(voice_capture_seconds=0.01),
+            logger,
+        )
+        voice_stream = FakeVoiceStream()
+        sounddevice = types.ModuleType("sounddevice")
+        sounddevice.RawInputStream = FakeRawInputStream
+
+        previous = sys.modules.get("sounddevice")
+        sys.modules["sounddevice"] = sounddevice
+        try:
+            asyncio.run(service.capture_stream(voice_stream, "android_app_voice"))
+        finally:
+            if previous is None:
+                sys.modules.pop("sounddevice", None)
+            else:
+                sys.modules["sounddevice"] = previous
+
+        self.assertEqual(voice_stream.chunks, [b"1" * 16384])
+        self.assertTrue(voice_stream.ended)
+        self.assertIn(
+            "Microphone: listening... context=android_app_voice",
+            logger.messages,
+        )
 
 
 class FakeLogger:

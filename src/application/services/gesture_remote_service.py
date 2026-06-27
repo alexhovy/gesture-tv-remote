@@ -16,7 +16,7 @@ from src.application.ports.display import DisplayPort
 from src.application.ports.frame_source import FrameSourcePort
 from src.application.ports.hand_tracker import HandTrackerPort
 from src.application.ports.logger import LoggerPort
-from src.application.ports.tv_remote import TVRemotePort
+from src.application.ports.tv_remote import AppVoiceInputRequest, TVRemotePort
 from src.application.ports.voice_capture import VoiceCapturePort
 from src.application.services.pipeline_metrics import PipelineMetrics
 from src.domain.session import GestureSession
@@ -58,6 +58,7 @@ class GestureRemoteService:
         self._logger = logger
         self._metrics = metrics
         self._gesture_session = gesture_session or GestureSession(config)
+        self._voice_task: asyncio.Task | None = None
 
     async def run(self) -> None:
         if not await self._remote.connect():
@@ -70,7 +71,7 @@ class GestureRemoteService:
             await self._cleanup(None)
             return
 
-        voice_task = None
+        self._remote.set_app_voice_input_handler(self._handle_app_voice_input)
         last_debug_time = 0.0
         last_debug_message = ""
         frame_pipeline = FrameCapturePipeline(
@@ -126,11 +127,11 @@ class GestureRemoteService:
                     now,
                 )
 
-                voice_task = await command_pipeline.handle_decision(
+                self._voice_task = await command_pipeline.handle_decision(
                     decision.command_gesture,
                     decision.activated,
                     now,
-                    voice_task,
+                    self._voice_task,
                 )
 
                 debug_message = self._display.debug_message(
@@ -175,7 +176,7 @@ class GestureRemoteService:
                 )
                 await asyncio.sleep(0)
         finally:
-            await self._cleanup(voice_task)
+            await self._cleanup(self._voice_task)
 
     def _reload_config_if_needed(self, now: float) -> None:
         if self._config_provider is None:
@@ -220,7 +221,26 @@ class GestureRemoteService:
         self._hand_tracker.update_config(config)
         self._logger.info("Reloaded live config settings.")
 
+    async def _handle_app_voice_input(self, request: AppVoiceInputRequest) -> None:
+        context = (
+            f"android_app_voice session_id={request.session_id} "
+            f"package={request.package_name or 'unknown'}"
+        )
+        if self._voice_task is not None and not self._voice_task.done():
+            self._logger.info(
+                "Rejecting Android app voice input because microphone capture "
+                f"is already running: {context}"
+            )
+            request.stream.end()
+            return
+
+        self._logger.info(f"Starting Android app voice input capture: {context}")
+        self._voice_task = asyncio.create_task(
+            self._voice_capture.capture_stream(request.stream, context)
+        )
+
     async def _cleanup(self, voice_task: asyncio.Task | None) -> None:
+        self._remote.set_app_voice_input_handler(None)
         if voice_task is not None and not voice_task.done():
             voice_task.cancel()
             await self._cleanup_step("voice capture", voice_task)

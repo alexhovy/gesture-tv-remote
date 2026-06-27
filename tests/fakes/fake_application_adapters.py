@@ -1,5 +1,6 @@
 from typing import Any
 
+from src.application.ports.tv_remote import VoiceStreamPort
 from src.domain.geometry.camera_geometry import CroppedFrame, CropRect
 from src.shared.config import AppConfig
 
@@ -83,12 +84,16 @@ class FakeVoiceCapture:
     def __init__(self) -> None:
         self.config: AppConfig | None = None
         self.captures = 0
+        self.capture_streams: list[tuple[VoiceStreamPort, str]] = []
 
     def update_config(self, config: AppConfig) -> None:
         self.config = config
 
     async def capture(self) -> None:
         self.captures += 1
+
+    async def capture_stream(self, voice_stream: VoiceStreamPort, context: str) -> None:
+        self.capture_streams.append((voice_stream, context))
 
 
 class FakeCommandDispatcher:

@@ -1,4 +1,5 @@
 from src.application.ports.tv_remote import (
+    AppVoiceInputHandler,
     CapabilityStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
@@ -48,6 +49,12 @@ class WebOsRemoteClient:
                 "are not implemented.",
             ),
         )
+
+    def set_app_voice_input_handler(
+        self,
+        handler: AppVoiceInputHandler | None,
+    ) -> None:
+        del handler
 
     async def connect(self) -> bool:
         try:

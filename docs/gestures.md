@@ -56,10 +56,10 @@ reset the pending BACK gesture.
 Holding two fingers for about one second starts microphone capture for the
 configured voice target instead of BACK. Releasing to an open palm after
 microphone capture has been triggered does not emit BACK. The default target is
-`auto`: Android TV uses a pending app-requested voice session when the
-foreground app is waiting for microphone input, otherwise it starts the TV's
-global remote microphone search stream. The app does not press a focused
-on-screen mic control before voice capture.
+`auto`: Android TV starts the TV's global remote microphone search stream when
+two fingers trigger voice. Foreground app voice input is not gesture-triggered;
+on Android TV it starts only when the foreground app requests a voice session.
+The app does not press a focused on-screen mic control before voice capture.
 Roku and Samsung can only try to open the TV's native voice UI through remote
 keys, and webOS has no public raw microphone input path in the current adapter.
 

@@ -20,6 +20,8 @@ from src.domain.constants import (
     TV_COMMAND_VOLUME_UP,
 )
 from src.infrastructure.tv.androidtv_remote import AndroidTvRemoteClient
+from src.infrastructure.tv.androidtv_remote import _AndroidAppVoiceSessionBroker
+from src.infrastructure.tv.androidtv_remote import _AppVoiceSession
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.roku_remote import RokuRemoteClient
 from src.infrastructure.tv.samsung_remote import SamsungTvRemoteClient
@@ -199,15 +201,17 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
 
 
 class AndroidTvRemoteTests(unittest.IsolatedAsyncioTestCase):
-    async def test_auto_voice_uses_pending_app_voice_session(self) -> None:
+    async def test_auto_voice_uses_global_search_when_app_voice_is_pending(
+        self,
+    ) -> None:
         client = AndroidTvRemoteClient(app_config())
         remote = FakeAndroidRemote(has_pending_app_voice=True)
         client._remote = remote
 
         stream = await client.start_voice(VoiceInputMode.AUTO)
 
-        self.assertIs(stream, remote.app_voice_stream)
-        self.assertEqual(remote.operations, ["start_app_voice"])
+        self.assertIs(stream, remote.voice_stream)
+        self.assertEqual(remote.operations, ["start_voice"])
 
     async def test_auto_voice_uses_global_search_without_pending_app_session(
         self,
@@ -230,6 +234,60 @@ class AndroidTvRemoteTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(stream)
         self.assertEqual(remote.operations, ["send:SEARCH"])
+
+    async def test_app_voice_begin_notifies_registered_handler(self) -> None:
+        remote = FakeAndroidProtocolRemote()
+        logger = FakeLogger()
+        broker = _AndroidAppVoiceSessionBroker.for_remote(remote, logger)
+        broker._acknowledge_voice_begin = remote.acknowledge_voice_begin
+        requests = []
+        handled = asyncio.Event()
+
+        async def handle_app_voice(request) -> None:
+            requests.append(request)
+            handled.set()
+
+        broker.set_app_voice_input_handler(handle_app_voice)
+
+        broker._record_app_voice_begin(_AppVoiceSession(42, "com.example.app"))
+        await asyncio.wait_for(handled.wait(), timeout=1.0)
+
+        self.assertEqual(len(requests), 1)
+        self.assertEqual(requests[0].session_id, 42)
+        self.assertEqual(requests[0].package_name, "com.example.app")
+        self.assertEqual(remote.acknowledged_sessions, [42])
+        requests[0].stream.send_chunk(b"audio")
+        requests[0].stream.end()
+        self.assertEqual(remote.voice_chunks, [(42, b"audio")])
+        self.assertEqual(remote.ended_sessions, [42])
+
+    async def test_app_voice_begin_closes_session_without_registered_handler(
+        self,
+    ) -> None:
+        remote = FakeAndroidProtocolRemote()
+        logger = FakeLogger()
+        broker = _AndroidAppVoiceSessionBroker.for_remote(remote, logger)
+        broker._acknowledge_voice_begin = remote.acknowledge_voice_begin
+
+        broker._record_app_voice_begin(_AppVoiceSession(43, "com.example.app"))
+        await asyncio.sleep(0)
+
+        self.assertEqual(remote.acknowledged_sessions, [43])
+        self.assertEqual(remote.ended_sessions, [43])
+        self.assertIn(
+            "No Android app voice input handler is registered.",
+            logger.messages,
+        )
+
+    async def test_app_voice_parser_ignores_library_owned_voice_begin(self) -> None:
+        remote = FakeAndroidProtocolRemote()
+        logger = FakeLogger()
+        broker = _AndroidAppVoiceSessionBroker.for_remote(remote, logger)
+        remote._remote_message_protocol._on_voice_begin = asyncio.Future()
+
+        session = broker._parse_app_voice_begin(b"not protobuf")
+
+        self.assertIsNone(session)
 
 
 class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
@@ -428,6 +486,50 @@ class FakeAndroidProtocol:
 
     def has_pending_app_voice(self) -> bool:
         return self._has_pending_app_voice
+
+
+class FakeAndroidProtocolRemote:
+    def __init__(self) -> None:
+        self.acknowledged_sessions = []
+        self.ended_sessions = []
+        self.voice_chunks = []
+        self._remote_message_protocol = FakeAndroidRawProtocol(self)
+
+    def acknowledge_voice_begin(self, session: _AppVoiceSession) -> None:
+        self.acknowledged_sessions.append(session.session_id)
+
+
+class FakeAndroidRawProtocol:
+    def __init__(self, remote: FakeAndroidProtocolRemote) -> None:
+        self._remote = remote
+        self._loop = asyncio.get_running_loop()
+        self._handle_message_calls = []
+
+    def _handle_message(self, raw_msg: bytes) -> None:
+        self._handle_message_calls.append(raw_msg)
+
+    def _send_message(self, message) -> None:
+        del message
+
+    def send_voice_chunk(self, chunk: bytes, session_id: int) -> None:
+        self._remote.voice_chunks.append((session_id, chunk))
+
+    def end_voice(self, session_id: int) -> None:
+        self._remote.ended_sessions.append(session_id)
+
+
+class FakeLogger:
+    def __init__(self) -> None:
+        self.messages = []
+
+    def info(self, message: str) -> None:
+        self.messages.append(message)
+
+    def error(self, message: str) -> None:
+        self.messages.append(message)
+
+    def debug(self, message: str) -> None:
+        self.messages.append(message)
 
 
 def _install_fake_roku(fail_first_send: bool = False):

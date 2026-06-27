@@ -1,3 +1,4 @@
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import StrEnum
 from typing import Protocol
@@ -45,8 +46,23 @@ class VoiceStreamPort(Protocol):
     def end(self) -> None: ...
 
 
+@dataclass(frozen=True)
+class AppVoiceInputRequest:
+    stream: VoiceStreamPort
+    session_id: int
+    package_name: str
+
+
+AppVoiceInputHandler = Callable[[AppVoiceInputRequest], Awaitable[None]]
+
+
 class TVRemotePort(Protocol):
     def capabilities(self) -> TvAdapterCapabilities: ...
+
+    def set_app_voice_input_handler(
+        self,
+        handler: AppVoiceInputHandler | None,
+    ) -> None: ...
 
     async def connect(self) -> bool: ...
 

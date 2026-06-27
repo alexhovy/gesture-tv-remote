@@ -43,14 +43,13 @@ Set `GESTURE_TV_ADAPTER` to select the TV integration:
 | `webos` | `aiowebostv` | Supports TV commands. Accept the pairing prompt on the TV when required. |
 | `roku` | `rokuecp` | Supports ECP TV commands. |
 
-Holding the active hand in a two-finger pose for about one second starts
-microphone capture for the configured voice target. The default
-`voice_input_target=auto` uses a pending foreground app voice session when one
-exists, then falls back to the adapter's TV/global voice route when available.
-On Android TV, that means in-app voice input is used when the foreground app has
-already requested microphone input; otherwise the Android TV remote microphone
-search stream is started. The app does not press a focused on-screen mic control
-before voice capture.
+Holding the active hand in a two-finger pose for about one second starts the
+configured TV/global voice target. The default `voice_input_target=auto` uses
+Android TV remote microphone search when available, then falls back to an
+adapter's native voice UI. Foreground app voice input is separate: on Android
+TV, microphone capture starts only after the foreground app requests a voice
+session through the Android TV Remote Protocol. The app does not press a
+focused on-screen mic control before voice capture.
 
 Use `voice_input_target=remote_search` for Android TV remote microphone search,
 or `voice_input_target=native_search` to ask adapters such as Roku and Samsung

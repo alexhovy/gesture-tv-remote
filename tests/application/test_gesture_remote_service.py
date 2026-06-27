@@ -50,14 +50,14 @@ from src.application.pipelines import (  # noqa: E402
     GestureDecisionPipeline,
 )
 from src.application.ports.tv_remote import AppVoiceInputRequest  # noqa: E402
-from src.application.services.cleanup_coordinator import (  # noqa: E402
+from src.application.services.coordinators.cleanup import (  # noqa: E402
     CleanupCoordinator,
 )
-from src.application.services.config_reload_coordinator import (  # noqa: E402
+from src.application.services.coordinators.config_reload import (  # noqa: E402
     CONFIG_RELOAD_INTERVAL_SECONDS,
     ConfigReloadCoordinator,
 )
-from src.application.services.display_debug_coordinator import (  # noqa: E402
+from src.application.services.coordinators.display_debug import (  # noqa: E402
     DisplayDebugCoordinator,
 )
 from src.application.services.gesture_remote_service import (  # noqa: E402
@@ -640,7 +640,7 @@ class GestureRemoteCleanupTests(unittest.IsolatedAsyncioTestCase):
             time.sleep(10.0)
 
         with patch(
-            "src.application.services.cleanup_coordinator.CLEANUP_TIMEOUT_SECONDS",
+            "src.application.services.coordinators.cleanup.CLEANUP_TIMEOUT_SECONDS",
             0.01,
         ):
             started = time.monotonic()

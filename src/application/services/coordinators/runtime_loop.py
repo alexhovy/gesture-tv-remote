@@ -13,8 +13,8 @@ from src.application.ports.frame_source import FrameSourcePort
 from src.application.ports.hand_tracker import HandTrackerPort
 from src.application.ports.logger import LoggerPort
 from src.application.ports.voice_capture import VoiceCapturePort
-from src.application.services.config_reload_coordinator import ConfigReloadCoordinator
-from src.application.services.display_debug_coordinator import DisplayDebugCoordinator
+from src.application.services.coordinators.config_reload import ConfigReloadCoordinator
+from src.application.services.coordinators.display_debug import DisplayDebugCoordinator
 from src.application.services.pipeline_metrics import PipelineMetrics
 from src.domain.session import GestureSession
 

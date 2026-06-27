@@ -2,10 +2,10 @@ from __future__ import annotations
 
 from src.application.ports.config_provider import ConfigProviderPort
 from src.application.services.gesture_remote_service import GestureRemoteService
-from src.runtime.build_audio import build_voice_capture
-from src.runtime.build_camera import build_camera_dependencies
-from src.runtime.build_config import build_config_provider, build_config_repository
-from src.runtime.build_tv import build_tv_dependencies
+from src.runtime.builders.audio import build_voice_capture
+from src.runtime.builders.camera import build_camera_dependencies
+from src.runtime.builders.config import build_config_provider, build_config_repository
+from src.runtime.builders.tv import build_tv_dependencies
 from src.shared.config import load_config_from_env
 from src.shared.logging import AppLogger
 

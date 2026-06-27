@@ -9,11 +9,11 @@ from src.application.ports.hand_tracker import HandTrackerPort
 from src.application.ports.logger import LoggerPort
 from src.application.ports.tv_remote import AppVoiceInputRequest, TVRemotePort
 from src.application.ports.voice_capture import VoiceCapturePort
-from src.application.services.cleanup_coordinator import CleanupCoordinator
-from src.application.services.config_reload_coordinator import ConfigReloadCoordinator
-from src.application.services.display_debug_coordinator import DisplayDebugCoordinator
+from src.application.services.coordinators.cleanup import CleanupCoordinator
+from src.application.services.coordinators.config_reload import ConfigReloadCoordinator
+from src.application.services.coordinators.display_debug import DisplayDebugCoordinator
+from src.application.services.coordinators.runtime_loop import RuntimeLoopCoordinator
 from src.application.services.pipeline_metrics import PipelineMetrics
-from src.application.services.runtime_loop_coordinator import RuntimeLoopCoordinator
 from src.domain.session import GestureSession
 from src.shared.config import AppConfig
 

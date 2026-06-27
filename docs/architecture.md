@@ -118,7 +118,7 @@ Responsibility:
 
 - CLI runtime selection
 - configuration bootstrap
-- dependency wiring in focused `src/runtime/build_*.py` modules and final
+- dependency wiring in focused `src/runtime/builders/` modules and final
   composition in `src/runtime/container.py`
 - construction of concrete infrastructure adapters
 - returning fully constructed application/runtime objects
@@ -201,7 +201,7 @@ not own gesture business rules.
 
 Runtime is the composition root. It reads configuration, creates concrete
 infrastructure implementations, prepares required runtime resources, and wires
-application services explicitly through focused `src/runtime/build_*.py` modules
+application services explicitly through focused `src/runtime/builders/` modules
 composed by `src/runtime/container.py`.
 
 ### Web
@@ -250,8 +250,8 @@ Runtime builder modules build the concrete object graph:
 
 `GestureRemoteService` then owns the gesture runtime lifecycle: connect, verify
 the webcam, run the gesture loop, and clean up. Focused application
-coordinators handle live config reload, the runtime frame loop, display/debug
-rendering, and cleanup sequencing.
+coordinators under `src/application/services/coordinators/` handle live config
+reload, the runtime frame loop, display/debug rendering, and cleanup sequencing.
 
 See `docs/runtime-pipeline.md` for runtime pipeline and concurrency details.
 
@@ -271,7 +271,7 @@ and `tests/shared/`. Shared fakes and helpers live under `tests/fakes/` and
 - Prefer domain functions for deterministic gesture rules.
 - Keep I/O and third-party libraries behind infrastructure adapters.
 - Add orchestration in application only when it represents a use case workflow.
-- Wire dependencies explicitly in focused `src/runtime/build_*.py` modules and
+- Wire dependencies explicitly in focused `src/runtime/builders/` modules and
   keep `src/runtime/container.py` limited to whole-service composition.
 - Use constructor injection and `Protocol` ports; do not add a DI framework.
 - Keep `main.py` and `src/runtime` free of business logic.

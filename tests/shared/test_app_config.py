@@ -6,7 +6,7 @@ from unittest.mock import patch
 
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
-from src.runtime.build_config import build_config_provider
+from src.runtime.builders.config import build_config_provider
 from src.runtime.gesture_app import create_config_provider, load_config
 from src.shared.config import EnvVar
 from tests.helpers.config_helpers import app_config

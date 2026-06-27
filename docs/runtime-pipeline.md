@@ -6,7 +6,7 @@ window rendering, and TV network commands run at different speeds.
 ## Pipelines
 
 `GestureRemoteService` is the top-level application orchestrator. Runtime wiring
-creates its concrete collaborators in focused `src/runtime/build_*.py` modules
+creates its concrete collaborators in focused `src/runtime/builders/` modules
 and injects them through ports:
 
 | Pipeline | Responsibility |
@@ -26,11 +26,11 @@ Gesture decisions enter the pure domain through `src/domain/session/`, which
 dispatches to focused phase and motion evaluators under `src/domain/evaluators/`.
 `GestureRemoteService` remains the lifecycle owner for connection setup,
 runtime-loop execution, and final shutdown. Focused application coordinators
-own live config reload, the frame-processing loop, display/debug rendering, and
-cleanup sequencing while concrete adapter construction stays in the runtime
-builders.
+under `src/application/services/coordinators/` own live config reload, the
+frame-processing loop, display/debug rendering, and cleanup sequencing while
+concrete adapter construction stays in the runtime builders.
 
-`src/runtime/build_camera.py` prepares the MediaPipe model file before
+`src/runtime/builders/camera.py` prepares the MediaPipe model file before
 constructing the concrete hand tracker.
 
 ## Concurrency Model

@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from src.runtime.build_config import build_config_provider, build_config_repository
+from src.runtime.builders.config import build_config_provider, build_config_repository
 from src.runtime.config_server import ConfigServerRunner
 from src.shared.config import load_config_from_env
 from src.shared.logging import AppLogger

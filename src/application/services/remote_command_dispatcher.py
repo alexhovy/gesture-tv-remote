@@ -38,6 +38,13 @@ class RemoteCommandDispatcher:
     def enqueue(self, gesture: str, command: str) -> None:
         if self._closed:
             return
+        if not self._supports_command(command):
+            self._dropped_commands += 1
+            self._logger.info(
+                "Adapter does not support command. "
+                f"Skipping gesture={gesture} command={command}"
+            )
+            return
         if self._has_work is None:
             self.start()
 
@@ -113,3 +120,6 @@ class RemoteCommandDispatcher:
             return self._commands.popleft()
 
         return None
+
+    def _supports_command(self, command: str) -> bool:
+        return command in self._remote.capabilities().supported_commands

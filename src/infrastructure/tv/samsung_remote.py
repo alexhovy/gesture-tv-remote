@@ -6,7 +6,10 @@ from src.application.ports.tv_remote import (
     VoiceInputMode,
 )
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
-from src.infrastructure.tv.tv_command_translation import translate_tv_command
+from src.infrastructure.tv.tv_command_translation import (
+    SAMSUNG_COMMANDS,
+    translate_tv_command,
+)
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_SAMSUNG
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
@@ -21,6 +24,7 @@ class SamsungTvRemoteClient:
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
+            supported_commands=frozenset(SAMSUNG_COMMANDS),
             power=CapabilityStatus.NOT_IMPLEMENTED,
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,

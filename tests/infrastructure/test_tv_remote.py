@@ -136,6 +136,34 @@ class TvRemoteTests(unittest.TestCase):
                 ]
                 self.assertTrue(all(translated))
 
+    def test_capabilities_advertise_all_translated_commands(self) -> None:
+        commands = frozenset(
+            {
+                TV_COMMAND_HOME,
+                TV_COMMAND_BACK,
+                TV_COMMAND_DPAD_CENTER,
+                TV_COMMAND_DPAD_LEFT,
+                TV_COMMAND_DPAD_RIGHT,
+                TV_COMMAND_DPAD_UP,
+                TV_COMMAND_DPAD_DOWN,
+                TV_COMMAND_VOLUME_UP,
+                TV_COMMAND_VOLUME_DOWN,
+            }
+        )
+
+        for adapter in [
+            TV_ADAPTER_ANDROIDTV,
+            TV_ADAPTER_SAMSUNG,
+            TV_ADAPTER_WEBOS,
+            TV_ADAPTER_ROKU,
+        ]:
+            with self.subTest(adapter=adapter):
+                capabilities = create_tv_remote_client(
+                    app_config(tv_adapter=adapter)
+                ).capabilities()
+
+                self.assertEqual(capabilities.supported_commands, commands)
+
     def test_translation_rejects_unknown_command(self) -> None:
         with self.assertRaises(TvRemoteCommandError):
             translate_tv_command(TV_ADAPTER_ROKU, "UNKNOWN")

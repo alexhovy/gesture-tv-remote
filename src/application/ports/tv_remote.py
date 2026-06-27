@@ -27,6 +27,7 @@ class VoiceInputCapabilities:
 
 @dataclass(frozen=True)
 class TvAdapterCapabilities:
+    supported_commands: frozenset[str]
     power: CapabilityStatus
     volume: CapabilityStatus
     directional_navigation: CapabilityStatus

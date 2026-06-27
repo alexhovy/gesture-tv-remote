@@ -3,6 +3,9 @@
 The app keeps common commands adapter-neutral, but each TV platform has
 different protocol support. Capability metadata is exposed through the
 application TV remote port and implemented by the concrete TV adapters.
+`TvAdapterCapabilities.supported_commands` is the runtime command contract:
+`RemoteCommandDispatcher` drops and logs any adapter-neutral command that is not
+advertised there instead of assuming every remote behaves the same.
 Capability status is explicit:
 
 - `implemented`: available through the current adapter code.
@@ -32,8 +35,10 @@ All current adapters implement translations for:
 - `VOLUME_UP`
 - `VOLUME_DOWN`
 
-The gesture layer emits these common commands through the dispatcher. Adapter
-translations live in `src/infrastructure/tv/tv_command_translation.py`.
+The gesture layer emits these common commands through the dispatcher. Each
+adapter advertises its supported adapter-neutral commands from the same mapping
+used for protocol translation. Adapter translations live in
+`src/infrastructure/tv/tv_command_translation.py`.
 
 ## Platform Gaps
 

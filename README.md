@@ -56,8 +56,10 @@ ignored by git.
 ## Documentation
 
 - [Architecture](docs/architecture.md)
+- [Runtime Pipeline](docs/runtime-pipeline.md)
 - [Configuration](docs/configuration.md)
 - [Gestures](docs/gestures.md)
+- [TV Adapter Capabilities](docs/tv-adapter-capabilities.md)
 - [Development](docs/development.md)
 
 ## Architecture

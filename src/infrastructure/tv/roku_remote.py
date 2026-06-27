@@ -6,7 +6,10 @@ from src.application.ports.tv_remote import (
     VoiceInputMode,
 )
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
-from src.infrastructure.tv.tv_command_translation import translate_tv_command
+from src.infrastructure.tv.tv_command_translation import (
+    ROKU_COMMANDS,
+    translate_tv_command,
+)
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
@@ -21,6 +24,7 @@ class RokuRemoteClient:
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
+            supported_commands=frozenset(ROKU_COMMANDS),
             power=CapabilityStatus.NOT_IMPLEMENTED,
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,

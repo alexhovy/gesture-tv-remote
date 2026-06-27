@@ -49,7 +49,12 @@ from src.application.pipelines import (  # noqa: E402
     FrameCapturePipeline,
     GestureDecisionPipeline,
 )
-from src.application.ports.tv_remote import AppVoiceInputRequest  # noqa: E402
+from src.application.ports.tv_remote import (  # noqa: E402
+    AppVoiceInputRequest,
+    CapabilityStatus,
+    TvAdapterCapabilities,
+    VoiceInputCapabilities,
+)
 from src.application.services.coordinators.cleanup import (  # noqa: E402
     CleanupCoordinator,
 )
@@ -749,13 +754,60 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         remote.release_first.set()
         await dispatcher.close()
 
+    async def test_unsupported_command_is_not_enqueued(self) -> None:
+        remote = BlockingRemote(supported_commands=frozenset({TV_COMMAND_HOME}))
+        logger = FakeLogger()
+        dispatcher = RemoteCommandDispatcher(remote, logger)
+
+        dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
+
+        self.assertEqual(remote.commands, [])
+        self.assertEqual(dispatcher.queue_depth, 0)
+        self.assertEqual(dispatcher.dropped_commands, 1)
+        self.assertIn(
+            (
+                "Adapter does not support command. "
+                f"Skipping gesture=VOLUME_UP command={TV_COMMAND_VOLUME_UP}"
+            ),
+            logger.messages,
+        )
+        await dispatcher.close()
+
 
 class BlockingRemote:
-    def __init__(self) -> None:
+    def __init__(self, supported_commands: frozenset[str] | None = None) -> None:
         self.commands = []
         self.first_started = asyncio.Event()
         self.second_started = asyncio.Event()
         self.release_first = asyncio.Event()
+        self._supported_commands = supported_commands or frozenset(
+            {
+                TV_COMMAND_DPAD_DOWN,
+                TV_COMMAND_HOME,
+                TV_COMMAND_VOLUME_DOWN,
+                TV_COMMAND_VOLUME_UP,
+            }
+        )
+
+    def capabilities(self) -> TvAdapterCapabilities:
+        return TvAdapterCapabilities(
+            supported_commands=self._supported_commands,
+            power=CapabilityStatus.UNSUPPORTED,
+            volume=CapabilityStatus.IMPLEMENTED,
+            directional_navigation=CapabilityStatus.IMPLEMENTED,
+            media_controls=CapabilityStatus.UNSUPPORTED,
+            text_input=CapabilityStatus.UNSUPPORTED,
+            source_selection=CapabilityStatus.UNSUPPORTED,
+            wake_on_lan=CapabilityStatus.UNSUPPORTED,
+            pairing=CapabilityStatus.UNSUPPORTED,
+            voice_input=VoiceInputCapabilities(
+                remote_mic_stream=CapabilityStatus.UNSUPPORTED,
+                native_voice_search=CapabilityStatus.UNSUPPORTED,
+                app_voice_input=CapabilityStatus.UNSUPPORTED,
+                app_text_input=CapabilityStatus.UNSUPPORTED,
+            ),
+            connection_type="fake",
+        )
 
     async def send_command(self, command: str) -> None:
         self.commands.append(command)

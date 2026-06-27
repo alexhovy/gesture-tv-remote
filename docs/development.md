@@ -99,21 +99,42 @@ Application code should depend on domain and application ports. Infrastructure
 implements those ports. Runtime wires concrete implementations into application
 services with explicit constructor injection.
 
-## Adding a TV Platform
+## Golden Path: Add a Gesture
+
+1. Decide whether the gesture is a classification, session transition, motion
+   interaction, or command mapping.
+2. Put deterministic recognition or state rules in the matching domain package:
+   `src/domain/gestures/`, `src/domain/evaluators/`, or `src/domain/session/`.
+3. Add a gesture name or TV command constant in `src/domain/constants.py` when
+   the new behavior needs a stable public name.
+4. If the gesture emits a TV command, map it in
+   `src/domain/commands/commands.py`. Keep the command adapter-neutral.
+5. Update application code only when the runtime workflow changes, such as a new
+   dispatch branch in `src/application/pipelines/command_dispatch.py`.
+6. Add focused domain tests under `tests/domain/` with synthetic landmarks,
+   explicit timestamps, and no hardware dependencies. Add application tests only
+   when orchestration changes.
+7. Update `docs/gestures.md` when user-visible gesture semantics or command
+   behavior changes.
+
+## Golden Path: Add a TV Adapter
 
 1. Add the adapter implementation under `src/infrastructure/tv/`.
 2. Make the adapter satisfy `TVRemotePort` from `src/application/ports/tv_remote.py`.
-3. Add adapter-neutral command translations in
+3. Expose accurate `TvAdapterCapabilities`, including
+   `supported_commands`, connection type, pairing, voice, and known limitations.
+4. Add adapter-neutral command translations in
    `src/infrastructure/tv/tv_command_translation.py`.
-4. Register the adapter in `src/infrastructure/tv/tv_remote_factory.py` and the
-   supported config values.
-5. Add tests for factory selection, command translation, capability metadata,
+5. Register the adapter in `src/infrastructure/tv/tv_remote_factory.py`,
+   `src/shared/config.py`, and the config UI adapter list in
+   `src/web/config_view.py`.
+6. Add tests for factory selection, command translation, capability metadata,
    and adapter behavior using fakes.
-6. Update `docs/configuration.md` and `docs/tv-adapter-capabilities.md`.
+7. Update `docs/configuration.md` and `docs/tv-adapter-capabilities.md`.
 
 Do not put protocol-specific TV behavior in application or domain code.
 
-## Adding Gesture Logic
+## Gesture Logic Placement Reference
 
 Put deterministic gesture semantics in `src/domain`. Use the domain subpackage
 that matches the responsibility:

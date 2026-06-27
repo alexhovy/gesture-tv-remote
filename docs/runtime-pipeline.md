@@ -3,6 +3,43 @@
 The gesture runtime stays concurrent because camera capture, hand detection,
 window rendering, and TV network commands run at different speeds.
 
+## Flow Diagram
+
+```text
+camera
+  OpenCvFrameSource latest-frame thread
+    |
+    v
+preprocessing
+  FrameCapturePipeline + OpenCvFrameProcessor
+  flip frame, apply detection/display crops
+    |
+    v
+MediaPipe
+  DetectionPipeline + HandTrackerPort
+  detect hands in the active detection crop
+    |
+    v
+domain session
+  GestureDecisionPipeline + GestureSession
+  project landmarks, evaluate session state, choose command gesture
+    |
+    v
+command queue
+  CommandDispatchPipeline + RemoteCommandDispatcher
+  debounce gestures, check adapter capabilities, enqueue TV commands
+    |
+    v
+TV adapter
+  TVRemotePort implementation
+  translate adapter-neutral commands to platform protocol calls
+```
+
+Display rendering runs beside the main flow after the domain decision so the
+preview can show the same crop, landmarks, and debug state used for decisions.
+Voice capture also branches from command dispatch when the microphone gesture is
+emitted.
+
 ## Pipelines
 
 `GestureRemoteService` is the top-level application orchestrator. Runtime wiring

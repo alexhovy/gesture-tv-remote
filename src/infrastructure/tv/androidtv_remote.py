@@ -12,7 +12,10 @@ from src.application.ports.tv_remote import (
     VoiceInputMode,
 )
 from src.infrastructure.tv.async_call import call_remote_method
-from src.infrastructure.tv.tv_command_translation import translate_tv_command
+from src.infrastructure.tv.tv_command_translation import (
+    ANDROIDTV_COMMANDS,
+    translate_tv_command,
+)
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
@@ -27,6 +30,7 @@ class AndroidTvRemoteClient:
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
+            supported_commands=frozenset(ANDROIDTV_COMMANDS),
             power=CapabilityStatus.NOT_IMPLEMENTED,
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,

@@ -252,6 +252,7 @@ def _capabilities(
     app_voice_input: CapabilityStatus = CapabilityStatus.UNSUPPORTED,
 ) -> TvAdapterCapabilities:
     return TvAdapterCapabilities(
+        supported_commands=frozenset(),
         power=CapabilityStatus.UNSUPPORTED,
         volume=CapabilityStatus.UNSUPPORTED,
         directional_navigation=CapabilityStatus.UNSUPPORTED,

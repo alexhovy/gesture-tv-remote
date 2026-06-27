@@ -246,9 +246,10 @@ The CLI in `src/runtime/cli.py` selects the gesture runtime, config UI, or both.
    dispatcher adapters
 5. inject those collaborators into `GestureRemoteService`
 
-`GestureRemoteService` then owns the gesture runtime lifecycle: connect, start
-frame capture, evaluate gestures, dispatch commands, reload live config, and
-clean up.
+`GestureRemoteService` then owns the gesture runtime lifecycle: connect, verify
+the webcam, run the gesture loop, and clean up. Focused application
+coordinators handle live config reload, the runtime frame loop, display/debug
+rendering, and cleanup sequencing.
 
 See `docs/runtime-pipeline.md` for runtime pipeline and concurrency details.
 

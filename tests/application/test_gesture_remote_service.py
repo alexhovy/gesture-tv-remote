@@ -4,6 +4,7 @@ import time
 import types
 import unittest
 from types import SimpleNamespace
+from typing import Any
 from unittest.mock import patch
 
 from src.domain.constants import (
@@ -49,8 +50,17 @@ from src.application.pipelines import (  # noqa: E402
     GestureDecisionPipeline,
 )
 from src.application.ports.tv_remote import AppVoiceInputRequest  # noqa: E402
-from src.application.services.gesture_remote_service import (  # noqa: E402
+from src.application.services.cleanup_coordinator import (  # noqa: E402
+    CleanupCoordinator,
+)
+from src.application.services.config_reload_coordinator import (  # noqa: E402
     CONFIG_RELOAD_INTERVAL_SECONDS,
+    ConfigReloadCoordinator,
+)
+from src.application.services.display_debug_coordinator import (  # noqa: E402
+    DisplayDebugCoordinator,
+)
+from src.application.services.gesture_remote_service import (  # noqa: E402
     GestureRemoteService,
 )
 from src.application.services.pipeline_metrics import PipelineMetrics  # noqa: E402
@@ -518,61 +528,129 @@ class GestureRemoteConfigReloadTests(unittest.TestCase):
             camera_zoom=2.0,
             debug_log_seconds=0.1,
         )
-        service = GestureRemoteService.__new__(GestureRemoteService)
-        service._config = initial_config
-        service._config_provider = lambda: latest_config
-        service._last_config_reload_time = -CONFIG_RELOAD_INTERVAL_SECONDS
-        service._logger = FakeLogger()
-        service._gesture_session = FakeReloadableConfig()
-        service._voice_capture = FakeReloadableConfig()
-        service._camera = FakeReloadableConfig()
-        service._hand_tracker = FakeReloadableConfig()
+        logger = FakeLogger()
+        gesture_session = FakeReloadableConfig()
+        voice_capture = FakeReloadableConfig()
+        camera = FakeReloadableConfig()
+        hand_tracker = FakeReloadableConfig()
+        coordinator = ConfigReloadCoordinator(
+            initial_config,
+            gesture_session=gesture_session,
+            voice_capture=voice_capture,
+            camera=camera,
+            hand_tracker=hand_tracker,
+            logger=logger,
+            config_provider=lambda: latest_config,
+        )
 
-        service._reload_config_if_needed(now=CONFIG_RELOAD_INTERVAL_SECONDS)
+        config = coordinator.reload_if_needed_sync(now=CONFIG_RELOAD_INTERVAL_SECONDS)
 
-        self.assertEqual(service._config.tv.host, "10.0.0.10")
-        self.assertEqual(service._config.camera.webcam_index, 0)
-        self.assertEqual(service._config.camera.zoom, 2.0)
-        self.assertEqual(service._config.debug.log_seconds, 0.1)
-        self.assertEqual(service._gesture_session.config, service._config)
-        self.assertEqual(service._voice_capture.config, service._config)
-        self.assertEqual(service._camera.config, service._config)
-        self.assertEqual(service._hand_tracker.config, service._config)
-        self.assertIn("Reloaded live config settings.", service._logger.messages)
+        self.assertEqual(config.tv.host, "10.0.0.10")
+        self.assertEqual(config.camera.webcam_index, 0)
+        self.assertEqual(config.camera.zoom, 2.0)
+        self.assertEqual(config.debug.log_seconds, 0.1)
+        self.assertEqual(gesture_session.config, config)
+        self.assertEqual(voice_capture.config, config)
+        self.assertEqual(camera.config, config)
+        self.assertEqual(hand_tracker.config, config)
+        self.assertIn("Reloaded live config settings.", logger.messages)
 
     def test_reload_config_is_throttled(self) -> None:
-        service = GestureRemoteService.__new__(GestureRemoteService)
-        service._config = app_config()
-        service._config_provider = ProviderCounter(app_config())
-        service._last_config_reload_time = 10.0
+        provider = ProviderCounter(app_config())
+        coordinator = ConfigReloadCoordinator(
+            app_config(),
+            gesture_session=FakeReloadableConfig(),
+            voice_capture=FakeReloadableConfig(),
+            camera=FakeReloadableConfig(),
+            hand_tracker=FakeReloadableConfig(),
+            logger=FakeLogger(),
+            config_provider=provider,
+        )
+        coordinator.reload_if_needed_sync(now=10.0)
 
-        service._reload_config_if_needed(
+        coordinator.reload_if_needed_sync(
             now=10.0 + CONFIG_RELOAD_INTERVAL_SECONDS - 0.01
         )
 
-        self.assertEqual(service._config_provider.calls, 0)
+        self.assertEqual(provider.calls, 1)
+
+
+class DisplayDebugCoordinatorTests(unittest.TestCase):
+    def test_debug_message_is_logged_on_change_or_interval(self) -> None:
+        display = FakeDebugDisplay()
+        logger = FakeLogger()
+        coordinator = DisplayDebugCoordinator(display, logger)
+        config = app_config(debug_log_seconds=1.0)
+        crop = CropRect(0.0, 0.0, 1.0, 1.0)
+
+        coordinator.render(
+            config=config,
+            frame=object(),
+            detected_hands=[],
+            detection_crop=crop,
+            display_crop=crop,
+            decision=GestureDecision(None, False, "same"),
+            now=1.0,
+        )
+        coordinator.render(
+            config=config,
+            frame=object(),
+            detected_hands=[],
+            detection_crop=crop,
+            display_crop=crop,
+            decision=GestureDecision(None, False, "same"),
+            now=1.5,
+        )
+        coordinator.render(
+            config=config,
+            frame=object(),
+            detected_hands=[],
+            detection_crop=crop,
+            display_crop=crop,
+            decision=GestureDecision(None, False, "same"),
+            now=2.1,
+        )
+        coordinator.render(
+            config=config,
+            frame=object(),
+            detected_hands=[],
+            detection_crop=crop,
+            display_crop=crop,
+            decision=GestureDecision(None, False, "changed"),
+            now=2.2,
+        )
+
+        self.assertEqual(logger.messages, ["same", "same", "changed"])
+        self.assertEqual(display.rendered, 4)
 
 
 class GestureRemoteCleanupTests(unittest.IsolatedAsyncioTestCase):
     async def test_sync_cleanup_timeout_does_not_wait_for_blocked_method(self) -> None:
-        service = GestureRemoteService.__new__(GestureRemoteService)
-        service._logger = FakeLogger()
+        logger = FakeLogger()
+        coordinator = CleanupCoordinator(
+            remote=FakeCleanupRemote(),
+            frame_source=FakeCleanupFrameSource(),
+            hand_tracker=FakeCleanupHandTracker(),
+            display=FakeDebugDisplay(),
+            command_dispatcher=FakeCleanupCommandDispatcher(),
+            logger=logger,
+        )
 
         def blocked_cleanup() -> None:
             time.sleep(10.0)
 
         with patch(
-            "src.application.services.gesture_remote_service.CLEANUP_TIMEOUT_SECONDS",
+            "src.application.services.cleanup_coordinator.CLEANUP_TIMEOUT_SECONDS",
             0.01,
         ):
             started = time.monotonic()
-            await service._cleanup_sync_step("blocked cleanup", blocked_cleanup)
+            await coordinator._cleanup_sync_step("blocked cleanup", blocked_cleanup)
             elapsed = time.monotonic() - started
 
         self.assertLess(elapsed, 0.5)
         self.assertIn(
             "Timed out while cleaning up blocked cleanup.",
-            service._logger.messages,
+            logger.messages,
         )
 
 
@@ -777,6 +855,130 @@ class FakeCommandDispatcher:
 
     def enqueue(self, gesture, command) -> None:
         self.enqueued.append((gesture, command))
+
+
+class FakeDebugDisplay:
+    def __init__(self) -> None:
+        self.rendered = 0
+        self.closed = False
+
+    def debug_message(
+        self,
+        decision_debug_message: str,
+        detection_crop: CropRect,
+        display_crop: CropRect,
+        zoom_frozen: bool = False,
+    ) -> str:
+        del detection_crop, display_crop, zoom_frozen
+        return decision_debug_message
+
+    def draw_detected_hands(
+        self,
+        frame: Any,
+        detected_hands: list[Any],
+        source_crop: CropRect,
+        display_crop: CropRect,
+    ) -> None:
+        del frame, detected_hands, source_crop, display_crop
+
+    def draw_pointer_zones(
+        self,
+        frame: Any,
+        pointer_debug: Any,
+        display_crop: CropRect,
+    ) -> None:
+        del frame, pointer_debug, display_crop
+
+    def draw_volume_zones(
+        self,
+        frame: Any,
+        volume_debug: Any,
+        display_crop: CropRect,
+    ) -> None:
+        del frame, volume_debug, display_crop
+
+    def render(self, app_name: str, frame: Any) -> bool:
+        del app_name, frame
+        self.rendered += 1
+        return False
+
+    def close(self) -> None:
+        self.closed = True
+
+
+class FakeCleanupRemote:
+    def capabilities(self) -> Any:
+        return None
+
+    def set_app_voice_input_handler(self, handler) -> None:
+        del handler
+
+    async def connect(self) -> bool:
+        return True
+
+    async def send_command(self, command: str) -> None:
+        del command
+
+    async def start_voice(self, mode: Any) -> None:
+        del mode
+
+    async def disconnect(self) -> None:
+        pass
+
+
+class FakeCleanupFrameSource:
+    def is_open(self) -> bool:
+        return True
+
+    def start(self) -> None:
+        pass
+
+    def latest_versioned(self) -> tuple[int, Any | None]:
+        return 0, None
+
+    def failed(self) -> bool:
+        return False
+
+    def stop(self) -> None:
+        pass
+
+    def close(self) -> None:
+        pass
+
+
+class FakeCleanupHandTracker:
+    def update_config(self, config: AppConfig) -> None:
+        del config
+
+    def detect(self, frame: Any, timestamp_ms: int) -> tuple[list[Any], list[Any]]:
+        del frame, timestamp_ms
+        return [], []
+
+    def close(self) -> None:
+        pass
+
+
+class FakeCleanupCommandDispatcher:
+    def start(self) -> None:
+        pass
+
+    def enqueue(self, gesture: str, command: str) -> None:
+        del gesture, command
+
+    @property
+    def queue_depth(self) -> int:
+        return 0
+
+    @property
+    def dropped_commands(self) -> int:
+        return 0
+
+    @property
+    def last_send_latency_seconds(self) -> float | None:
+        return None
+
+    async def close(self) -> None:
+        pass
 
 
 def _landmark(x: float, y: float, **attributes):

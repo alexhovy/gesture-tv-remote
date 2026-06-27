@@ -15,6 +15,7 @@ them through ports:
 | `DetectionPipeline` | Submits frames to the injected hand-tracker port and records detection timing. |
 | `GestureDecisionPipeline` | Projects hand states back from the active detection crop, evaluates the domain session, and updates auto-zoom for the next frame. |
 | `CommandDispatchPipeline` | Applies gesture debounce and enqueues adapter-neutral TV commands. |
+| `DisplayDebugCoordinator` | Builds/logs display debug messages, draws overlays through the display port, and renders the preview frame. |
 | `OpenCvDisplay` | Infrastructure adapter that draws detected hand landmarks and renders the OpenCV preview window. |
 | `PipelineMetrics` | Tracks lightweight counters and timings for debug diagnostics. |
 
@@ -23,8 +24,11 @@ OpenCV frame processing, display rendering, MediaPipe tracking, audio capture,
 and TV transport live in `src/infrastructure/` behind application ports.
 Gesture decisions enter the pure domain through `src/domain/session/`, which
 dispatches to focused phase and motion evaluators under `src/domain/evaluators/`.
-The service module keeps lifecycle, config reload, and cleanup logic in one
-place while concrete adapter construction stays in the runtime container.
+`GestureRemoteService` remains the lifecycle owner for connection setup,
+runtime-loop execution, and final shutdown. Focused application coordinators
+own live config reload, the frame-processing loop, display/debug rendering, and
+cleanup sequencing while concrete adapter construction stays in the runtime
+container.
 
 `src/runtime/container.py` is also responsible for preparing the MediaPipe model
 file before constructing the concrete hand tracker.
@@ -66,9 +70,9 @@ separate targets because native voice UI paths do not accept this app's
 microphone audio.
 The microphone audio queue is bounded and drops stale chunks.
 
-Shutdown is owned by `GestureRemoteService._cleanup`. It cancels voice capture,
-stops frame capture, closes MediaPipe, releases the camera, closes OpenCV
-windows, stops command dispatch, and disconnects the TV adapter.
+Shutdown is delegated to `CleanupCoordinator`. It cancels voice capture, stops
+frame capture, closes MediaPipe, releases the camera, closes OpenCV windows,
+stops command dispatch, and disconnects the TV adapter.
 
 ## Diagnostics
 

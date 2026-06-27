@@ -5,6 +5,20 @@ audio, or TV adapter libraries.
 
 ## Data Flow
 
+```mermaid
+flowchart TD
+    RawHands["Raw detected hands<br/>landmarks + handedness"]
+    Preprocess["gesture_preprocessing.py<br/>deduplicate hands and normalize center, size, upright status, landmarks"]
+    Classify["gesture_classification.py<br/>classify static hand poses"]
+    Session["GestureSession<br/>dispatch inactive, lost, or active session phase"]
+    Activation["activation_tracker.py<br/>track active-hand activation and identity"]
+    Evaluators["domain/evaluators<br/>apply phase rules and coordinate pointer or volume motion"]
+    CommandDecision["command_decision.py<br/>select/home, BACK, and debounce decisions"]
+    CommandMap["commands.py<br/>map command gestures to adapter-neutral TV commands"]
+
+    RawHands --> Preprocess --> Classify --> Session --> Activation --> Evaluators --> CommandDecision --> CommandMap
+```
+
 1. Infrastructure detects raw hands with landmarks and handedness.
 2. `domain/gestures/gesture_preprocessing.py` collapses duplicate detections
    of the same physical hand, then normalizes raw detected hands into center,
@@ -21,6 +35,18 @@ audio, or TV adapter libraries.
 8. `domain/commands/commands.py` maps command gestures to TV commands.
 
 ## Activation
+
+```mermaid
+stateDiagram-v2
+    [*] --> Inactive
+    Inactive --> Active: two upright open palms
+    Active --> Active: active hand matched
+    Active --> Active: hand off to another upright open palm
+    Active --> Lost: active hand missing
+    Lost --> Active: active hand reacquired within grace
+    Lost --> Inactive: grace interval expires
+    Active --> Inactive: activation no longer valid
+```
 
 Two upright open palms activate the session. Once active, the selected hand is
 matched by distance from its previous position. If that hand drops out while

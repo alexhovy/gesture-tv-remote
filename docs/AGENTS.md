@@ -33,4 +33,9 @@ Use `docs/` for:
 - Keep Markdown portable and readable in GitHub.
 - Use direct headings and short sections.
 - Prefer practical guidance over exhaustive implementation detail.
+- Use Mermaid fenced blocks for diagrams, flows, state machines, and sequences
+  so they render in Markdown viewers that support Mermaid.
+- Keep repository trees, shell commands, logs, and literal file examples in
+  plain `text`, `bash`, `powershell`, or other appropriate fenced blocks rather
+  than forcing them into Mermaid.
 - Link to canonical source or official docs when external behavior matters.

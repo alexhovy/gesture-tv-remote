@@ -5,14 +5,12 @@ layout. The codebase stays small, but the dependency direction is explicit:
 domain rules are pure, application use cases depend on ports, infrastructure
 implements those ports, and runtime wires concrete objects together.
 
-```text
-runtime/web
-    -> application
-        -> domain
-
-infrastructure
-    -> application ports
-        -> domain
+```mermaid
+flowchart TD
+    RuntimeWeb["runtime / web"] --> Application["application"]
+    Application --> Domain["domain"]
+    Infrastructure["infrastructure"] --> Ports["application ports"]
+    Ports --> Domain
 ```
 
 Runtime and web are entry points. Application owns use cases and ports. Domain
@@ -240,6 +238,18 @@ meaningful external boundaries.
 
 The CLI in `src/runtime/cli.py` selects the gesture runtime, config UI, or both.
 Runtime builder modules build the concrete object graph:
+
+```mermaid
+flowchart TD
+    CLI["src/runtime/cli.py"]
+    Config["configuration bootstrap"]
+    Builders["src/runtime/builders/*"]
+    Resources["model, camera, hand tracker, TV, audio, display, metrics"]
+    Service["GestureRemoteService"]
+    Coordinators["runtime loop, config reload, display debug, cleanup"]
+
+    CLI --> Config --> Builders --> Resources --> Service --> Coordinators
+```
 
 1. load environment and saved configuration
 2. create config repositories and providers

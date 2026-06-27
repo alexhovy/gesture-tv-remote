@@ -72,6 +72,13 @@ because it contains local runtime state.
 
 Startup config precedence is:
 
+```mermaid
+flowchart LR
+    Defaults["AppConfig defaults"] --> Saved["saved config database"]
+    Saved --> Environment["environment variables"]
+    Environment --> Runtime["runtime AppConfig"]
+```
+
 1. `AppConfig` defaults
 2. saved config from the local database, when present
 3. environment variables

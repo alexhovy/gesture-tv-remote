@@ -5,34 +5,16 @@ window rendering, and TV network commands run at different speeds.
 
 ## Flow Diagram
 
-```text
-camera
-  OpenCvFrameSource latest-frame thread
-    |
-    v
-preprocessing
-  FrameCapturePipeline + OpenCvFrameProcessor
-  flip frame, apply detection/display crops
-    |
-    v
-MediaPipe
-  DetectionPipeline + HandTrackerPort
-  detect hands in the active detection crop
-    |
-    v
-domain session
-  GestureDecisionPipeline + GestureSession
-  project landmarks, evaluate session state, choose command gesture
-    |
-    v
-command queue
-  CommandDispatchPipeline + RemoteCommandDispatcher
-  debounce gestures, check adapter capabilities, enqueue TV commands
-    |
-    v
-TV adapter
-  TVRemotePort implementation
-  translate adapter-neutral commands to platform protocol calls
+```mermaid
+flowchart TD
+    Camera["camera<br/>OpenCvFrameSource latest-frame thread"]
+    Preprocessing["preprocessing<br/>FrameCapturePipeline + OpenCvFrameProcessor<br/>flip frame, apply detection/display crops"]
+    MediaPipe["MediaPipe<br/>DetectionPipeline + HandTrackerPort<br/>detect hands in the active detection crop"]
+    DomainSession["domain session<br/>GestureDecisionPipeline + GestureSession<br/>project landmarks, evaluate session state, choose command gesture"]
+    CommandQueue["command queue<br/>CommandDispatchPipeline + RemoteCommandDispatcher<br/>debounce gestures, check adapter capabilities, enqueue TV commands"]
+    TvAdapter["TV adapter<br/>TVRemotePort implementation<br/>translate adapter-neutral commands to platform protocol calls"]
+
+    Camera --> Preprocessing --> MediaPipe --> DomainSession --> CommandQueue --> TvAdapter
 ```
 
 Display rendering runs beside the main flow after the domain decision so the

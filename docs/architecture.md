@@ -118,7 +118,8 @@ Responsibility:
 
 - CLI runtime selection
 - configuration bootstrap
-- dependency wiring in `src/runtime/container.py`
+- dependency wiring in focused `src/runtime/build_*.py` modules and final
+  composition in `src/runtime/container.py`
 - construction of concrete infrastructure adapters
 - returning fully constructed application/runtime objects
 
@@ -200,7 +201,8 @@ not own gesture business rules.
 
 Runtime is the composition root. It reads configuration, creates concrete
 infrastructure implementations, prepares required runtime resources, and wires
-application services explicitly in `src/runtime/container.py`.
+application services explicitly through focused `src/runtime/build_*.py` modules
+composed by `src/runtime/container.py`.
 
 ### Web
 
@@ -237,7 +239,7 @@ meaningful external boundaries.
 ## Runtime Flow
 
 The CLI in `src/runtime/cli.py` selects the gesture runtime, config UI, or both.
-`src/runtime/container.py` builds the concrete object graph:
+Runtime builder modules build the concrete object graph:
 
 1. load environment and saved configuration
 2. create config repositories and providers
@@ -269,7 +271,8 @@ and `tests/shared/`. Shared fakes and helpers live under `tests/fakes/` and
 - Prefer domain functions for deterministic gesture rules.
 - Keep I/O and third-party libraries behind infrastructure adapters.
 - Add orchestration in application only when it represents a use case workflow.
-- Wire dependencies explicitly in `src/runtime/container.py`.
+- Wire dependencies explicitly in focused `src/runtime/build_*.py` modules and
+  keep `src/runtime/container.py` limited to whole-service composition.
 - Use constructor injection and `Protocol` ports; do not add a DI framework.
 - Keep `main.py` and `src/runtime` free of business logic.
 - Add tests around domain behavior before changing gesture semantics.

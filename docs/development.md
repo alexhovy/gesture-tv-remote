@@ -91,7 +91,8 @@ Use `docs/architecture.md` as the canonical layer guide. The short version:
 - gesture rules and state transitions belong in `src/domain`
 - use-case orchestration and ports belong in `src/application`
 - OpenCV, MediaPipe, TV SDKs, SQLite, mDNS, and audio belong in `src/infrastructure`
-- concrete wiring belongs in `src/runtime/container.py`
+- concrete wiring belongs in focused `src/runtime/build_*.py` modules, with
+  final service composition in `src/runtime/container.py`
 - config UI request handling belongs in `src/web`
 
 Application code should depend on domain and application ports. Infrastructure
@@ -137,7 +138,7 @@ model, or MediaPipe runtime.
 2. Define or update a port in `src/application/ports/` only when the application
    needs a real replaceable external boundary.
 3. Implement the adapter under `src/infrastructure/`.
-4. Wire the adapter in `src/runtime/container.py`.
+4. Wire the adapter in the relevant `src/runtime/build_*.py` module.
 5. Add fakes or stubs for application tests and adapter-focused tests for the
    concrete integration.
 6. Update architecture, configuration, or operational docs when behavior or

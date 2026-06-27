@@ -1,11 +1,8 @@
 import asyncio
 import sys
 
-from src.runtime.container import (
-    build_config_provider,
-    build_config_repository,
-    build_gesture_remote_service,
-)
+from src.runtime.build_config import build_config_provider, build_config_repository
+from src.runtime.container import build_gesture_remote_service
 from src.shared.config import AppConfig, load_config_from_env
 from src.shared.logging import AppLogger, configure_app_logging
 

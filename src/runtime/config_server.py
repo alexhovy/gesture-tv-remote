@@ -61,7 +61,7 @@ def create_runner(
     host: str | None = None,
     port: int | None = None,
 ) -> ConfigServerRunner:
-    from src.runtime.container import build_config_server_runner
+    from src.runtime.build_web import build_config_server_runner
 
     return build_config_server_runner(host, port)
 

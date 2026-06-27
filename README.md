@@ -66,7 +66,7 @@ The code is organized into domain rules, application use cases and ports,
 infrastructure adapters, runtime composition, shared configuration, and the web
 configuration UI. Concrete integrations such as OpenCV, MediaPipe, TV SDKs,
 SQLite, mDNS, and audio stay behind infrastructure adapters wired in
-`src/runtime/container.py`.
+`src/runtime/build_*.py` modules and composed in `src/runtime/container.py`.
 
 ## Configuration
 

@@ -21,8 +21,6 @@ SECTIONS: tuple[ConfigSection, ...] = (
             "tv_adapter",
             "tv_host",
             "voice_input_target",
-            "voice_app_trigger_command",
-            "voice_app_trigger_delay_seconds",
             "voice_capture_seconds",
             "samsung_port",
             "roku_port",
@@ -113,13 +111,7 @@ FIELD_HELP: dict[str, str] = {
     "tv_adapter": "Select the TV platform to control.",
     "tv_host": "IP address or host name of the TV.",
     "voice_input_target": (
-        "Voice target for the MIC gesture: app, remote_search, or native_search."
-    ),
-    "voice_app_trigger_command": (
-        "Optional command for pressing a focused Android app mic control."
-    ),
-    "voice_app_trigger_delay_seconds": (
-        "Delay after the optional app voice trigger before waiting for voice input."
+        "Voice target for the MIC gesture: auto, remote_search, or native_search."
     ),
     "voice_capture_seconds": "Microphone capture duration in seconds.",
     "webcam_index": "Usually 0 for the default webcam.",
@@ -208,7 +200,6 @@ def input_constraints(name: str) -> str:
     if name in {
         "debounce_seconds",
         "fist_hold_home_seconds",
-        "voice_app_trigger_delay_seconds",
         "voice_capture_seconds",
         "debug_log_seconds",
         "metrics_log_seconds",

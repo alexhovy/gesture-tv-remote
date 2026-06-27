@@ -1,4 +1,4 @@
-from src.domain.constants import GESTURE_FIST, GESTURE_HOME
+from src.domain.constants import GESTURE_FIST, GESTURE_HOME, GESTURE_MIC
 from src.domain.evaluators.motion_interaction_coordinator import (
     MotionCommandResult,
     MotionInteractionCoordinator,
@@ -49,14 +49,26 @@ class ActiveSessionEvaluator:
             [] if command_pose_locked else [self._zoom_landmarks_for_hand(active_hand)]
         )
 
-        command_gesture = state.command_decision.evaluate(
-            state.active.previous_gesture,
-            active_gesture,
-            now,
-            config.gesture.fist_hold_home_seconds,
+        was_two_finger_tracking = state.two_finger_back.is_tracking()
+        two_finger_back_gesture = state.two_finger_back.evaluate(active_gesture, now)
+        suppress_select = (
+            was_two_finger_tracking
+            or two_finger_back_gesture is not None
+            or state.two_finger_back.should_suppress_select(now)
         )
-        if command_gesture == GESTURE_HOME:
-            state.reset_motion_tracking()
+        if suppress_select:
+            state.command_decision.reset()
+
+        command_gesture = two_finger_back_gesture
+        if command_gesture is None and not suppress_select:
+            command_gesture = state.command_decision.evaluate(
+                state.active.previous_gesture,
+                active_gesture,
+                now,
+                config.gesture.fist_hold_home_seconds,
+            )
+            if command_gesture == GESTURE_HOME:
+                state.reset_motion_tracking()
 
         motion_preparation = self._motion_coordinator.prepare(
             state,
@@ -66,7 +78,6 @@ class ActiveSessionEvaluator:
             now,
         )
         motion_result = MotionCommandResult()
-        two_finger_back_gesture = None
 
         if command_gesture is None:
             motion_result = self._motion_coordinator.evaluate(
@@ -81,12 +92,8 @@ class ActiveSessionEvaluator:
             )
             command_gesture = motion_result.command_gesture
 
-        if command_gesture is None:
-            two_finger_back_gesture = state.two_finger_back.evaluate(
-                active_gesture,
-                now,
-            )
-            command_gesture = two_finger_back_gesture
+        if command_gesture == GESTURE_MIC:
+            state.reset_motion_tracking()
 
         state.active.previous_gesture = active_gesture
         anchor_locked = state.motion_anchor_locked()

@@ -4,6 +4,7 @@ from src.domain.constants import (
     GESTURE_BACK,
     GESTURE_FIST,
     GESTURE_HOME,
+    GESTURE_MIC,
     GESTURE_OPEN_PALM,
     GESTURE_OPEN_TO_FIST,
     GESTURE_POINT,
@@ -125,6 +126,51 @@ class SessionActivationTests(unittest.TestCase):
         decision = session.evaluate([open_hand], now=0.5)
 
         self.assertEqual(decision.command_gesture, GESTURE_BACK)
+
+    def test_two_finger_tracking_suppresses_accidental_select(self) -> None:
+        session = GestureSession(app_config())
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
+        two_fingers = hand_state(GESTURE_TWO_FINGERS, center=(0.20, 0.50), size=0.20)
+
+        self._activate_with_two_palms(session, open_hand)
+        session.evaluate([two_fingers], now=0.1)
+        session.evaluate([fist], now=0.2)
+        decision = session.evaluate([open_hand], now=0.3)
+
+        self.assertIsNone(decision.command_gesture)
+
+    def test_armed_two_finger_reset_suppresses_accidental_select(self) -> None:
+        session = GestureSession(app_config())
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
+        two_fingers = hand_state(GESTURE_TWO_FINGERS, center=(0.20, 0.50), size=0.20)
+
+        self._activate_with_two_palms(session, open_hand)
+        session.evaluate([two_fingers], now=0.1)
+        session.evaluate([two_fingers], now=0.2)
+        session.evaluate([two_fingers], now=0.3)
+        session.evaluate([fist], now=0.4)
+        decision = session.evaluate([open_hand], now=0.5)
+
+        self.assertIsNone(decision.command_gesture)
+
+    def test_mic_suppresses_accidental_select_after_release(self) -> None:
+        session = GestureSession(app_config())
+        open_hand = hand_state(GESTURE_OPEN_PALM, center=(0.20, 0.50), size=0.20)
+        fist = hand_state(GESTURE_FIST, center=(0.20, 0.50), size=0.20)
+        two_fingers = hand_state(GESTURE_TWO_FINGERS, center=(0.20, 0.50), size=0.20)
+
+        self._activate_with_two_palms(session, open_hand)
+        session.evaluate([two_fingers], now=0.1)
+        session.evaluate([two_fingers], now=0.2)
+        session.evaluate([two_fingers], now=0.3)
+        mic = session.evaluate([two_fingers], now=1.1)
+        session.evaluate([fist], now=1.2)
+        release = session.evaluate([open_hand], now=1.3)
+
+        self.assertEqual(mic.command_gesture, GESTURE_MIC)
+        self.assertIsNone(release.command_gesture)
 
     def test_decision_does_not_activate_from_non_upright_open_palm(self) -> None:
         session = GestureSession(app_config())

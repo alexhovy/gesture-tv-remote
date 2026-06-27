@@ -10,9 +10,9 @@ class CapabilityStatus(StrEnum):
 
 
 class VoiceInputMode(StrEnum):
+    AUTO = "auto"
     REMOTE_MIC_STREAM = "remote_mic_stream"
     NATIVE_VOICE_SEARCH = "native_voice_search"
-    APP_VOICE_INPUT = "app_voice_input"
 
 
 @dataclass(frozen=True)

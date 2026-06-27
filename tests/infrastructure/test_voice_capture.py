@@ -42,13 +42,17 @@ class VoiceCaptureTests(unittest.TestCase):
     def test_unsupported_voice_returns_without_starting_microphone(self) -> None:
         remote = UnsupportedVoiceRemote()
         logger = FakeLogger()
-        service = MicrophoneVoiceCapture(remote, app_config(), logger)
+        service = MicrophoneVoiceCapture(
+            remote,
+            app_config(voice_input_target="auto"),
+            logger,
+        )
 
         asyncio.run(service.capture())
 
         self.assertFalse(remote.started_voice)
         self.assertIn(
-            "TV adapter does not support configured voice input target: app",
+            "TV adapter does not support configured voice input target: auto",
             logger.messages,
         )
 
@@ -101,7 +105,7 @@ class VoiceCaptureTests(unittest.TestCase):
         self.assertEqual(remote.voice_mode, VoiceInputMode.NATIVE_VOICE_SEARCH)
         self.assertIn("TV native voice input requested.", logger.messages)
 
-    def test_voice_capture_prefers_configured_app_voice_input(self) -> None:
+    def test_voice_capture_auto_requests_auto_when_app_voice_is_supported(self) -> None:
         remote = AppVoiceRemote()
         logger = FakeLogger()
         service = MicrophoneVoiceCapture(
@@ -122,8 +126,8 @@ class VoiceCaptureTests(unittest.TestCase):
             else:
                 sys.modules["sounddevice"] = previous
 
-        self.assertEqual(remote.voice_mode, VoiceInputMode.APP_VOICE_INPUT)
-        self.assertEqual(remote.voice_stream.chunks, [b"1" * 16384])
+        self.assertEqual(remote.voice_mode, VoiceInputMode.AUTO)
+
 
 class FakeLogger:
     def __init__(self) -> None:

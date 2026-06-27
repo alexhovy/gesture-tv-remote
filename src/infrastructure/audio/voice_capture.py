@@ -41,7 +41,10 @@ class MicrophoneVoiceCapture:
                 )
                 return
 
-            self._logger.info(f"TV voice input mode: {mode.value}")
+            self._logger.info(
+                "TV voice input target: "
+                f"{self._config.tv.voice_input_target} mode: {mode.value}"
+            )
             voice_stream = await self._remote.start_voice(mode)
             if voice_stream is None:
                 if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
@@ -136,11 +139,14 @@ def _select_voice_input_mode(
     target: str,
 ) -> VoiceInputMode | None:
     voice = remote.capabilities().voice_input
-    if (
-        target == VoiceInputTarget.APP.value
-        and voice.app_voice_input == CapabilityStatus.IMPLEMENTED
-    ):
-        return VoiceInputMode.APP_VOICE_INPUT
+    if target == VoiceInputTarget.AUTO.value:
+        if voice.app_voice_input == CapabilityStatus.IMPLEMENTED:
+            return VoiceInputMode.AUTO
+        if voice.remote_mic_stream == CapabilityStatus.IMPLEMENTED:
+            return VoiceInputMode.REMOTE_MIC_STREAM
+        if voice.native_voice_search == CapabilityStatus.IMPLEMENTED:
+            return VoiceInputMode.NATIVE_VOICE_SEARCH
+        return None
     if (
         target == VoiceInputTarget.REMOTE_SEARCH.value
         and voice.remote_mic_stream == CapabilityStatus.IMPLEMENTED

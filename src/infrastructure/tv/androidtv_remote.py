@@ -124,25 +124,23 @@ class AndroidTvRemoteClient:
     async def start_voice(self, mode: VoiceInputMode):
         if self._remote is None:
             return None
-        if mode == VoiceInputMode.REMOTE_MIC_STREAM:
-            return await self._remote.start_voice()
-        if mode == VoiceInputMode.APP_VOICE_INPUT:
-            trigger_command = self._config.tv.voice_app_trigger_command.strip()
-            if trigger_command:
-                adapter_command = translate_tv_command(
-                    TV_ADAPTER_ANDROIDTV,
-                    trigger_command,
-                )
-                await call_remote_method(
-                    self._remote.send_key_command,
-                    adapter_command,
-                    offload_sync=False,
-                )
-                await asyncio.sleep(self._config.tv.voice_app_trigger_delay_seconds)
-            return await _AndroidAppVoiceSessionBroker.for_remote(
+        if mode == VoiceInputMode.AUTO:
+            broker = _AndroidAppVoiceSessionBroker.for_remote(
                 self._remote,
                 self._logger,
-            ).start_voice()
+            )
+            has_pending_app_session = broker.has_pending_session()
+            self._logger.info(
+                "Android app voice pending: "
+                f"{'yes' if has_pending_app_session else 'no'}"
+            )
+            if has_pending_app_session:
+                self._logger.info("Android voice route: app_pending")
+                return await broker.start_voice()
+            self._logger.info("Android voice route: global_search")
+            return await self._remote.start_voice()
+        if mode == VoiceInputMode.REMOTE_MIC_STREAM:
+            return await self._remote.start_voice()
         if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
             await call_remote_method(
                 self._remote.send_key_command,
@@ -251,6 +249,9 @@ class _AndroidAppVoiceSessionBroker:
             self._waiting_session = None
             self._protocol._voice_lock.release()
 
+    def has_pending_session(self) -> bool:
+        return self._pending_session is not None
+
     def _handle_message(self, raw_msg: bytes) -> None:
         app_voice_session = self._parse_app_voice_begin(raw_msg)
         if app_voice_session is not None:
@@ -315,3 +316,9 @@ class _NativeAppVoiceSessionBroker:
 
     async def start_voice(self, timeout: float = 2.0):
         return await self._protocol.start_app_voice(timeout)
+
+    def has_pending_session(self) -> bool:
+        has_pending_session = getattr(self._protocol, "has_pending_app_voice", None)
+        if has_pending_session is None:
+            return False
+        return bool(has_pending_session())

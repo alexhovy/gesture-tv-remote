@@ -91,11 +91,13 @@ class TwoFingerBackDecision:
     required_frames: int = 3
     mic_hold_seconds: float = 1.0
     unknown_grace_frames: int = 1
+    select_suppression_seconds: float = 1.0
     two_finger_frames: int = 0
     unknown_frames: int = 0
     started_at: float | None = None
     armed: bool = False
     mic_emitted: bool = False
+    select_suppressed_until: float = 0.0
 
     def reset(self) -> None:
         self.two_finger_frames = 0
@@ -103,6 +105,20 @@ class TwoFingerBackDecision:
         self.started_at = None
         self.armed = False
         self.mic_emitted = False
+
+    def reset_with_select_suppression(self, now: float) -> None:
+        if self.armed or self.mic_emitted:
+            self.select_suppressed_until = max(
+                self.select_suppressed_until,
+                now + self.select_suppression_seconds,
+            )
+        self.reset()
+
+    def is_tracking(self) -> bool:
+        return self.two_finger_frames > 0 or self.armed or self.mic_emitted
+
+    def should_suppress_select(self, now: float) -> bool:
+        return self.is_tracking() or now < self.select_suppressed_until
 
     def evaluate(self, gesture: str | None, now: float) -> str | None:
         if gesture == GESTURE_TWO_FINGERS:
@@ -119,6 +135,7 @@ class TwoFingerBackDecision:
                 and now - self.started_at >= self.mic_hold_seconds
             ):
                 self.mic_emitted = True
+                self.select_suppressed_until = now + self.select_suppression_seconds
                 return GESTURE_MIC
             return None
 
@@ -128,10 +145,10 @@ class TwoFingerBackDecision:
                 return None
 
         if gesture == GESTURE_OPEN_PALM and self.armed and not self.mic_emitted:
-            self.reset()
+            self.reset_with_select_suppression(now)
             return GESTURE_BACK
 
-        self.reset()
+        self.reset_with_select_suppression(now)
         return None
 
 

@@ -297,6 +297,21 @@ class TwoFingerBackDecisionTests(unittest.TestCase):
         self.assertIsNone(decision.evaluate(GESTURE_TWO_FINGERS, now=1.1))
         self.assertIsNone(decision.evaluate(GESTURE_OPEN_PALM, now=1.2))
 
+    def test_mic_suppresses_select_after_two_finger_hold(self) -> None:
+        decision = TwoFingerBackDecision(select_suppression_seconds=0.5)
+
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.0)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.1)
+        decision.evaluate(GESTURE_TWO_FINGERS, now=0.2)
+
+        self.assertEqual(
+            decision.evaluate(GESTURE_TWO_FINGERS, now=1.0),
+            GESTURE_MIC,
+        )
+        decision.evaluate(GESTURE_OPEN_PALM, now=1.1)
+        self.assertTrue(decision.should_suppress_select(now=1.4))
+        self.assertFalse(decision.should_suppress_select(now=1.6))
+
 
 if __name__ == "__main__":
     unittest.main()

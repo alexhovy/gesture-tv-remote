@@ -23,6 +23,16 @@ class RuntimeCliTests(unittest.TestCase):
 
         run_config.assert_called_once_with()
 
+    def test_run_starts_web_control_runtime(self) -> None:
+        browser_control_app = Mock()
+        with patch.dict(
+            "sys.modules",
+            {"src.runtime.browser_control_app": browser_control_app},
+        ):
+            cli.run(["web-control"])
+
+        browser_control_app.run.assert_called_once_with()
+
     def test_run_all_stops_config_runner_after_gesture_runtime(self) -> None:
         runner = Mock()
         with (

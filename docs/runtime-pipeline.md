@@ -3,6 +3,12 @@
 The gesture runtime stays concurrent because camera capture, hand detection,
 window rendering, and TV network commands run at different speeds.
 
+The optional browser-control runtime keeps the same backend pipeline, but
+replaces the local OpenCV camera source with a WebRTC video source from the
+browser. The browser only captures media and streams it to Python; MediaPipe hand
+tracking, gesture-session evaluation, voice routing, and TV command dispatch
+remain backend responsibilities.
+
 ## Flow Diagram
 
 ```mermaid
@@ -58,6 +64,11 @@ Camera capture runs in one dedicated thread. It continuously reads from OpenCV
 and stores only the newest frame. The service loop consumes versioned latest
 frames; if frame versions jump, older frames are counted as dropped instead of
 being processed late.
+
+In browser-control mode, the WebRTC receiver stores only the newest decoded BGR
+video frame behind the same `FrameSourcePort`. The service loop treats it like a
+local camera source, so stale browser frames are skipped in the same way as stale
+webcam frames.
 
 MediaPipe hand tracking runs in live-stream mode behind `HandTrackerPort`. The
 runtime submits the current detection frame and consumes the latest completed

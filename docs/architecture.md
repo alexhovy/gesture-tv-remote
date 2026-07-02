@@ -137,6 +137,7 @@ Do not put here:
 Responsibility:
 
 - lightweight configuration UI
+- browser capture UI and signaling endpoints
 - HTTP endpoints
 - form parsing
 - HTML/static rendering
@@ -194,6 +195,11 @@ Infrastructure implements application ports with concrete integrations:
 MediaPipe, OpenCV, TV adapters, SQLite storage, mDNS, and audio. Infrastructure
 may translate between third-party APIs and application/domain types, but it must
 not own gesture business rules.
+
+Browser-control media receivers are infrastructure adapters too: they feed
+decoded browser video into `FrameSourcePort` and browser microphone chunks into
+the voice capture boundary while backend application and domain code keep owning
+gesture and command behavior.
 
 ### Runtime
 

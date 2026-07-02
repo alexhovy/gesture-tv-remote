@@ -117,6 +117,24 @@ same network.
 Binding to port `80` may require administrator permissions or a firewall rule on
 some systems. Set `GESTURE_TV_CONFIG_WEB_PORT=8765` if port `80` is unavailable.
 
+## Browser Control
+
+Run the browser capture runtime with:
+
+```bash
+uv run python main.py web-control
+```
+
+Open `http://localhost/control`. The page captures camera and microphone access
+in the browser and streams media to the Python backend with WebRTC. The backend
+still runs MediaPipe, gesture decisions, voice handling, and TV adapter command
+dispatch.
+
+Browsers require a secure context for camera and microphone APIs. `localhost`
+counts as secure for local testing. If a phone, tablet, or another computer is
+used as the capture device over the LAN, serve the browser-control page over
+HTTPS or use a trusted local development certificate.
+
 ## Live Reload
 
 The gesture runtime periodically reloads saved config from the local database.

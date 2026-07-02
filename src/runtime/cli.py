@@ -12,7 +12,7 @@ def run(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "runtime",
         nargs="?",
-        choices=("all", "gesture", "config"),
+        choices=("all", "gesture", "config", "web-control"),
         default="all",
         help="Runtime to start. Defaults to all.",
     )
@@ -23,6 +23,11 @@ def run(argv: list[str] | None = None) -> None:
         return
     if args.runtime == "config":
         config_server.run()
+        return
+    if args.runtime == "web-control":
+        from src.runtime import browser_control_app
+
+        browser_control_app.run()
         return
     run_all()
 

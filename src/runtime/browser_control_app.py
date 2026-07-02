@@ -11,13 +11,14 @@ from src.infrastructure.audio.browser_voice_capture import (
     BrowserAudioSource,
     BrowserVoiceCapture,
 )
+from src.infrastructure.camera.browser_debug_display import BrowserDebugDisplay
 from src.infrastructure.camera.browser_frame_source import BrowserFrameSource
 from src.infrastructure.camera.camera_zoom import CameraZoomController
 from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor
-from src.infrastructure.camera.headless_display import HeadlessDisplay
 from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
 from src.infrastructure.hand_tracking.model_store import MediaPipeModelStore
 from src.infrastructure.network.mdns import MdnsPublisher
+from src.infrastructure.web.debug_stream import BrowserDebugStream
 from src.infrastructure.web.tls import ensure_web_certificate
 from src.runtime.builders.config import build_config_provider, build_config_repository
 from src.runtime.builders.tv import build_tv_dependencies
@@ -111,6 +112,7 @@ def build_browser_control_runtime(
     tv_deps = build_tv_dependencies(config, logger)
     frame_source = BrowserFrameSource()
     audio_source = BrowserAudioSource()
+    debug_stream = BrowserDebugStream()
 
     MediaPipeModelStore(config).ensure_model()
     service = GestureRemoteService(
@@ -120,7 +122,7 @@ def build_browser_control_runtime(
         hand_tracker=MediaPipeHandTracker(config),
         camera=CameraZoomController(config),
         frame_processor=OpenCvFrameProcessor(),
-        display=HeadlessDisplay(),
+        display=BrowserDebugDisplay(debug_stream),
         voice_capture=BrowserVoiceCapture(
             tv_deps.remote,
             audio_source,
@@ -137,6 +139,7 @@ def build_browser_control_runtime(
         config_provider=provider,
         video_sink=frame_source,
         audio_sink=audio_source,
+        debug_source=debug_stream,
         logger=logger,
     )
     ssl_context = _build_ssl_context(config, logger, auto_generate=True)

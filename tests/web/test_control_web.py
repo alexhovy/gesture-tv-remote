@@ -13,11 +13,14 @@ class ControlWebTests(unittest.TestCase):
         self.assertIn("/static/control.css", html)
         self.assertIn("/static/control.js", html)
         self.assertIn('id="preview"', html)
+        self.assertIn('id="overlay"', html)
 
     def test_control_static_assets_are_available(self) -> None:
         self.assertIn("getUserMedia", read_control_js())
         self.assertIn("isSecureContext", read_control_js())
         self.assertIn("/api/log/client", read_control_js())
+        self.assertIn("/api/control/debug", read_control_js())
+        self.assertIn("scaleX(-1)", read_control_css())
         self.assertIn(".control-shell", read_control_css())
 
 

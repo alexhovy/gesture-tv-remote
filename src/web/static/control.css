@@ -60,7 +60,14 @@ video {
   max-height: 100%;
   max-width: 100%;
   object-fit: contain;
+  transform: scaleX(-1);
   width: 100%;
+}
+
+canvas {
+  inset: 0;
+  pointer-events: none;
+  position: absolute;
 }
 
 .empty {

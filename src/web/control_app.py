@@ -28,12 +28,17 @@ class BrowserAudioSink(Protocol):
     async def push_chunk(self, chunk: bytes) -> None: ...
 
 
+class BrowserDebugSource(Protocol):
+    def subscribe(self) -> Any: ...
+
+
 def create_browser_control_app(
     *,
     repository: ConfigStorePort,
     config_provider: Callable[[], AppConfig],
     video_sink: BrowserVideoSink,
     audio_sink: BrowserAudioSink,
+    debug_source: BrowserDebugSource,
     logger: LoggerPort,
 ) -> web.Application:
     app = web.Application()
@@ -124,6 +129,26 @@ def create_browser_control_app(
             logger.info(log_message)
         return web.json_response({"status": "ok"})
 
+    async def debug_events(request: web.Request) -> web.StreamResponse:
+        response = web.StreamResponse(
+            status=HTTPStatus.OK,
+            headers={
+                "Content-Type": "text/event-stream",
+                "Cache-Control": "no-cache",
+                "Connection": "keep-alive",
+            },
+        )
+        await response.prepare(request)
+        logger.info(f"Browser debug stream connected from {_remote(request)}")
+        try:
+            async for payload in debug_source.subscribe():
+                await response.write(f"data: {payload}\n\n".encode())
+        except (asyncio.CancelledError, ConnectionResetError):
+            pass
+        finally:
+            logger.info(f"Browser debug stream disconnected from {_remote(request)}")
+        return response
+
     async def offer(request: web.Request) -> web.Response:
         from aiortc import RTCPeerConnection
 
@@ -189,6 +214,7 @@ def create_browser_control_app(
     app.router.add_post("/reset", reset_settings)
     app.router.add_post("/api/log/client", client_log)
     app.router.add_post("/api/control/offer", offer)
+    app.router.add_get("/api/control/debug", debug_events)
     app.on_shutdown.append(cleanup)
     return app
 

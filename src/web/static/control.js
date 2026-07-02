@@ -10,6 +10,8 @@ let stream = null;
 let peerConnection = null;
 let debugEvents = null;
 let latestDebug = null;
+let debugStreamLoggedOpen = false;
+let debugStreamLoggedError = false;
 
 connectButton.addEventListener("click", connect);
 disconnectButton.addEventListener("click", disconnect);
@@ -145,13 +147,30 @@ function setStatus(value) {
 
 function startDebugEvents() {
   stopDebugEvents();
+  debugStreamLoggedOpen = false;
+  debugStreamLoggedError = false;
   debugEvents = new EventSource("/api/control/debug");
+  debugEvents.onopen = async () => {
+    if (debugStreamLoggedOpen) {
+      return;
+    }
+    debugStreamLoggedOpen = true;
+    await postClientLog("info", "debug stream connected", {
+      readyState: debugEvents.readyState,
+    });
+  };
   debugEvents.onmessage = (event) => {
     latestDebug = JSON.parse(event.data);
     drawDebugOverlay();
   };
-  debugEvents.onerror = () => {
-    setStatus("debug stream reconnecting");
+  debugEvents.onerror = async () => {
+    if (debugStreamLoggedError || !debugEvents) {
+      return;
+    }
+    debugStreamLoggedError = true;
+    await postClientLog("error", "debug stream error", {
+      readyState: debugEvents.readyState,
+    });
   };
 }
 
@@ -164,14 +183,14 @@ function stopDebugEvents() {
 
 function drawDebugOverlay() {
   const area = visibleVideoArea();
-  overlay.width = overlay.clientWidth;
-  overlay.height = overlay.clientHeight;
+  resizeOverlayCanvas();
   clearOverlay();
   if (!latestDebug || !area || !overlayContext) {
     return;
   }
 
   overlayContext.save();
+  overlayContext.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
   overlayContext.translate(area.x, area.y);
   overlayContext.lineWidth = 2;
   drawHands(latestDebug.hands || [], area.width, area.height);
@@ -185,7 +204,21 @@ function clearOverlay() {
   if (!overlayContext) {
     return;
   }
-  overlayContext.clearRect(0, 0, overlay.width, overlay.height);
+  const ratio = window.devicePixelRatio || 1;
+  overlayContext.clearRect(0, 0, overlay.width / ratio, overlay.height / ratio);
+}
+
+function resizeOverlayCanvas() {
+  const rect = overlay.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  const width = Math.max(1, Math.round(rect.width * ratio));
+  const height = Math.max(1, Math.round(rect.height * ratio));
+  if (overlay.width !== width) {
+    overlay.width = width;
+  }
+  if (overlay.height !== height) {
+    overlay.height = height;
+  }
 }
 
 function visibleVideoArea() {

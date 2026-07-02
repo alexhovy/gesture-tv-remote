@@ -1,3 +1,4 @@
+import time
 from pathlib import Path
 from string import Template
 
@@ -12,6 +13,7 @@ _CONTROL_TEMPLATE = Template(
 
 def render_control_page(config: AppConfig) -> str:
     return _CONTROL_TEMPLATE.substitute(
+        control_cache_buster=str(time.time_ns()),
         page_title=f"{config.app_name} Control",
         heading=config.app_name,
     )

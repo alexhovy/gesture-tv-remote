@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 from src.shared.config import AppConfig
 from src.web.control_templates import render_control_page
@@ -7,11 +8,12 @@ from src.web.static_files import read_control_css, read_control_js
 
 class ControlWebTests(unittest.TestCase):
     def test_control_page_renders_browser_capture_assets(self) -> None:
-        html = render_control_page(AppConfig(app_name="Gesture Test"))
+        with patch("src.web.control_templates.time.time_ns", return_value=123456789):
+            html = render_control_page(AppConfig(app_name="Gesture Test"))
 
         self.assertIn("Gesture Test", html)
         self.assertIn("/static/control.css", html)
-        self.assertIn("/static/control.js", html)
+        self.assertIn("/static/control.js?v=123456789", html)
         self.assertIn('id="preview"', html)
         self.assertIn('id="overlay"', html)
 
@@ -20,7 +22,10 @@ class ControlWebTests(unittest.TestCase):
         self.assertIn("isSecureContext", read_control_js())
         self.assertIn("/api/log/client", read_control_js())
         self.assertIn("/api/control/debug", read_control_js())
+        self.assertIn("debug stream connected", read_control_js())
+        self.assertIn("devicePixelRatio", read_control_js())
         self.assertIn("scaleX(-1)", read_control_css())
+        self.assertIn("z-index: 2", read_control_css())
         self.assertIn(".control-shell", read_control_css())
 
 

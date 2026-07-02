@@ -189,23 +189,32 @@ function drawDebugOverlay() {
     return;
   }
 
+  const ratio = window.devicePixelRatio || 1;
   overlayContext.save();
-  overlayContext.scale(window.devicePixelRatio || 1, window.devicePixelRatio || 1);
-  overlayContext.translate(area.x, area.y);
-  overlayContext.lineWidth = 2;
-  drawHands(latestDebug.hands || [], area.width, area.height);
-  drawPointer(latestDebug.pointer, area.width, area.height);
-  drawVolume(latestDebug.volume, area.width, area.height);
-  drawDebugText(latestDebug, area.width, area.height);
-  overlayContext.restore();
+  try {
+    overlayContext.setTransform(ratio, 0, 0, ratio, 0, 0);
+    overlayContext.translate(area.x, area.y);
+    overlayContext.lineWidth = 2;
+    drawHands(latestDebug.hands || [], area.width, area.height);
+    drawPointer(latestDebug.pointer, area.width, area.height);
+    drawVolume(latestDebug.volume, area.width, area.height);
+    drawDebugText(latestDebug, area.width, area.height);
+  } finally {
+    overlayContext.restore();
+  }
 }
 
 function clearOverlay() {
   if (!overlayContext) {
     return;
   }
-  const ratio = window.devicePixelRatio || 1;
-  overlayContext.clearRect(0, 0, overlay.width / ratio, overlay.height / ratio);
+  overlayContext.save();
+  try {
+    overlayContext.setTransform(1, 0, 0, 1, 0, 0);
+    overlayContext.clearRect(0, 0, overlay.width, overlay.height);
+  } finally {
+    overlayContext.restore();
+  }
 }
 
 function resizeOverlayCanvas() {

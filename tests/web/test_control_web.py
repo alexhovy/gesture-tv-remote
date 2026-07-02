@@ -24,7 +24,10 @@ class ControlWebTests(unittest.TestCase):
         self.assertIn("/api/control/debug", read_control_js())
         self.assertIn("debug stream connected", read_control_js())
         self.assertIn("devicePixelRatio", read_control_js())
+        self.assertIn("setTransform(1, 0, 0, 1, 0, 0)", read_control_js())
         self.assertIn("scaleX(-1)", read_control_css())
+        self.assertIn("height: 100dvh", read_control_css())
+        self.assertIn("overflow: hidden", read_control_css())
         self.assertIn("z-index: 2", read_control_css())
         self.assertIn(".control-shell", read_control_css())
 

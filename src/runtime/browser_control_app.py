@@ -63,7 +63,10 @@ class BrowserControlServer:
         )
         await self._site.start()
         if self._mdns_publisher is not None:
-            self._mdns_publisher.start()
+            try:
+                await asyncio.to_thread(self._mdns_publisher.start)
+            except Exception as error:
+                self._logger.error(f"Web UI mDNS advertising failed: {error}")
         scheme = "https" if self._ssl_context is not None else "http"
         self._logger.info(
             f"Web UI listening on {scheme}://{self._host}:{self._port} "
@@ -77,7 +80,10 @@ class BrowserControlServer:
         self._runner = None
         self._site = None
         if self._mdns_publisher is not None:
-            self._mdns_publisher.stop()
+            try:
+                await asyncio.to_thread(self._mdns_publisher.stop)
+            except Exception as error:
+                self._logger.error(f"Web UI mDNS cleanup failed: {error}")
 
 
 async def main() -> None:

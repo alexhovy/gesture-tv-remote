@@ -54,9 +54,9 @@ When mDNS is available on your network, the same UI is advertised as
 browser capture is available at `/control`. The browser provides camera and
 microphone access over WebRTC while the Python backend still performs MediaPipe
 hand tracking, gesture decisions, voice handling, and TV command dispatch.
-Browser camera/microphone access requires a secure browser context; `localhost`
-works for local testing, while `gesturetvremote.local/control` on another
-device requires HTTPS with a certificate trusted by that device.
+Browser camera/microphone access requires a secure browser context; `web-control`
+generates a local HTTPS certificate and uses `https://gesturetvremote.local/control`
+by default. The generated certificate must be trusted by the capture device.
 
 On first run, the app downloads Google's `hand_landmarker.task` model file into
 `models/`. Pairing certificates are stored under `certs/`. Both are

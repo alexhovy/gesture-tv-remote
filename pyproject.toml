@@ -9,6 +9,7 @@ dependencies = [
     "androidtvremote2",
     "aiohttp",
     "aiortc",
+    "cryptography",
     "mediapipe",
     "opencv-python",
     "rokuecp",

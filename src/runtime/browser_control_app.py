@@ -18,9 +18,10 @@ from src.infrastructure.camera.headless_display import HeadlessDisplay
 from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
 from src.infrastructure.hand_tracking.model_store import MediaPipeModelStore
 from src.infrastructure.network.mdns import MdnsPublisher
+from src.infrastructure.web.tls import ensure_web_certificate
 from src.runtime.builders.config import build_config_provider, build_config_repository
 from src.runtime.builders.tv import build_tv_dependencies
-from src.shared.config import AppConfig, load_config_from_env
+from src.shared.config import DEFAULT_CONFIG, AppConfig, load_config_from_env
 from src.shared.logging import AppLogger, configure_app_logging
 from src.web.control_app import create_browser_control_app
 
@@ -67,6 +68,7 @@ class BrowserControlServer:
                 await asyncio.to_thread(self._mdns_publisher.start)
             except Exception as error:
                 self._logger.error(f"Web UI mDNS advertising failed: {error}")
+            self._logger.info(f"Open browser control at {self._mdns_publisher.url}")
         scheme = "https" if self._ssl_context is not None else "http"
         self._logger.info(
             f"Web UI listening on {scheme}://{self._host}:{self._port} "
@@ -137,13 +139,14 @@ def build_browser_control_runtime(
         audio_sink=audio_source,
         logger=logger,
     )
-    ssl_context = _build_ssl_context(config, logger)
+    ssl_context = _build_ssl_context(config, logger, auto_generate=True)
     scheme = "https" if ssl_context is not None else "http"
+    bind_port = _browser_control_port(config, ssl_context)
     mdns_publisher = None
     if config.web.mdns_enabled:
         mdns_publisher = MdnsPublisher(
             config.web.mdns_name,
-            config.web.port,
+            bind_port,
             logger,
             path="/control",
             scheme=scheme,
@@ -154,7 +157,7 @@ def build_browser_control_runtime(
         server=BrowserControlServer(
             app,
             config.web.host,
-            config.web.port,
+            bind_port,
             logger,
             ssl_context=ssl_context,
             mdns_publisher=mdns_publisher,
@@ -177,9 +180,26 @@ def create_config_provider() -> ConfigProviderPort:
 def _build_ssl_context(
     config: AppConfig,
     logger: AppLogger,
+    *,
+    auto_generate: bool = False,
 ) -> ssl.SSLContext | None:
-    if not config.web.tls_enabled:
+    if not config.web.tls_enabled and not auto_generate:
         return None
+    certificate = ensure_web_certificate(
+        cert_file=config.web.tls_cert_file,
+        key_file=config.web.tls_key_file,
+        mdns_name=config.web.mdns_name,
+    )
+    if certificate.generated:
+        logger.info(
+            "Generated web TLS certificate: "
+            f"cert={certificate.cert_file} key={certificate.key_file} "
+            f"hosts={', '.join(certificate.hosts)}"
+        )
+    logger.info(
+        "Using web TLS certificate. Trust this certificate on capture devices "
+        f"before opening https://{_mdns_host(config.web.mdns_name)}/control"
+    )
     context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     try:
         context.load_cert_chain(
@@ -194,6 +214,19 @@ def _build_ssl_context(
         )
         raise
     return context
+
+
+def _browser_control_port(config: AppConfig, ssl_context: ssl.SSLContext | None) -> int:
+    if ssl_context is not None and config.web.port == DEFAULT_CONFIG.web.port:
+        return 443
+    return config.web.port
+
+
+def _mdns_host(name: str) -> str:
+    normalized = name.strip().lower()
+    if normalized.endswith(".local"):
+        return normalized
+    return f"{normalized}.local"
 
 
 def run(configure_logging: bool = True) -> None:

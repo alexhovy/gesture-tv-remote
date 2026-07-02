@@ -125,26 +125,25 @@ Run the browser capture runtime with:
 uv run python main.py web-control
 ```
 
-Open `http://localhost/control` on the backend machine. The same web runtime
-also serves the config UI at `/`, so the configured `.local` name can host both
-settings and controls.
+Open `https://gesturetvremote.local/control` from the capture device. The same
+web runtime also serves the config UI at `/`, so the configured `.local` name can
+host both settings and controls. When the web port is left at its default `80`,
+`web-control` serves HTTPS on port `443`; if you configure another web port, use
+that port in the URL.
 
 Browsers require a secure context for camera and microphone APIs. `localhost`
-counts as secure for local testing. If a phone, tablet, or another computer is
-used as the capture device over the LAN, serve the browser-control page over
-HTTPS with a certificate trusted by that device:
+counts as secure for local testing. For `.local` access, `web-control` creates a
+self-signed certificate and key at `certs/web/server.crt` and
+`certs/web/server.key` when they are missing:
 
 ```bash
-GESTURE_TV_CONFIG_WEB_TLS_ENABLED=true \
-GESTURE_TV_CONFIG_WEB_TLS_CERT_FILE=certs/web/server.crt \
-GESTURE_TV_CONFIG_WEB_TLS_KEY_FILE=certs/web/server.key \
 uv run python main.py web-control
 ```
 
-When TLS is enabled and mDNS is enabled, open
-`https://gesturetvremote.local/control`. Tools such as `mkcert` can create a
-local certificate authority and certificate that browsers trust after the CA is
-installed on the capture device.
+The generated certificate must still be trusted by the browser or operating
+system on the capture device. Without that trust, the browser may block the page
+or camera/microphone access. You can replace the generated files with a trusted
+certificate, for example one created with `mkcert`.
 
 If the page reports that media devices are unavailable, check the browser log
 entry in `logs/logs.txt`; the client sends its origin, secure-context state, and

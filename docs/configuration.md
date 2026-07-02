@@ -101,10 +101,10 @@ uv run python main.py config
 It listens on `http://localhost` by default and advertises
 `http://gesturetvremote.local` with mDNS when local network discovery is
 available. Set `GESTURE_TV_CONFIG_WEB_HOST`,
-`GESTURE_TV_CONFIG_WEB_PORT`, `GESTURE_TV_CONFIG_WEB_MDNS_ENABLED`, and
-`GESTURE_TV_CONFIG_WEB_MDNS_NAME` to override the bind address, port, mDNS
-publishing, or advertised name. Saved settings are persisted to the config
-database.
+`GESTURE_TV_CONFIG_WEB_PORT`, `GESTURE_TV_CONFIG_WEB_MDNS_ENABLED`,
+`GESTURE_TV_CONFIG_WEB_MDNS_NAME`, and the web TLS variables to override the
+bind address, port, mDNS publishing, advertised name, or HTTPS certificate.
+Saved settings are persisted to the config database.
 
 The page groups settings by responsibility and marks whether each saved value
 applies live or requires restarting the gesture runtime. Environment variables
@@ -125,15 +125,30 @@ Run the browser capture runtime with:
 uv run python main.py web-control
 ```
 
-Open `http://localhost/control`. The page captures camera and microphone access
-in the browser and streams media to the Python backend with WebRTC. The backend
-still runs MediaPipe, gesture decisions, voice handling, and TV adapter command
-dispatch.
+Open `http://localhost/control` on the backend machine. The same web runtime
+also serves the config UI at `/`, so the configured `.local` name can host both
+settings and controls.
 
 Browsers require a secure context for camera and microphone APIs. `localhost`
 counts as secure for local testing. If a phone, tablet, or another computer is
 used as the capture device over the LAN, serve the browser-control page over
-HTTPS or use a trusted local development certificate.
+HTTPS with a certificate trusted by that device:
+
+```bash
+GESTURE_TV_CONFIG_WEB_TLS_ENABLED=true \
+GESTURE_TV_CONFIG_WEB_TLS_CERT_FILE=certs/web/server.crt \
+GESTURE_TV_CONFIG_WEB_TLS_KEY_FILE=certs/web/server.key \
+uv run python main.py web-control
+```
+
+When TLS is enabled and mDNS is enabled, open
+`https://gesturetvremote.local/control`. Tools such as `mkcert` can create a
+local certificate authority and certificate that browsers trust after the CA is
+installed on the capture device.
+
+If the page reports that media devices are unavailable, check the browser log
+entry in `logs/logs.txt`; the client sends its origin, secure-context state, and
+user agent to `/api/log/client`.
 
 ## Live Reload
 
@@ -163,6 +178,9 @@ will not override that environment value.
 | `GESTURE_TV_CONFIG_WEB_PORT` | `80` |
 | `GESTURE_TV_CONFIG_WEB_MDNS_ENABLED` | `True` |
 | `GESTURE_TV_CONFIG_WEB_MDNS_NAME` | `gesturetvremote` |
+| `GESTURE_TV_CONFIG_WEB_TLS_ENABLED` | `False` |
+| `GESTURE_TV_CONFIG_WEB_TLS_CERT_FILE` | `certs/web/server.crt` |
+| `GESTURE_TV_CONFIG_WEB_TLS_KEY_FILE` | `certs/web/server.key` |
 | `GESTURE_TV_ADAPTER` | `samsung` |
 | `GESTURE_TV_HOST` | `192.168.8.7` |
 | `GESTURE_TV_ANDROID_CERT_FILE` | `certs/android/cert.pem` |

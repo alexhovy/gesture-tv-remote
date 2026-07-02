@@ -39,9 +39,10 @@ uv run python main.py config
 uv run python main.py web-control
 ```
 
-`web-control` uses the browser as a camera and microphone capture device. Open
-`http://localhost/control` on the machine running the backend. For another
-device on the local network, serve the control page over HTTPS so browser media
+`web-control` uses the browser as a camera and microphone capture device. It
+serves config at `/` and controls at `/control`. Open `http://localhost/control`
+on the machine running the backend. For another device on the local network,
+enable web TLS and open `https://gesturetvremote.local/control` so browser media
 permissions are available.
 
 ## Config UI

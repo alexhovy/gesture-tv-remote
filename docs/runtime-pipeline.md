@@ -9,6 +9,10 @@ browser. The browser only captures media and streams it to Python; MediaPipe han
 tracking, gesture-session evaluation, voice routing, and TV command dispatch
 remain backend responsibilities.
 
+In browser-control mode, the same aiohttp web runtime serves the config UI at
+`/` and browser capture at `/control`, then advertises the control path with the
+configured mDNS name when mDNS is enabled.
+
 ## Flow Diagram
 
 ```mermaid

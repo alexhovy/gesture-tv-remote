@@ -1,10 +1,11 @@
 import asyncio
+import ssl
 import sys
 from dataclasses import dataclass
 
 from aiohttp import web
 
-from src.application.ports.config_provider import ConfigProviderPort
+from src.application.ports.config_provider import ConfigProviderPort, ConfigStorePort
 from src.application.services.gesture_remote_service import GestureRemoteService
 from src.infrastructure.audio.browser_voice_capture import (
     BrowserAudioSource,
@@ -16,9 +17,10 @@ from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor
 from src.infrastructure.camera.headless_display import HeadlessDisplay
 from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
 from src.infrastructure.hand_tracking.model_store import MediaPipeModelStore
+from src.infrastructure.network.mdns import MdnsPublisher
 from src.runtime.builders.config import build_config_provider, build_config_repository
 from src.runtime.builders.tv import build_tv_dependencies
-from src.shared.config import load_config_from_env
+from src.shared.config import AppConfig, load_config_from_env
 from src.shared.logging import AppLogger, configure_app_logging
 from src.web.control_app import create_browser_control_app
 
@@ -37,21 +39,35 @@ class BrowserControlServer:
         host: str,
         port: int,
         logger: AppLogger,
+        *,
+        ssl_context: ssl.SSLContext | None = None,
+        mdns_publisher: MdnsPublisher | None = None,
     ) -> None:
         self._app = app
         self._host = host
         self._port = port
         self._logger = logger
+        self._ssl_context = ssl_context
+        self._mdns_publisher = mdns_publisher
         self._runner: web.AppRunner | None = None
         self._site: web.TCPSite | None = None
 
     async def start(self) -> None:
         self._runner = web.AppRunner(self._app)
         await self._runner.setup()
-        self._site = web.TCPSite(self._runner, self._host, self._port)
+        self._site = web.TCPSite(
+            self._runner,
+            self._host,
+            self._port,
+            ssl_context=self._ssl_context,
+        )
         await self._site.start()
+        if self._mdns_publisher is not None:
+            self._mdns_publisher.start()
+        scheme = "https" if self._ssl_context is not None else "http"
         self._logger.info(
-            f"Browser control listening on http://{self._host}:{self._port}/control"
+            f"Web UI listening on {scheme}://{self._host}:{self._port} "
+            f"(config=/ control=/control)"
         )
 
     async def stop(self) -> None:
@@ -60,6 +76,8 @@ class BrowserControlServer:
         await self._runner.cleanup()
         self._runner = None
         self._site = None
+        if self._mdns_publisher is not None:
+            self._mdns_publisher.stop()
 
 
 async def main() -> None:
@@ -74,8 +92,12 @@ async def main() -> None:
 
 def build_browser_control_runtime(
     config_provider: ConfigProviderPort | None = None,
+    repository: ConfigStorePort | None = None,
 ) -> BrowserControlRuntime:
-    provider = config_provider or create_config_provider()
+    if config_provider is None or repository is None:
+        repository, provider = create_config_dependencies()
+    else:
+        provider = config_provider
     config = provider()
     logger = AppLogger()
     tv_deps = build_tv_dependencies(config, logger)
@@ -103,22 +125,69 @@ def build_browser_control_runtime(
         config_provider=provider,
     )
     app = create_browser_control_app(
+        repository=repository,
         config_provider=provider,
         video_sink=frame_source,
         audio_sink=audio_source,
         logger=logger,
     )
+    ssl_context = _build_ssl_context(config, logger)
+    scheme = "https" if ssl_context is not None else "http"
+    mdns_publisher = None
+    if config.web.mdns_enabled:
+        mdns_publisher = MdnsPublisher(
+            config.web.mdns_name,
+            config.web.port,
+            logger,
+            path="/control",
+            scheme=scheme,
+            service_label="Web UI",
+        )
     return BrowserControlRuntime(
         service=service,
-        server=BrowserControlServer(app, config.web.host, config.web.port, logger),
+        server=BrowserControlServer(
+            app,
+            config.web.host,
+            config.web.port,
+            logger,
+            ssl_context=ssl_context,
+            mdns_publisher=mdns_publisher,
+        ),
         audio_source=audio_source,
     )
 
 
-def create_config_provider() -> ConfigProviderPort:
+def create_config_dependencies() -> tuple[ConfigStorePort, ConfigProviderPort]:
     bootstrap_config = load_config_from_env()
     repository = build_config_repository(bootstrap_config)
-    return build_config_provider(repository)
+    return repository, build_config_provider(repository)
+
+
+def create_config_provider() -> ConfigProviderPort:
+    _, provider = create_config_dependencies()
+    return provider
+
+
+def _build_ssl_context(
+    config: AppConfig,
+    logger: AppLogger,
+) -> ssl.SSLContext | None:
+    if not config.web.tls_enabled:
+        return None
+    context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
+    try:
+        context.load_cert_chain(
+            certfile=config.web.tls_cert_file,
+            keyfile=config.web.tls_key_file,
+        )
+    except OSError as error:
+        logger.error(
+            "Could not load web TLS certificate or key: "
+            f"cert={config.web.tls_cert_file} key={config.web.tls_key_file} "
+            f"error={error}"
+        )
+        raise
+    return context
 
 
 def run(configure_logging: bool = True) -> None:

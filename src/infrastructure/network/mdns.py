@@ -10,15 +10,63 @@ class MdnsPublisher:
         name: str,
         port: int,
         logger: AppLogger | None = None,
+        *,
+        path: str = "/",
+        scheme: str = "http",
+        service_label: str = "Config UI",
     ) -> None:
         self._name = _normalize_name(name)
         self._port = port
+        self._path = _normalize_path(path)
+        self._scheme = scheme
+        self._service_label = service_label
         self._logger = logger or AppLogger()
         self._zeroconf: Any | None = None
         self._service_info: Any | None = None
 
     @property
     def url(self) -> str:
+        url = f"{self._scheme}://{self._name}.local"
+        if not (
+            self._scheme == "http"
+            and self._port == 80
+            or self._scheme == "https"
+            and self._port == 443
+        ):
+            url = f"{url}:{self._port}"
+        if self._path != "/":
+            url = f"{url}{self._path}"
+        return url
+
+    @property
+    def origin(self) -> str:
+        if self._scheme == "http" and self._port == 80:
+            return f"http://{self._name}.local"
+        if self._scheme == "https" and self._port == 443:
+            return f"https://{self._name}.local"
+        return f"{self._scheme}://{self._name}.local:{self._port}"
+
+    @property
+    def path(self) -> str:
+        return self._path
+
+    @property
+    def scheme(self) -> str:
+        return self._scheme
+
+    @property
+    def service_label(self) -> str:
+        return self._service_label
+
+    @property
+    def name(self) -> str:
+        return self._name
+
+    @property
+    def port(self) -> int:
+        return self._port
+
+    def config_url(self) -> str:
         if self._port == 80:
             return f"http://{self._name}.local"
         return f"http://{self._name}.local:{self._port}"
@@ -33,11 +81,11 @@ class MdnsPublisher:
             f"{self._name}._http._tcp.local.",
             addresses=[socket.inet_aton(address)],
             port=self._port,
-            properties={"path": "/"},
+            properties={"path": self._path},
             server=f"{self._name}.local.",
         )
         self._zeroconf.register_service(self._service_info)
-        self._logger.info(f"Config UI advertised at {self.url}")
+        self._logger.info(f"{self._service_label} advertised at {self.url}")
 
     def stop(self) -> None:
         if self._zeroconf is None:
@@ -61,6 +109,13 @@ def _normalize_name(name: str) -> str:
             "mDNS name must contain at least one letter, number, or hyphen"
         )
     return normalized
+
+
+def _normalize_path(path: str) -> str:
+    if not path:
+        return "/"
+    normalized = path if path.startswith("/") else f"/{path}"
+    return normalized.rstrip("/") or "/"
 
 
 def _is_mdns_name_char(character: str) -> bool:

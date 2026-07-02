@@ -16,6 +16,8 @@ class ControlWebTests(unittest.TestCase):
 
     def test_control_static_assets_are_available(self) -> None:
         self.assertIn("getUserMedia", read_control_js())
+        self.assertIn("isSecureContext", read_control_js())
+        self.assertIn("/api/log/client", read_control_js())
         self.assertIn(".control-shell", read_control_css())
 
 

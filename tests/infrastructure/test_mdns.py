@@ -49,11 +49,26 @@ class MdnsPublisherTests(unittest.TestCase):
         self.assertEqual(service_info.args[1], "gesturetvremote._http._tcp.local.")
         self.assertEqual(service_info.kwargs["port"], 80)
         self.assertEqual(service_info.kwargs["server"], "gesturetvremote.local.")
+        self.assertEqual(service_info.kwargs["properties"], {"path": "/"})
 
     def test_url_includes_non_default_port(self) -> None:
         publisher = MdnsPublisher("GestureTvRemote", 8765)
 
         self.assertEqual(publisher.url, "http://gesturetvremote.local:8765")
+
+    def test_url_includes_https_scheme_and_non_root_path(self) -> None:
+        publisher = MdnsPublisher(
+            "GestureTvRemote",
+            443,
+            path="/control",
+            scheme="https",
+            service_label="Web UI",
+        )
+
+        self.assertEqual(publisher.url, "https://gesturetvremote.local/control")
+        self.assertEqual(publisher.origin, "https://gesturetvremote.local")
+        self.assertEqual(publisher.path, "/control")
+        self.assertEqual(publisher.service_label, "Web UI")
 
     def test_rejects_empty_normalized_name(self) -> None:
         with self.assertRaisesRegex(ValueError, "mDNS name"):

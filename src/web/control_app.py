@@ -1,15 +1,23 @@
 import asyncio
 import contextlib
 from collections.abc import Callable
+from http import HTTPStatus
 from typing import Any, Protocol
 
 from aiohttp import web
 from aiortc import RTCSessionDescription
 
+from src.application.ports.config_provider import ConfigStorePort
 from src.application.ports.logger import LoggerPort
 from src.shared.config import AppConfig
+from src.web.config_forms import config_from_form
+from src.web.config_templates import (
+    render_config_page,
+    reset_status_message,
+    saved_status_message,
+)
 from src.web.control_templates import render_control_page
-from src.web.static_files import read_control_css, read_control_js
+from src.web.static_files import read_config_css, read_control_css, read_control_js
 
 
 class BrowserVideoSink(Protocol):
@@ -22,6 +30,7 @@ class BrowserAudioSink(Protocol):
 
 def create_browser_control_app(
     *,
+    repository: ConfigStorePort,
     config_provider: Callable[[], AppConfig],
     video_sink: BrowserVideoSink,
     audio_sink: BrowserAudioSink,
@@ -31,12 +40,26 @@ def create_browser_control_app(
     app["peers"] = set()
     app["track_tasks"] = set()
 
+    async def config_page(request: web.Request) -> web.Response:
+        logger.info(f"Web config page viewed from {_remote(request)}")
+        return web.Response(
+            text=render_config_page(
+                config_provider(),
+                status_message=_status_message(request.query),
+            ),
+            content_type="text/html",
+        )
+
     async def control_page(request: web.Request) -> web.Response:
-        del request
+        logger.info(f"Web control page viewed from {_remote(request)}")
         return web.Response(
             text=render_control_page(config_provider()),
             content_type="text/html",
         )
+
+    async def config_css(request: web.Request) -> web.Response:
+        del request
+        return web.Response(text=read_config_css(), content_type="text/css")
 
     async def control_css(request: web.Request) -> web.Response:
         del request
@@ -53,13 +76,61 @@ def create_browser_control_app(
         del request
         return web.json_response({"status": "ok"})
 
+    async def save_settings(request: web.Request) -> web.Response:
+        form_data = await request.post()
+        form = {
+            key: [str(value) for value in form_data.getall(key)] for key in form_data
+        }
+        try:
+            config = config_from_form(form, config_provider())
+            repository.save_config(config)
+        except ValueError as error:
+            logger.info(
+                f"Web config validation failed from {_remote(request)}: {error}"
+            )
+            return web.Response(
+                text=render_config_page(
+                    config_provider(),
+                    error_message=str(error),
+                ),
+                content_type="text/html",
+                status=HTTPStatus.BAD_REQUEST,
+            )
+
+        logger.info(f"Web config settings saved from {_remote(request)}")
+        raise web.HTTPSeeOther("/?saved=1")
+
+    async def reset_settings(request: web.Request) -> web.Response:
+        repository.reset_config()
+        logger.info(f"Web config settings reset from {_remote(request)}")
+        raise web.HTTPSeeOther("/?reset=1")
+
+    async def client_log(request: web.Request) -> web.Response:
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        level = str(payload.get("level", "info")).lower()
+        message = str(payload.get("message", "browser event"))
+        details = payload.get("details", {})
+        log_message = (
+            f"Browser client {message} from {_remote(request)} details={details}"
+        )
+        if level == "error":
+            logger.error(log_message)
+        elif level == "debug":
+            logger.debug(log_message)
+        else:
+            logger.info(log_message)
+        return web.json_response({"status": "ok"})
+
     async def offer(request: web.Request) -> web.Response:
         from aiortc import RTCPeerConnection
 
         params = await request.json()
         peer = RTCPeerConnection()
         app["peers"].add(peer)
-        logger.info("Browser control peer connected.")
+        logger.info(f"Browser control offer received from {_remote(request)}")
 
         @peer.on("track")
         def on_track(track) -> None:
@@ -87,6 +158,7 @@ def create_browser_control_app(
         )
         answer = await peer.createAnswer()
         await peer.setLocalDescription(answer)
+        logger.info(f"Browser control offer accepted from {_remote(request)}")
         return web.json_response(
             {
                 "sdp": peer.localDescription.sdp,
@@ -107,11 +179,15 @@ def create_browser_control_app(
         )
         app["peers"].clear()
 
-    app.router.add_get("/", control_page)
+    app.router.add_get("/", config_page)
     app.router.add_get("/control", control_page)
     app.router.add_get("/health", health)
+    app.router.add_get("/static/config.css", config_css)
     app.router.add_get("/static/control.css", control_css)
     app.router.add_get("/static/control.js", control_js)
+    app.router.add_post("/settings", save_settings)
+    app.router.add_post("/reset", reset_settings)
+    app.router.add_post("/api/log/client", client_log)
     app.router.add_post("/api/control/offer", offer)
     app.on_shutdown.append(cleanup)
     return app
@@ -152,3 +228,15 @@ async def _consume_audio(
         raise
     except Exception as error:
         logger.info(f"Browser audio track stopped: {error}")
+
+
+def _remote(request: web.Request) -> str:
+    return request.remote or "unknown"
+
+
+def _status_message(query: Any) -> str | None:
+    if "saved" in query:
+        return saved_status_message()
+    if "reset" in query:
+        return reset_status_message()
+    return None

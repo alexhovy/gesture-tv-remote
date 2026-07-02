@@ -201,6 +201,10 @@ decoded browser video into `FrameSourcePort` and browser microphone chunks into
 the voice capture boundary while backend application and domain code keep owning
 gesture and command behavior.
 
+The browser-control web runtime serves config and controls from one origin so
+the configured mDNS name can be used for both. Camera and microphone access from
+that `.local` origin requires HTTPS with a certificate trusted by the browser.
+
 ### Runtime
 
 Runtime is the composition root. It reads configuration, creates concrete

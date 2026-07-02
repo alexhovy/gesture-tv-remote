@@ -14,6 +14,23 @@ async function connect() {
   setStatus("Requesting devices");
   connectButton.disabled = true;
   try {
+    if (!window.isSecureContext || !navigator.mediaDevices?.getUserMedia) {
+      const details = {
+        href: window.location.href,
+        isSecureContext: window.isSecureContext,
+        hasMediaDevices: Boolean(navigator.mediaDevices),
+        userAgent: navigator.userAgent,
+      };
+      await postClientLog(
+        "error",
+        "media devices unavailable",
+        details
+      );
+      throw new Error(
+        "Camera and microphone require HTTPS, localhost, and a supported browser."
+      );
+    }
+
     stream = await navigator.mediaDevices.getUserMedia({
       audio: {
         channelCount: 1,
@@ -64,7 +81,13 @@ async function connect() {
     await peerConnection.setRemoteDescription(answer);
     disconnectButton.disabled = false;
     setStatus("connected");
+    await postClientLog("info", "browser control connected", {
+      tracks: stream.getTracks().map((track) => track.kind),
+    });
   } catch (error) {
+    await postClientLog("error", "browser control connection failed", {
+      message: error.message || String(error),
+    });
     setStatus(error.message || "Connection failed");
     disconnect();
   }
@@ -108,4 +131,16 @@ function waitForIceGathering(pc) {
 
 function setStatus(value) {
   statusLabel.textContent = value;
+}
+
+async function postClientLog(level, message, details = {}) {
+  try {
+    await fetch("/api/log/client", {
+      body: JSON.stringify({ level, message, details }),
+      headers: { "Content-Type": "application/json" },
+      method: "POST",
+    });
+  } catch (error) {
+    console.debug("client log failed", error);
+  }
 }

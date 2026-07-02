@@ -13,6 +13,9 @@ class EnvVar:
     CONFIG_WEB_PORT = "GESTURE_TV_CONFIG_WEB_PORT"
     CONFIG_WEB_MDNS_ENABLED = "GESTURE_TV_CONFIG_WEB_MDNS_ENABLED"
     CONFIG_WEB_MDNS_NAME = "GESTURE_TV_CONFIG_WEB_MDNS_NAME"
+    CONFIG_WEB_TLS_ENABLED = "GESTURE_TV_CONFIG_WEB_TLS_ENABLED"
+    CONFIG_WEB_TLS_CERT_FILE = "GESTURE_TV_CONFIG_WEB_TLS_CERT_FILE"
+    CONFIG_WEB_TLS_KEY_FILE = "GESTURE_TV_CONFIG_WEB_TLS_KEY_FILE"
     TV_ADAPTER = "GESTURE_TV_ADAPTER"
     TV_HOST = "GESTURE_TV_HOST"
     ANDROID_CERT_FILE = "GESTURE_TV_ANDROID_CERT_FILE"
@@ -129,6 +132,9 @@ class WebConfig:
     port: int = 80
     mdns_enabled: bool = True
     mdns_name: str = "gesturetvremote"
+    tls_enabled: bool = False
+    tls_cert_file: Path = Path("certs/web/server.crt")
+    tls_key_file: Path = Path("certs/web/server.key")
 
 
 @dataclass(frozen=True)
@@ -220,6 +226,11 @@ def validate_config(config: AppConfig) -> None:
     _require_between(config.web.port, "config_web_port", 1, 65535)
     if not config.web.mdns_name.strip():
         raise ValueError("config_web_mdns_name must not be empty")
+    if config.web.tls_enabled:
+        if not str(config.web.tls_cert_file).strip():
+            raise ValueError("config_web_tls_cert_file must not be empty")
+        if not str(config.web.tls_key_file).strip():
+            raise ValueError("config_web_tls_key_file must not be empty")
     if not config.tv.host.strip():
         raise ValueError("tv_host must not be empty")
     _require_between(config.tv.samsung_port, "samsung_port", 1, 65535)
@@ -422,6 +433,27 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
     ),
     ConfigField(
         "config_web_mdns_name", EnvVar.CONFIG_WEB_MDNS_NAME, "web", "mdns_name", _str
+    ),
+    ConfigField(
+        "config_web_tls_enabled",
+        EnvVar.CONFIG_WEB_TLS_ENABLED,
+        "web",
+        "tls_enabled",
+        _bool,
+    ),
+    ConfigField(
+        "config_web_tls_cert_file",
+        EnvVar.CONFIG_WEB_TLS_CERT_FILE,
+        "web",
+        "tls_cert_file",
+        _path,
+    ),
+    ConfigField(
+        "config_web_tls_key_file",
+        EnvVar.CONFIG_WEB_TLS_KEY_FILE,
+        "web",
+        "tls_key_file",
+        _path,
     ),
     ConfigField("tv_adapter", EnvVar.TV_ADAPTER, "tv", "adapter", _str),
     ConfigField("tv_host", EnvVar.TV_HOST, "tv", "host", _str),

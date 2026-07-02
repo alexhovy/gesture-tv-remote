@@ -84,6 +84,9 @@ SECTIONS: tuple[ConfigSection, ...] = (
             "config_web_port",
             "config_web_mdns_enabled",
             "config_web_mdns_name",
+            "config_web_tls_enabled",
+            "config_web_tls_cert_file",
+            "config_web_tls_key_file",
         ),
     ),
     ConfigSection(
@@ -155,6 +158,12 @@ FIELD_HELP: dict[str, str] = {
     ),
     "config_web_mdns_enabled": "Advertises the UI on the local network when available.",
     "config_web_mdns_name": "Name used for the .local address.",
+    "config_web_tls_enabled": (
+        "Serves the web UI over HTTPS. Required for browser camera/microphone "
+        "access from .local addresses."
+    ),
+    "config_web_tls_cert_file": "TLS certificate file for HTTPS web serving.",
+    "config_web_tls_key_file": "TLS private key file for HTTPS web serving.",
     "verbose_pipeline_diagnostics": (
         "Logs detailed camera, detection, command, and queue metrics."
     ),

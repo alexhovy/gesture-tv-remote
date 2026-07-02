@@ -6,7 +6,9 @@ from typing import Any
 from urllib.parse import parse_qs, urlparse
 
 from src.application.ports.config_provider import ConfigStorePort
+from src.application.ports.logger import LoggerPort
 from src.shared.config import AppConfig
+from src.shared.logging import AppLogger
 from src.web.config_forms import config_from_form
 from src.web.config_templates import (
     render_config_page,
@@ -23,12 +25,16 @@ def create_config_server(
     config_provider: ConfigProvider,
     host: str = AppConfig().web.host,
     port: int = AppConfig().web.port,
+    logger: LoggerPort | None = None,
 ) -> ThreadingHTTPServer:
+    web_logger = logger or AppLogger()
+
     class ConfigRequestHandler(BaseHTTPRequestHandler):
         def do_GET(self) -> None:
             request_url = urlparse(self.path)
             path = request_url.path
             if path == "/":
+                web_logger.info(f"Web config page viewed from {self.client_address[0]}")
                 self._send_html(
                     render_config_page(
                         config_provider(),
@@ -51,6 +57,9 @@ def create_config_server(
                 return
             if path == "/reset":
                 repository.reset_config()
+                web_logger.info(
+                    f"Web config settings reset from {self.client_address[0]}"
+                )
                 self._redirect("/?reset=1")
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
@@ -64,6 +73,10 @@ def create_config_server(
                 config = config_from_form(form, config_provider())
                 repository.save_config(config)
             except ValueError as error:
+                web_logger.info(
+                    "Web config validation failed from "
+                    f"{self.client_address[0]}: {error}"
+                )
                 self._send_html(
                     render_config_page(
                         config_provider(),
@@ -73,6 +86,7 @@ def create_config_server(
                 )
                 return
 
+            web_logger.info(f"Web config settings saved from {self.client_address[0]}")
             self._redirect("/?saved=1")
 
         def _read_form(self) -> dict[str, list[str]]:

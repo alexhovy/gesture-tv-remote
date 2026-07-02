@@ -1,4 +1,5 @@
 import socket
+from typing import Any
 
 from src.shared.logging import AppLogger
 
@@ -13,8 +14,8 @@ class MdnsPublisher:
         self._name = _normalize_name(name)
         self._port = port
         self._logger = logger or AppLogger()
-        self._zeroconf = None
-        self._service_info = None
+        self._zeroconf: Any | None = None
+        self._service_info: Any | None = None
 
     @property
     def url(self) -> str:
@@ -83,6 +84,6 @@ def _local_ipv4_address() -> str:
 
     for address in addresses:
         host = address[4][0]
-        if not host.startswith("127."):
+        if isinstance(host, str) and not host.startswith("127."):
             return host
     return "127.0.0.1"

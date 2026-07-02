@@ -1,3 +1,5 @@
+from typing import Any
+
 from src.application.ports.tv_remote import (
     AppVoiceInputHandler,
     CapabilityStatus,
@@ -18,7 +20,7 @@ from src.shared.logging import AppLogger
 class SamsungTvRemoteClient:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
-        self._remote = None
+        self._remote: Any | None = None
         self._logger = AppLogger()
         self._executor = ThreadBoundRemoteExecutor("samsung-tv")
 

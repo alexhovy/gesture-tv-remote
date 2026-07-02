@@ -1,5 +1,5 @@
 import os
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from enum import StrEnum
 from pathlib import Path
@@ -161,7 +161,7 @@ class ConfigField:
     env_var: str
     section: str | None
     attribute: str
-    parser: Callable[[dict[str, str], str, object], object]
+    parser: Callable[[Mapping[str, str], str, object], object]
 
 
 DEFAULT_CONFIG = AppConfig()
@@ -198,7 +198,7 @@ RELOADABLE_CONFIG_FIELDS = (
 
 
 def load_config_from_env(
-    environ: dict[str, str] | None = None,
+    environ: Mapping[str, str] | None = None,
     base_config: AppConfig | None = None,
 ) -> AppConfig:
     values = os.environ if environ is None else environ
@@ -359,27 +359,27 @@ def config_field_names() -> list[str]:
     return [field.name for field in CONFIG_FIELDS]
 
 
-def _str(values: dict[str, str], name: str, default: object) -> str:
+def _str(values: Mapping[str, str], name: str, default: object) -> str:
     raw_value = values.get(name)
     return raw_value if raw_value else str(default)
 
 
-def _path(values: dict[str, str], name: str, default: object) -> Path:
+def _path(values: Mapping[str, str], name: str, default: object) -> Path:
     raw_value = values.get(name)
-    return Path(raw_value) if raw_value else default
+    return Path(raw_value) if raw_value else Path(str(default))
 
 
-def _float(values: dict[str, str], name: str, default: object) -> float:
+def _float(values: Mapping[str, str], name: str, default: object) -> float:
     raw_value = values.get(name)
-    return float(raw_value) if raw_value else float(default)
+    return float(raw_value) if raw_value else float(str(default))
 
 
-def _int(values: dict[str, str], name: str, default: object) -> int:
+def _int(values: Mapping[str, str], name: str, default: object) -> int:
     raw_value = values.get(name)
-    return int(raw_value) if raw_value else int(default)
+    return int(raw_value) if raw_value else int(str(default))
 
 
-def _bool(values: dict[str, str], name: str, default: object) -> bool:
+def _bool(values: Mapping[str, str], name: str, default: object) -> bool:
     raw_value = values.get(name)
     if raw_value is None:
         return bool(default)

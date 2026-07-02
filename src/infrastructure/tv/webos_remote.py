@@ -1,3 +1,5 @@
+from typing import Any
+
 from src.application.ports.tv_remote import (
     AppVoiceInputHandler,
     CapabilityStatus,
@@ -18,9 +20,9 @@ from src.shared.logging import AppLogger
 class WebOsRemoteClient:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
-        self._client = None
-        self._input = None
-        self._media = None
+        self._client: Any | None = None
+        self._input: Any | None = None
+        self._media: Any | None = None
         self._logger = AppLogger()
 
     def capabilities(self) -> TvAdapterCapabilities:
@@ -69,7 +71,7 @@ class WebOsRemoteClient:
                 parents=True, exist_ok=True
             )
             client_key = self._read_client_key()
-            client = WebOsClient(self._config.tv.host)
+            client: Any = WebOsClient(self._config.tv.host)
             await client.connect()
 
             registration_key = None
@@ -123,9 +125,15 @@ class WebOsRemoteClient:
 
     async def _send(self, adapter_command: str) -> None:
         if adapter_command == "volume_up":
+            if self._media is None:
+                raise RuntimeError("webOS media control is not connected")
             await call_remote_method(self._media.volume_up)
             return
         if adapter_command == "volume_down":
+            if self._media is None:
+                raise RuntimeError("webOS media control is not connected")
             await call_remote_method(self._media.volume_down)
             return
+        if self._input is None:
+            raise RuntimeError("webOS input control is not connected")
         await call_remote_method(getattr(self._input, adapter_command))

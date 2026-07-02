@@ -69,6 +69,7 @@ class GestureSession:
                 active_index,
             )
 
+        assert active_index is not None
         return self._active_evaluator.evaluate(
             self._state,
             self._config,

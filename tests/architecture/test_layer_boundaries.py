@@ -88,7 +88,9 @@ def _find_import_violations(
                 root = imported.split(".", 1)[0]
                 if root in forbidden_roots or imported.startswith(forbidden_prefixes):
                     relative_path = path.relative_to(PROJECT_ROOT)
-                    violations.append(f"{relative_path}:{node.lineno}: {imported}")
+                    violations.append(
+                        f"{relative_path}:{getattr(node, 'lineno', 0)}: {imported}"
+                    )
     return violations
 
 

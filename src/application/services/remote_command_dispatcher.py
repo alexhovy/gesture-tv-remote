@@ -47,6 +47,9 @@ class RemoteCommandDispatcher:
             return
         if self._has_work is None:
             self.start()
+        has_work = self._has_work
+        if has_work is None:
+            return
 
         request = RemoteCommandRequest(
             gesture=gesture,
@@ -62,10 +65,10 @@ class RemoteCommandDispatcher:
                 self._commands.popleft()
                 self._dropped_commands += 1
                 self._commands.append(request)
-            self._has_work.set()
+            has_work.set()
             return
         self._commands.append(request)
-        self._has_work.set()
+        has_work.set()
 
     @property
     def queue_depth(self) -> int:

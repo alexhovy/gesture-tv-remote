@@ -1,4 +1,3 @@
-from numbers import Real
 from types import SimpleNamespace
 from typing import Any
 
@@ -138,7 +137,9 @@ def _blend_landmark(previous: Any, current: Any, alpha: float) -> Any:
             current_value = getattr(current, attribute)
             if hasattr(previous, attribute):
                 previous_value = getattr(previous, attribute)
-                if isinstance(current_value, Real) and isinstance(previous_value, Real):
+                if isinstance(current_value, (int, float)) and isinstance(
+                    previous_value, (int, float)
+                ):
                     current_value = previous_value + alpha * (
                         current_value - previous_value
                     )

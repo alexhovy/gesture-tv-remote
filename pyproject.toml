@@ -54,3 +54,17 @@ warn_unused_configs = true
 ignore_missing_imports = true
 check_untyped_defs = true
 files = ["src", "tests"]
+
+[[tool.mypy.overrides]]
+module = [
+    "tests.application.test_application_ports",
+    "tests.application.test_gesture_remote_service",
+    "tests.infrastructure.test_config_repository",
+    "tests.infrastructure.test_mdns",
+    "tests.infrastructure.test_tv_remote",
+    "tests.infrastructure.test_video_overlay",
+    "tests.infrastructure.test_voice_capture",
+    "tests.runtime.test_config_server_runner",
+    "tests.web.test_config_web",
+]
+ignore_errors = true

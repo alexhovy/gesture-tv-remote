@@ -26,12 +26,14 @@ class ConfigServerRunner:
         )
         self._thread.start()
         host, port = self._server.server_address[:2]
+        host = _display_host(host)
         self._logger.info(f"Config UI listening on http://{host}:{port}")
 
     def run_forever(self) -> None:
         if self._mdns_publisher is not None:
             self._mdns_publisher.start()
         host, port = self._server.server_address[:2]
+        host = _display_host(host)
         self._logger.info(f"Config UI listening on http://{host}:{port}")
         try:
             self._server.serve_forever()
@@ -64,6 +66,12 @@ def create_runner(
     from src.runtime.builders.web import build_config_server_runner
 
     return build_config_server_runner(host, port)
+
+
+def _display_host(host: str | bytes | bytearray) -> str:
+    if isinstance(host, str):
+        return host
+    return host.decode("utf-8", errors="replace")
 
 
 def run_config_server(

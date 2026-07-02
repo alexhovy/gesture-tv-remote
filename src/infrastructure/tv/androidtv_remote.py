@@ -24,7 +24,7 @@ from src.shared.logging import AppLogger
 class AndroidTvRemoteClient:
     def __init__(self, config: AppConfig) -> None:
         self._config = config
-        self._remote = None
+        self._remote: Any | None = None
         self._logger = AppLogger()
         self._app_voice_input_handler: AppVoiceInputHandler | None = None
 
@@ -267,7 +267,7 @@ class _AndroidAppVoiceSessionBroker:
         )
 
         def schedule_handler() -> None:
-            asyncio.create_task(handler(request))
+            asyncio.ensure_future(handler(request))
 
         self._loop.call_soon_threadsafe(schedule_handler)
 

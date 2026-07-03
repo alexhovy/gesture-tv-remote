@@ -182,7 +182,7 @@ function stopDebugEvents() {
 }
 
 function drawDebugOverlay() {
-  const area = visibleVideoArea();
+  const area = layoutPreviewFrame();
   resizeOverlayCanvas();
   clearOverlay();
   if (!latestDebug || !area || !overlayContext) {
@@ -230,11 +230,27 @@ function resizeOverlayCanvas() {
   }
 }
 
-function visibleVideoArea() {
+function layoutPreviewFrame() {
+  const area = containedPreviewArea();
+  if (!area) {
+    return null;
+  }
+
+  const crop = displayCrop();
+  const videoWidth = area.width / crop.width;
+  const videoHeight = area.height / crop.height;
+  preview.style.left = `${area.x - crop.x * videoWidth}px`;
+  preview.style.top = `${area.y - crop.y * videoHeight}px`;
+  preview.style.width = `${videoWidth}px`;
+  preview.style.height = `${videoHeight}px`;
+  return area;
+}
+
+function containedPreviewArea() {
   if (!preview.videoWidth || !preview.videoHeight) {
     return null;
   }
-  const stage = preview.getBoundingClientRect();
+  const stage = preview.parentElement.getBoundingClientRect();
   const videoRatio = preview.videoWidth / preview.videoHeight;
   const stageRatio = stage.width / stage.height;
   let width = stage.width;
@@ -249,6 +265,27 @@ function visibleVideoArea() {
     y = (stage.height - height) / 2;
   }
   return { x, y, width, height };
+}
+
+function displayCrop() {
+  return normalizedCrop(latestDebug?.displayCrop);
+}
+
+function normalizedCrop(crop) {
+  const x = clamp(crop?.x ?? 0, 0, 0.99);
+  const y = clamp(crop?.y ?? 0, 0, 0.99);
+  const maxWidth = 1 - x;
+  const maxHeight = 1 - y;
+  return {
+    x,
+    y,
+    width: Math.max(0.01, Math.min(crop?.width ?? 1, maxWidth)),
+    height: Math.max(0.01, Math.min(crop?.height ?? 1, maxHeight)),
+  };
+}
+
+function clamp(value, minimum, maximum) {
+  return Math.max(minimum, Math.min(Number(value) || 0, maximum));
 }
 
 function drawHands(hands, width, height) {

@@ -196,8 +196,8 @@ function drawDebugOverlay() {
     overlayContext.translate(area.x, area.y);
     overlayContext.lineWidth = 2;
     drawHands(latestDebug.hands || [], area.width, area.height);
-    drawPointer(latestDebug.pointer, area.width, area.height);
-    drawVolume(latestDebug.volume, area.width, area.height);
+    drawPointer(latestDebug.pointer, displayCrop(), area.width, area.height);
+    drawVolume(latestDebug.volume, displayCrop(), area.width, area.height);
     drawDebugText(latestDebug, area.width, area.height);
   } finally {
     overlayContext.restore();
@@ -307,15 +307,17 @@ function drawHands(hands, width, height) {
   }
 }
 
-function drawPointer(pointer, width, height) {
+function drawPointer(pointer, crop, width, height) {
   if (!pointer?.anchor) {
     return;
   }
-  const anchor = point(pointer.anchor, width, height);
-  const current = pointer.current ? point(pointer.current, width, height) : null;
-  const neutral = distanceToPixels(pointer.neutralDistance, width, height);
-  const activationX = pointer.activationDistance * width;
-  const activationY = pointer.activationDistance * height;
+  const anchor = pointToCropPixels(pointer.anchor, crop, width, height);
+  const current = pointer.current
+    ? pointToCropPixels(pointer.current, crop, width, height)
+    : null;
+  const neutral = distanceToCropPixels(pointer.neutralDistance, crop, width, height);
+  const activationX = xDistanceToCropPixels(pointer.activationDistance, crop, width);
+  const activationY = yDistanceToCropPixels(pointer.activationDistance, crop, height);
   const color = debugColor(pointer);
 
   circle(anchor.x, anchor.y, neutral, "#ffe05d", false);
@@ -333,16 +335,21 @@ function drawPointer(pointer, width, height) {
   label(pointer.activeGesture || pointer.candidateGesture || pointer.phase, 8, height - 12, color);
 }
 
-function drawVolume(volume, width, height) {
+function drawVolume(volume, crop, width, height) {
   if (!volume || volume.anchorY === null || volume.anchorY === undefined) {
     return;
   }
-  const anchorY = volume.anchorY * height;
-  const anchorX = volume.anchor ? volume.anchor.x * width : width / 2;
+  const anchorY = yToCropPixels(volume.anchorY, crop, height);
+  const visualAnchor = volume.anchor
+    ? pointToCropPixels(volume.anchor, crop, width, height)
+    : null;
+  const anchorX = visualAnchor ? visualAnchor.x : width / 2;
   const anchor = { x: anchorX, y: anchorY };
-  const current = volume.current ? point(volume.current, width, height) : null;
-  const neutral = volume.neutralDistance * height;
-  const activation = volume.activationDistance * height;
+  const current = volume.current
+    ? pointToCropPixels(volume.current, crop, width, height)
+    : null;
+  const neutral = yDistanceToCropPixels(volume.neutralDistance, crop, height);
+  const activation = yDistanceToCropPixels(volume.activationDistance, crop, height);
   const color = debugColor(volume);
 
   drawLine({ x: 0, y: anchorY - neutral }, { x: width, y: anchorY - neutral }, "#ffe05d", 2);
@@ -376,8 +383,33 @@ function point(value, width, height) {
   };
 }
 
-function distanceToPixels(distance, width, height) {
-  return Math.max(0, Math.min(distance * width, distance * height));
+function pointToCropPixels(value, crop, width, height) {
+  return {
+    x: ((value.x - crop.x) / crop.width) * width,
+    y: ((value.y - crop.y) / crop.height) * height,
+  };
+}
+
+function yToCropPixels(value, crop, height) {
+  return ((value - crop.y) / crop.height) * height;
+}
+
+function distanceToCropPixels(distance, crop, width, height) {
+  return Math.max(
+    0,
+    Math.min(
+      xDistanceToCropPixels(distance, crop, width),
+      yDistanceToCropPixels(distance, crop, height)
+    )
+  );
+}
+
+function xDistanceToCropPixels(distance, crop, width) {
+  return Math.max(0, (distance / crop.width) * width);
+}
+
+function yDistanceToCropPixels(distance, crop, height) {
+  return Math.max(0, (distance / crop.height) * height);
 }
 
 function drawLine(start, end, color = overlayContext.strokeStyle, width = 2) {

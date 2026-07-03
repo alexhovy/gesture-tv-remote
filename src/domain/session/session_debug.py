@@ -145,6 +145,8 @@ class SessionDebugRenderer:
             threshold_ratio=pointer.threshold_ratio,
             in_neutral=pointer.in_neutral,
             blocked_reason=pointer.last_blocked_reason,
+            motion_scale_x=pointer.motion_scale_x,
+            motion_scale_y=pointer.motion_scale_y,
         )
 
     def volume_debug(
@@ -166,6 +168,8 @@ class SessionDebugRenderer:
             threshold_ratio=volume.threshold_ratio,
             in_neutral=volume.in_neutral,
             blocked_reason=volume.last_blocked_reason,
+            motion_scale_x=volume.motion_scale_x,
+            motion_scale_y=volume.motion_scale_y,
         )
 
     def pointer_state(

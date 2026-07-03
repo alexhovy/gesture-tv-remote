@@ -19,6 +19,7 @@ from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
 from src.infrastructure.hand_tracking.model_store import MediaPipeModelStore
 from src.infrastructure.network.mdns import MdnsPublisher
 from src.infrastructure.web.debug_stream import BrowserDebugStream
+from src.infrastructure.web.display_metrics import BrowserDisplayMetrics
 from src.infrastructure.web.tls import ensure_web_certificate
 from src.runtime.builders.config import build_config_provider, build_config_repository
 from src.runtime.builders.tv import build_tv_dependencies
@@ -113,6 +114,7 @@ def build_browser_control_runtime(
     frame_source = BrowserFrameSource()
     audio_source = BrowserAudioSource()
     debug_stream = BrowserDebugStream()
+    display_metrics = BrowserDisplayMetrics()
 
     MediaPipeModelStore(config).ensure_model()
     service = GestureRemoteService(
@@ -133,6 +135,7 @@ def build_browser_control_runtime(
         logger=logger,
         metrics=tv_deps.metrics,
         config_provider=provider,
+        display_metrics=display_metrics,
     )
     app = create_browser_control_app(
         repository=repository,
@@ -140,6 +143,7 @@ def build_browser_control_runtime(
         video_sink=frame_source,
         audio_sink=audio_source,
         debug_source=debug_stream,
+        display_metrics_sink=display_metrics,
         logger=logger,
     )
     ssl_context = _build_ssl_context(config, logger, auto_generate=True)

@@ -4,6 +4,7 @@ from src.domain.evaluators.lost_session_evaluator import LostSessionEvaluator
 from src.domain.evaluators.motion_interaction_coordinator import (
     MotionInteractionCoordinator,
 )
+from src.domain.geometry.display_geometry import DisplayMotionScale
 from src.domain.session.session_debug import SessionDebugRenderer
 from src.domain.session.session_state import GestureSessionState
 from src.domain.session.session_types import GestureDecision, HandState
@@ -38,7 +39,9 @@ class GestureSession:
         hand_states: list[HandState],
         now: float,
         pointer_reference_size: float = 1.0,
+        motion_scale: DisplayMotionScale | None = None,
     ) -> GestureDecision:
+        motion_scale = motion_scale or DisplayMotionScale()
         active_anchor = self._state.active.position
         active_index = self._state.active.find_active_index(hand_states, self._config)
         if active_index is None and self._state.active.has_active_hand():
@@ -79,6 +82,7 @@ class GestureSession:
             active_hand,
             now,
             pointer_reference_size,
+            motion_scale,
         )
 
     def should_emit(

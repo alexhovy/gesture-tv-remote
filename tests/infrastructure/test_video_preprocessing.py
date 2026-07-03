@@ -3,6 +3,7 @@ import unittest
 from types import SimpleNamespace
 
 from src.domain.constants import GESTURE_POINT
+from src.domain.geometry.display_geometry import motion_scale_for_rendered_crop
 from src.domain.session.session_types import HandState
 from src.infrastructure.camera.camera_zoom import CameraZoomController
 from src.infrastructure.camera.frame_source import LatestFrameSource
@@ -39,6 +40,16 @@ class FakeFrame:
 
 
 class VideoPreprocessingTests(unittest.TestCase):
+    def test_rendered_crop_motion_scale_uses_shortest_screen_side(self) -> None:
+        scale = motion_scale_for_rendered_crop(
+            CropRect(0.25, 0.25, 0.5, 0.5),
+            rendered_width=360,
+            rendered_height=720,
+        )
+
+        self.assertEqual(scale.x, 1.0)
+        self.assertEqual(scale.y, 2.0)
+
     def test_zoom_one_returns_original_frame(self) -> None:
         frame = FakeFrame(4, 6)
 

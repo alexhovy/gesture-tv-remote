@@ -9,6 +9,7 @@ from src.domain.constants import (
     GESTURE_VOLUME_DOWN,
     GESTURE_VOLUME_UP,
 )
+from src.domain.geometry.display_geometry import DisplayMotionScale
 
 MOTION_EPSILON = 1e-9
 MOTION_ACTIVATION_HYSTERESIS = 1.15
@@ -31,7 +32,9 @@ def classify_pointer_joystick(
     distance: float,
     dominance: float,
     prefix: str,
+    motion_scale: DisplayMotionScale | None = None,
 ) -> JoystickDecision:
+    motion_scale = motion_scale or DisplayMotionScale()
     neutral = max(0.0, distance)
     activation = neutral * MOTION_ACTIVATION_HYSTERESIS
     if anchor_position is None:
@@ -41,8 +44,10 @@ def classify_pointer_joystick(
 
     anchor_x, anchor_y = anchor_position
     current_x, current_y = current_position
-    dx = current_x - anchor_x
-    dy = current_y - anchor_y
+    raw_dx = current_x - anchor_x
+    raw_dy = current_y - anchor_y
+    dx = raw_dx * max(motion_scale.x, 0.0)
+    dy = raw_dy * max(motion_scale.y, 0.0)
     abs_dx = abs(dx)
     abs_dy = abs(dy)
     magnitude = math.hypot(dx, dy)
@@ -72,7 +77,7 @@ def classify_pointer_joystick(
 
     axis_dominance = max(0.0, dominance)
     if abs_dx >= abs_dy and abs_dx >= axis_dominance * abs_dy:
-        direction = GESTURE_POINT_RIGHT if dx > 0 else GESTURE_POINT_LEFT
+        direction = GESTURE_POINT_RIGHT if raw_dx > 0 else GESTURE_POINT_LEFT
         magnitude = abs_dx
         return JoystickDecision(
             f"{prefix}_{direction.removeprefix('POINT_')}",
@@ -84,7 +89,7 @@ def classify_pointer_joystick(
         )
 
     if abs_dy >= abs_dx and abs_dy >= axis_dominance * abs_dx:
-        direction = GESTURE_POINT_DOWN if dy > 0 else GESTURE_POINT_UP
+        direction = GESTURE_POINT_DOWN if raw_dy > 0 else GESTURE_POINT_UP
         magnitude = abs_dy
         return JoystickDecision(
             f"{prefix}_{direction.removeprefix('POINT_')}",
@@ -110,7 +115,9 @@ def classify_volume_joystick(
     anchor_y: float | None,
     current_y: float,
     distance: float,
+    motion_scale: DisplayMotionScale | None = None,
 ) -> JoystickDecision:
+    motion_scale = motion_scale or DisplayMotionScale()
     neutral = max(0.0, distance)
     activation = neutral * MOTION_ACTIVATION_HYSTERESIS
     if anchor_y is None:
@@ -118,7 +125,8 @@ def classify_volume_joystick(
             None, 0.0, activation, neutral, 0.0, True, "missing_anchor"
         )
 
-    dy = current_y - anchor_y
+    raw_dy = current_y - anchor_y
+    dy = raw_dy * max(motion_scale.y, 0.0)
     magnitude = abs(dy)
     threshold_ratio = _threshold_ratio(magnitude, activation)
 
@@ -144,7 +152,7 @@ def classify_volume_joystick(
             "inside_activation",
         )
 
-    gesture = GESTURE_VOLUME_DOWN if dy > 0 else GESTURE_VOLUME_UP
+    gesture = GESTURE_VOLUME_DOWN if raw_dy > 0 else GESTURE_VOLUME_UP
     return JoystickDecision(
         gesture,
         magnitude,

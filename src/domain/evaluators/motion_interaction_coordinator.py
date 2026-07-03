@@ -3,6 +3,7 @@ from dataclasses import dataclass
 from src.domain.constants import DEBUG_UNKNOWN, GESTURE_PINCH, GESTURE_POINT
 from src.domain.evaluators.pointer_evaluator import evaluate_pointer_motion
 from src.domain.evaluators.volume_evaluator import evaluate_volume_motion
+from src.domain.geometry.display_geometry import DisplayMotionScale
 from src.domain.geometry.landmarks import LANDMARK_INDEX_TIP, landmark_position
 from src.domain.session.session_state import GestureSessionState
 from src.domain.session.session_types import HandState
@@ -66,7 +67,9 @@ class MotionInteractionCoordinator:
         pointer_reference_size: float,
         config: AppConfig,
         now: float,
+        motion_scale: DisplayMotionScale | None = None,
     ) -> MotionCommandResult:
+        motion_scale = motion_scale or DisplayMotionScale()
         volume_result = self._evaluate_volume_command(
             state,
             active_hand,
@@ -75,6 +78,7 @@ class MotionInteractionCoordinator:
             effective_motion_gesture,
             config,
             now,
+            motion_scale,
         )
         if volume_result.command_gesture is not None:
             return volume_result
@@ -88,6 +92,7 @@ class MotionInteractionCoordinator:
             pointer_reference_size,
             config,
             now,
+            motion_scale,
         )
         if pointer_result.command_gesture is not None:
             return MotionCommandResult(
@@ -151,6 +156,7 @@ class MotionInteractionCoordinator:
         effective_motion_gesture: str | None,
         config: AppConfig,
         now: float,
+        motion_scale: DisplayMotionScale,
     ) -> MotionCommandResult:
         pinch_commandable = (
             commandable_motion_gesture == GESTURE_PINCH
@@ -164,6 +170,7 @@ class MotionInteractionCoordinator:
                 active_hand.size,
                 config,
                 now,
+                motion_scale,
             )
             return MotionCommandResult(
                 command_gesture=volume.command_gesture,
@@ -193,6 +200,7 @@ class MotionInteractionCoordinator:
         pointer_reference_size: float,
         config: AppConfig,
         now: float,
+        motion_scale: DisplayMotionScale,
     ) -> MotionCommandResult:
         point_commandable = (
             commandable_motion_gesture == GESTURE_POINT
@@ -205,6 +213,7 @@ class MotionInteractionCoordinator:
                 pointer_reference_size,
                 config,
                 now,
+                motion_scale,
             )
             return MotionCommandResult(
                 command_gesture=pointer.command_gesture,

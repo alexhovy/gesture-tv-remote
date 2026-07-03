@@ -1,8 +1,13 @@
 import time
 
 from src.application.ports.camera import CameraPort
+from src.application.ports.display_metrics import DisplayMetricsPort
 from src.application.services.pipeline_metrics import PipelineMetrics
 from src.domain.geometry.camera_geometry import CropRect
+from src.domain.geometry.display_geometry import (
+    DisplayMotionScale,
+    motion_scale_for_rendered_crop,
+)
 from src.domain.geometry.landmark_projection import hand_states_to_original_space
 from src.domain.session import GestureSession
 from src.domain.session.session_types import GestureDecision, HandState
@@ -14,10 +19,12 @@ class GestureDecisionPipeline:
         gesture_session: GestureSession,
         zoom_controller: CameraPort,
         metrics: PipelineMetrics | None = None,
+        display_metrics: DisplayMetricsPort | None = None,
     ) -> None:
         self._gesture_session = gesture_session
         self._zoom_controller = zoom_controller
         self._metrics = metrics
+        self._display_metrics = display_metrics
 
     def evaluate(
         self,
@@ -31,6 +38,7 @@ class GestureDecisionPipeline:
             hand_states_to_original_space(hand_states, detection_crop),
             now,
             pointer_reference_size=min(display_crop.width, display_crop.height),
+            motion_scale=self._motion_scale(display_crop),
         )
         if self._metrics is not None:
             self._metrics.record_decision(
@@ -39,6 +47,18 @@ class GestureDecisionPipeline:
             )
         self.update_zoom(decision)
         return decision
+
+    def _motion_scale(self, display_crop: CropRect) -> DisplayMotionScale:
+        if self._display_metrics is None:
+            return DisplayMotionScale()
+        size = self._display_metrics.latest_size()
+        if size is None:
+            return DisplayMotionScale()
+        return motion_scale_for_rendered_crop(
+            display_crop,
+            size.width,
+            size.height,
+        )
 
     def update_zoom(self, decision: GestureDecision) -> bool:
         if decision.anchor_locked:

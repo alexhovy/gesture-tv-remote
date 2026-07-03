@@ -75,6 +75,8 @@ class MotionJoystickState:
     threshold_ratio: float = 0.0
     in_neutral: bool = True
     position_source: str = "none"
+    motion_scale_x: float = 1.0
+    motion_scale_y: float = 1.0
     recent_anchors: BoundedHistory[float | tuple[float, float]] = field(
         default_factory=lambda: BoundedHistory[float | tuple[float, float]](8)
     )
@@ -100,6 +102,8 @@ class MotionJoystickState:
         self.neutral_distance = 0.0
         self.threshold_ratio = 0.0
         self.in_neutral = True
+        self.motion_scale_x = 1.0
+        self.motion_scale_y = 1.0
 
     def record_decision(self, decision: JoystickDecision) -> None:
         self.candidate_gesture = decision.gesture

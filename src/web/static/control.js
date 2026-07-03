@@ -12,6 +12,8 @@ let debugEvents = null;
 let latestDebug = null;
 let debugStreamLoggedOpen = false;
 let debugStreamLoggedError = false;
+let lastLayoutMetrics = null;
+let lastLayoutPostTime = 0;
 
 connectButton.addEventListener("click", connect);
 disconnectButton.addEventListener("click", disconnect);
@@ -243,6 +245,7 @@ function layoutPreviewFrame() {
   preview.style.top = `${area.y - crop.y * videoHeight}px`;
   preview.style.width = `${videoWidth}px`;
   preview.style.height = `${videoHeight}px`;
+  postLayoutMetrics(area);
   return area;
 }
 
@@ -315,12 +318,34 @@ function drawPointer(pointer, crop, width, height) {
   const current = pointer.current
     ? pointToCropPixels(pointer.current, crop, width, height)
     : null;
-  const neutral = distanceToCropPixels(pointer.neutralDistance, crop, width, height);
-  const activationX = xDistanceToCropPixels(pointer.activationDistance, crop, width);
-  const activationY = yDistanceToCropPixels(pointer.activationDistance, crop, height);
+  const scale = debugScale(pointer);
+  const neutralX = xMotionDistanceToCropPixels(
+    pointer.neutralDistance,
+    crop,
+    width,
+    scale.x
+  );
+  const neutralY = yMotionDistanceToCropPixels(
+    pointer.neutralDistance,
+    crop,
+    height,
+    scale.y
+  );
+  const activationX = xMotionDistanceToCropPixels(
+    pointer.activationDistance,
+    crop,
+    width,
+    scale.x
+  );
+  const activationY = yMotionDistanceToCropPixels(
+    pointer.activationDistance,
+    crop,
+    height,
+    scale.y
+  );
   const color = debugColor(pointer);
 
-  circle(anchor.x, anchor.y, neutral, "#ffe05d", false);
+  ellipse(anchor.x, anchor.y, neutralX, neutralY, "#ffe05d");
   drawLine({ x: anchor.x - activationX, y: 0 }, { x: anchor.x - activationX, y: height }, "#ffb347", 1);
   drawLine({ x: anchor.x + activationX, y: 0 }, { x: anchor.x + activationX, y: height }, "#ffb347", 1);
   drawLine({ x: 0, y: anchor.y - activationY }, { x: width, y: anchor.y - activationY }, "#ffb347", 1);
@@ -348,8 +373,19 @@ function drawVolume(volume, crop, width, height) {
   const current = volume.current
     ? pointToCropPixels(volume.current, crop, width, height)
     : null;
-  const neutral = yDistanceToCropPixels(volume.neutralDistance, crop, height);
-  const activation = yDistanceToCropPixels(volume.activationDistance, crop, height);
+  const scale = debugScale(volume);
+  const neutral = yMotionDistanceToCropPixels(
+    volume.neutralDistance,
+    crop,
+    height,
+    scale.y
+  );
+  const activation = yMotionDistanceToCropPixels(
+    volume.activationDistance,
+    crop,
+    height,
+    scale.y
+  );
   const color = debugColor(volume);
 
   drawLine({ x: 0, y: anchorY - neutral }, { x: width, y: anchorY - neutral }, "#ffe05d", 2);
@@ -394,22 +430,23 @@ function yToCropPixels(value, crop, height) {
   return ((value - crop.y) / crop.height) * height;
 }
 
-function distanceToCropPixels(distance, crop, width, height) {
-  return Math.max(
-    0,
-    Math.min(
-      xDistanceToCropPixels(distance, crop, width),
-      yDistanceToCropPixels(distance, crop, height)
-    )
-  );
+function xMotionDistanceToCropPixels(distance, crop, width, scale) {
+  return Math.max(0, (distance / safeScale(scale) / crop.width) * width);
 }
 
-function xDistanceToCropPixels(distance, crop, width) {
-  return Math.max(0, (distance / crop.width) * width);
+function yMotionDistanceToCropPixels(distance, crop, height, scale) {
+  return Math.max(0, (distance / safeScale(scale) / crop.height) * height);
 }
 
-function yDistanceToCropPixels(distance, crop, height) {
-  return Math.max(0, (distance / crop.height) * height);
+function safeScale(scale) {
+  return Math.max(0.01, Number(scale) || 1);
+}
+
+function debugScale(debug) {
+  return {
+    x: safeScale(debug?.motionScaleX),
+    y: safeScale(debug?.motionScaleY),
+  };
 }
 
 function drawLine(start, end, color = overlayContext.strokeStyle, width = 2) {
@@ -429,6 +466,13 @@ function circle(x, y, radius, color, filled) {
     overlayContext.fill();
     return;
   }
+  overlayContext.strokeStyle = color;
+  overlayContext.stroke();
+}
+
+function ellipse(x, y, radiusX, radiusY, color) {
+  overlayContext.beginPath();
+  overlayContext.ellipse(x, y, radiusX, radiusY, 0, 0, Math.PI * 2);
   overlayContext.strokeStyle = color;
   overlayContext.stroke();
 }
@@ -465,6 +509,33 @@ async function postClientLog(level, message, details = {}) {
   } catch (error) {
     console.debug("client log failed", error);
   }
+}
+
+function postLayoutMetrics(area) {
+  const metrics = {
+    width: Math.round(area.width * 100) / 100,
+    height: Math.round(area.height * 100) / 100,
+    devicePixelRatio: window.devicePixelRatio || 1,
+  };
+  const now = Date.now();
+  if (
+    lastLayoutMetrics &&
+    Math.abs(metrics.width - lastLayoutMetrics.width) < 0.5 &&
+    Math.abs(metrics.height - lastLayoutMetrics.height) < 0.5 &&
+    now - lastLayoutPostTime < 1000
+  ) {
+    return;
+  }
+  lastLayoutMetrics = metrics;
+  lastLayoutPostTime = now;
+  fetch("/api/control/layout", {
+    body: JSON.stringify(metrics),
+    headers: { "Content-Type": "application/json" },
+    keepalive: true,
+    method: "POST",
+  }).catch((error) => {
+    console.debug("layout metrics failed", error);
+  });
 }
 
 const HAND_CONNECTIONS = [

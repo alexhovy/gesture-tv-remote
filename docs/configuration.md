@@ -241,6 +241,9 @@ clamped by the volume min/max distance settings. Returning inside the neutral
 circle or band re-arms motion without moving the anchor. Holding outside the
 activation margin repeats the same command after `GESTURE_TV_DEBOUNCE_SECONDS`;
 changing direction requires returning to neutral first.
+In browser-control mode, the browser reports the rendered preview dimensions so
+the backend can keep pointer and volume trigger distances visually consistent on
+portrait phones, landscape tablets, and desktop windows.
 
 `GESTURE_TV_CAMERA_ZOOM` is the starting digital center-crop zoom for MediaPipe
 hand tracking and display. Values above `1.0` make hands larger in the tracking

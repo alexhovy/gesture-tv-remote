@@ -32,6 +32,10 @@ class BrowserDebugSource(Protocol):
     def subscribe(self) -> Any: ...
 
 
+class BrowserDisplayMetricsSink(Protocol):
+    def update_size(self, width: float, height: float) -> None: ...
+
+
 def create_browser_control_app(
     *,
     repository: ConfigStorePort,
@@ -40,6 +44,7 @@ def create_browser_control_app(
     audio_sink: BrowserAudioSink,
     debug_source: BrowserDebugSource,
     logger: LoggerPort,
+    display_metrics_sink: BrowserDisplayMetricsSink | None = None,
 ) -> web.Application:
     app = web.Application()
     app["peers"] = set()
@@ -129,6 +134,17 @@ def create_browser_control_app(
             logger.info(log_message)
         return web.json_response({"status": "ok"})
 
+    async def layout_metrics(request: web.Request) -> web.Response:
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        width = _float(payload.get("width"))
+        height = _float(payload.get("height"))
+        if display_metrics_sink is not None:
+            display_metrics_sink.update_size(width, height)
+        return web.json_response({"status": "ok"})
+
     async def debug_events(request: web.Request) -> web.StreamResponse:
         response = web.StreamResponse(
             status=HTTPStatus.OK,
@@ -213,6 +229,7 @@ def create_browser_control_app(
     app.router.add_post("/settings", save_settings)
     app.router.add_post("/reset", reset_settings)
     app.router.add_post("/api/log/client", client_log)
+    app.router.add_post("/api/control/layout", layout_metrics)
     app.router.add_post("/api/control/offer", offer)
     app.router.add_get("/api/control/debug", debug_events)
     app.on_shutdown.append(cleanup)
@@ -258,6 +275,13 @@ async def _consume_audio(
 
 def _remote(request: web.Request) -> str:
     return request.remote or "unknown"
+
+
+def _float(value: Any) -> float:
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _status_message(query: Any) -> str | None:

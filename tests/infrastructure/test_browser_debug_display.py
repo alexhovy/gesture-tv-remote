@@ -53,6 +53,8 @@ class BrowserDebugDisplayTests(unittest.TestCase):
         self.assertTrue(snapshot["zoomFrozen"])
         self.assertEqual(snapshot["hands"][0][0], {"x": 0.1, "y": 0.2})
         self.assertEqual(snapshot["pointer"]["activeGesture"], "POINT_RIGHT")
+        self.assertEqual(snapshot["pointer"]["motionScaleX"], 1.0)
+        self.assertEqual(snapshot["pointer"]["motionScaleY"], 1.0)
         self.assertIsNone(snapshot["volume"])
 
     def test_landmarks_use_display_crop_space_but_pointer_stays_original_space(

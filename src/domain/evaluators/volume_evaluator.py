@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from src.domain.geometry.display_geometry import DisplayMotionScale
 from src.domain.gestures.motion_filter import classify_volume_joystick
 from src.domain.gestures.motion_gesture import MotionJoystickState
 from src.shared.config import AppConfig
@@ -18,7 +19,9 @@ def evaluate_volume_motion(
     active_size: float,
     config: AppConfig,
     now: float,
+    motion_scale: DisplayMotionScale | None = None,
 ) -> VolumeEvaluation:
+    motion_scale = motion_scale or DisplayMotionScale()
     if not isinstance(volume.anchor, float):
         volume.anchor = active_center[1]
         volume.visual_anchor = active_center
@@ -33,7 +36,10 @@ def evaluate_volume_motion(
         volume.anchor if isinstance(volume.anchor, float) else None,
         active_center[1],
         distance,
+        motion_scale,
     )
+    volume.motion_scale_x = motion_scale.x
+    volume.motion_scale_y = motion_scale.y
     volume.record_decision(decision)
     return VolumeEvaluation(
         command_gesture=volume.command(

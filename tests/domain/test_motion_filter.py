@@ -4,8 +4,10 @@ from src.domain.constants import (
     GESTURE_POINT,
     GESTURE_POINT_DOWN,
     GESTURE_POINT_RIGHT,
+    GESTURE_VOLUME_DOWN,
     GESTURE_VOLUME_UP,
 )
+from src.domain.geometry.display_geometry import DisplayMotionScale
 from src.domain.gestures.motion_filter import (
     classify_pointer_joystick,
     classify_volume_joystick,
@@ -81,6 +83,26 @@ class MotionFilterTests(unittest.TestCase):
         self.assertEqual(decision.gesture, GESTURE_POINT_RIGHT)
         self.assertAlmostEqual(decision.magnitude, 0.08)
 
+    def test_pointer_scales_motion_for_tall_rendered_display(self) -> None:
+        unscaled = classify_pointer_joystick(
+            anchor_position=(0.50, 0.50),
+            current_position=(0.50, 0.59),
+            distance=0.10,
+            dominance=1.0,
+            prefix=GESTURE_POINT,
+        )
+        scaled = classify_pointer_joystick(
+            anchor_position=(0.50, 0.50),
+            current_position=(0.50, 0.59),
+            distance=0.10,
+            dominance=1.0,
+            prefix=GESTURE_POINT,
+            motion_scale=DisplayMotionScale(x=1.0, y=2.0),
+        )
+
+        self.assertIsNone(unscaled.gesture)
+        self.assertEqual(scaled.gesture, GESTURE_POINT_DOWN)
+
     def test_volume_uses_neutral_band_from_anchor(self) -> None:
         decision = classify_volume_joystick(
             anchor_y=0.50,
@@ -92,6 +114,22 @@ class MotionFilterTests(unittest.TestCase):
         self.assertAlmostEqual(decision.activation_distance, 0.0575)
         self.assertAlmostEqual(decision.neutral_distance, 0.05)
         self.assertAlmostEqual(decision.threshold_ratio, 1.04, places=2)
+
+    def test_volume_scales_motion_for_tall_rendered_display(self) -> None:
+        unscaled = classify_volume_joystick(
+            anchor_y=0.50,
+            current_y=0.59,
+            distance=0.10,
+        )
+        scaled = classify_volume_joystick(
+            anchor_y=0.50,
+            current_y=0.59,
+            distance=0.10,
+            motion_scale=DisplayMotionScale(x=1.0, y=2.0),
+        )
+
+        self.assertIsNone(unscaled.gesture)
+        self.assertEqual(scaled.gesture, GESTURE_VOLUME_DOWN)
 
 
 if __name__ == "__main__":

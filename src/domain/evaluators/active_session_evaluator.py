@@ -3,6 +3,7 @@ from src.domain.evaluators.motion_interaction_coordinator import (
     MotionCommandResult,
     MotionInteractionCoordinator,
 )
+from src.domain.geometry.display_geometry import DisplayMotionScale
 from src.domain.session.session_debug import (
     ActiveDebugContext,
     SessionDebugRenderer,
@@ -38,7 +39,9 @@ class ActiveSessionEvaluator:
         active_hand: HandState,
         now: float,
         pointer_reference_size: float,
+        motion_scale: DisplayMotionScale | None = None,
     ) -> GestureDecision:
+        motion_scale = motion_scale or DisplayMotionScale()
         active_gesture = active_hand.gesture
         state.active.update_seen(active_hand, now)
         state.motion.record_seen(now)
@@ -89,6 +92,7 @@ class ActiveSessionEvaluator:
                 pointer_reference_size,
                 config,
                 now,
+                motion_scale,
             )
             command_gesture = motion_result.command_gesture
 

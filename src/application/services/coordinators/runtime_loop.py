@@ -9,6 +9,7 @@ from src.application.pipelines import (
 )
 from src.application.ports.camera import CameraPort, FrameProcessorPort
 from src.application.ports.command_dispatcher import CommandDispatcherPort
+from src.application.ports.display_metrics import DisplayMetricsPort
 from src.application.ports.frame_source import FrameSourcePort
 from src.application.ports.hand_tracker import HandTrackerPort
 from src.application.ports.logger import LoggerPort
@@ -34,6 +35,7 @@ class RuntimeLoopCoordinator:
         logger: LoggerPort,
         config_reload: ConfigReloadCoordinator,
         display_debug: DisplayDebugCoordinator,
+        display_metrics: DisplayMetricsPort | None = None,
     ) -> None:
         self._frame_source = frame_source
         self._hand_tracker = hand_tracker
@@ -46,6 +48,7 @@ class RuntimeLoopCoordinator:
         self._logger = logger
         self._config_reload = config_reload
         self._display_debug = display_debug
+        self._display_metrics = display_metrics
 
     async def run(self, voice_task: asyncio.Task | None = None) -> asyncio.Task | None:
         frame_pipeline = FrameCapturePipeline(
@@ -58,6 +61,7 @@ class RuntimeLoopCoordinator:
             self._gesture_session,
             self._camera,
             self._metrics,
+            self._display_metrics,
         )
         command_pipeline = CommandDispatchPipeline(
             self._gesture_session,

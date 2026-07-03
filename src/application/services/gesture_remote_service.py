@@ -4,6 +4,7 @@ from src.application.ports.camera import CameraPort, FrameProcessorPort
 from src.application.ports.command_dispatcher import CommandDispatcherPort
 from src.application.ports.config_provider import ConfigProviderPort
 from src.application.ports.display import DisplayPort
+from src.application.ports.display_metrics import DisplayMetricsPort
 from src.application.ports.frame_source import FrameSourcePort
 from src.application.ports.hand_tracker import HandTrackerPort
 from src.application.ports.logger import LoggerPort
@@ -34,6 +35,7 @@ class GestureRemoteService:
         logger: LoggerPort,
         metrics: PipelineMetrics,
         config_provider: ConfigProviderPort | None = None,
+        display_metrics: DisplayMetricsPort | None = None,
         gesture_session: GestureSession | None = None,
     ) -> None:
         self._remote = remote
@@ -64,6 +66,7 @@ class GestureRemoteService:
             logger=logger,
             config_reload=config_reload,
             display_debug=display_debug,
+            display_metrics=display_metrics,
         )
         self._cleanup = CleanupCoordinator(
             remote=remote,

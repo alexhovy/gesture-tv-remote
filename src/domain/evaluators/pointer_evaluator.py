@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 from src.domain.constants import GESTURE_POINT
+from src.domain.geometry.display_geometry import DisplayMotionScale
 from src.domain.gestures.motion_filter import classify_pointer_joystick
 from src.domain.gestures.motion_gesture import MotionJoystickState
 from src.shared.config import AppConfig
@@ -19,7 +20,9 @@ def evaluate_pointer_motion(
     pointer_reference_size: float,
     config: AppConfig,
     now: float,
+    motion_scale: DisplayMotionScale | None = None,
 ) -> PointerEvaluation:
+    motion_scale = motion_scale or DisplayMotionScale()
     if not isinstance(pointer.anchor, tuple):
         pointer.anchor = pointer_position
 
@@ -33,7 +36,10 @@ def evaluate_pointer_motion(
         distance,
         config.gesture.pointer_dominance,
         GESTURE_POINT,
+        motion_scale,
     )
+    pointer.motion_scale_x = motion_scale.x
+    pointer.motion_scale_y = motion_scale.y
     pointer.record_decision(decision)
     return PointerEvaluation(
         command_gesture=pointer.command(

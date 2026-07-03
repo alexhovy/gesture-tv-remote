@@ -49,6 +49,7 @@ from src.application.pipelines import (  # noqa: E402
     FrameCapturePipeline,
     GestureDecisionPipeline,
 )
+from src.application.ports.display_metrics import DisplaySize  # noqa: E402
 from src.application.ports.tv_remote import (  # noqa: E402
     AppVoiceInputRequest,
     CapabilityStatus,
@@ -186,6 +187,23 @@ class GestureRemoteServiceTests(unittest.TestCase):
         )
 
         self.assertEqual(session.pointer_reference_size, 0.40)
+
+    def test_decision_pipeline_scales_motion_from_display_metrics(self) -> None:
+        session = FakeDecisionSession()
+
+        GestureDecisionPipeline(
+            session,
+            FakeZoomController(),
+            display_metrics=FakeDisplayMetrics(360, 720),
+        ).evaluate(
+            [],
+            CropRect(0.0, 0.0, 1.0, 1.0),
+            CropRect(0.25, 0.25, 0.50, 0.50),
+            now=0.0,
+        )
+
+        self.assertEqual(session.motion_scale.x, 1.0)
+        self.assertEqual(session.motion_scale.y, 2.0)
 
     def test_update_zoom_recovers_crop_during_temporary_active_hand_loss(self) -> None:
         zoom_controller = FakeZoomController()
@@ -867,10 +885,26 @@ class FakeGestureSession:
 class FakeDecisionSession:
     def __init__(self) -> None:
         self.pointer_reference_size = None
+        self.motion_scale = None
 
-    def evaluate(self, hand_states, now, pointer_reference_size=1.0):
+    def evaluate(
+        self,
+        hand_states,
+        now,
+        pointer_reference_size=1.0,
+        motion_scale=None,
+    ):
         self.pointer_reference_size = pointer_reference_size
+        self.motion_scale = motion_scale
         return GestureDecision(None, False, "")
+
+
+class FakeDisplayMetrics:
+    def __init__(self, width: float, height: float) -> None:
+        self._size = DisplaySize(width, height)
+
+    def latest_size(self) -> DisplaySize:
+        return self._size
 
 
 class FakeVoiceCapture:

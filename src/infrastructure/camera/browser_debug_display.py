@@ -123,6 +123,8 @@ def _pointer_to_json(pointer: PointerDebug | None) -> dict[str, Any] | None:
         "thresholdRatio": pointer.threshold_ratio,
         "inNeutral": pointer.in_neutral,
         "blockedReason": pointer.blocked_reason,
+        "motionScaleX": pointer.motion_scale_x,
+        "motionScaleY": pointer.motion_scale_y,
     }
 
 
@@ -142,6 +144,8 @@ def _volume_to_json(volume: VolumeDebug | None) -> dict[str, Any] | None:
         "thresholdRatio": volume.threshold_ratio,
         "inNeutral": volume.in_neutral,
         "blockedReason": volume.blocked_reason,
+        "motionScaleX": volume.motion_scale_x,
+        "motionScaleY": volume.motion_scale_y,
     }
 
 

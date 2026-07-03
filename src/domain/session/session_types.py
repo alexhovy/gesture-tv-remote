@@ -37,6 +37,8 @@ class PointerDebug:
     threshold_ratio: float
     in_neutral: bool
     blocked_reason: str | None
+    motion_scale_x: float = 1.0
+    motion_scale_y: float = 1.0
 
 
 @dataclass(frozen=True)
@@ -53,3 +55,5 @@ class VolumeDebug:
     threshold_ratio: float
     in_neutral: bool
     blocked_reason: str | None
+    motion_scale_x: float = 1.0
+    motion_scale_y: float = 1.0

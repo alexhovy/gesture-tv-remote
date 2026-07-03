@@ -57,14 +57,15 @@ class RemoteCommandDispatcher:
             enqueued_at=time.monotonic(),
         )
         # TV adapters can be slow or reconnecting; keep gesture detection independent
-        # by bounding pending remote work and dropping stale oldest commands first.
+        # by bounding pending remote work and coalescing repeated pending commands.
+        if self._commands and self._commands[-1].command == command:
+            self._commands[-1] = request
+            has_work.set()
+            return
         if len(self._commands) >= MAX_PENDING_COMMANDS:
-            if self._commands[-1].command == command:
-                self._commands[-1] = request
-            else:
-                self._commands.popleft()
-                self._dropped_commands += 1
-                self._commands.append(request)
+            self._commands.popleft()
+            self._dropped_commands += 1
+            self._commands.append(request)
             has_work.set()
             return
         self._commands.append(request)

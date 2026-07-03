@@ -715,7 +715,7 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(remote.commands, [TV_COMMAND_VOLUME_UP, TV_COMMAND_HOME])
         await dispatcher.close()
 
-    async def test_dpad_commands_queue_in_order(self) -> None:
+    async def test_repeated_pending_commands_are_coalesced(self) -> None:
         remote = BlockingRemote()
         dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
         dispatcher.start()
@@ -723,6 +723,7 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         dispatcher.enqueue("POINT_DOWN", TV_COMMAND_DPAD_DOWN)
         await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
 
+        dispatcher.enqueue("POINT_DOWN", TV_COMMAND_DPAD_DOWN)
         dispatcher.enqueue("POINT_DOWN", TV_COMMAND_DPAD_DOWN)
 
         remote.release_first.set()
@@ -742,7 +743,8 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
         await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
         for index in range(MAX_PENDING_COMMANDS):
-            dispatcher.enqueue(f"HOME_{index}", TV_COMMAND_HOME)
+            command = TV_COMMAND_HOME if index % 2 == 0 else TV_COMMAND_VOLUME_UP
+            dispatcher.enqueue(f"PENDING_{index}", command)
 
         dispatcher.enqueue("VOLUME_DOWN", TV_COMMAND_VOLUME_DOWN)
 
@@ -762,9 +764,10 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         dispatcher.enqueue("VOLUME_UP", TV_COMMAND_VOLUME_UP)
         await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
         for index in range(MAX_PENDING_COMMANDS):
-            dispatcher.enqueue(f"HOME_{index}", TV_COMMAND_HOME)
+            command = TV_COMMAND_HOME if index % 2 == 0 else TV_COMMAND_VOLUME_UP
+            dispatcher.enqueue(f"PENDING_{index}", command)
 
-        dispatcher.enqueue("HOME_NEWER", TV_COMMAND_HOME)
+        dispatcher.enqueue("VOLUME_UP_NEWER", TV_COMMAND_VOLUME_UP)
 
         self.assertEqual(dispatcher.queue_depth, MAX_PENDING_COMMANDS)
         self.assertEqual(dispatcher.dropped_commands, 0)

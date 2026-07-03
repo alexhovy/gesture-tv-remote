@@ -11,10 +11,13 @@ class ConfigServerRunner:
         server: ThreadingHTTPServer,
         mdns_publisher: MdnsPublisher | None,
         logger: AppLogger,
+        *,
+        scheme: str = "http",
     ) -> None:
         self._server = server
         self._mdns_publisher = mdns_publisher
         self._logger = logger
+        self._scheme = scheme
         self._thread: threading.Thread | None = None
 
     def start(self) -> None:
@@ -27,14 +30,14 @@ class ConfigServerRunner:
         self._thread.start()
         host, port = self._server.server_address[:2]
         host = _display_host(host)
-        self._logger.info(f"Config UI listening on http://{host}:{port}")
+        self._logger.info(f"Config UI listening on {self._scheme}://{host}:{port}")
 
     def run_forever(self) -> None:
         if self._mdns_publisher is not None:
             self._mdns_publisher.start()
         host, port = self._server.server_address[:2]
         host = _display_host(host)
-        self._logger.info(f"Config UI listening on http://{host}:{port}")
+        self._logger.info(f"Config UI listening on {self._scheme}://{host}:{port}")
         try:
             self._server.serve_forever()
         except KeyboardInterrupt:

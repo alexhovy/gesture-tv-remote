@@ -13,6 +13,7 @@ from src.shared.config import (
 )
 
 _CONFIG_ROW_ID = 1
+_TABLE_NAME = "app_config"
 
 
 class ConfigRepository:
@@ -83,19 +84,13 @@ class ConfigRepository:
 
     def _ensure_schema(self) -> None:
         with self._store.connect() as connection:
-            connection.execute(f"""
-                CREATE TABLE IF NOT EXISTS app_config (
-                    id INTEGER PRIMARY KEY CHECK (id = {_CONFIG_ROW_ID}),
-                    {_column_definitions()},
-                    updated_at TEXT NOT NULL
-                )
-                """)
-            existing_columns = {
+            connection.execute(_create_table_sql(_TABLE_NAME))
+            original_columns = {
                 row["name"]
                 for row in connection.execute("PRAGMA table_info(app_config)")
             }
             for field in CONFIG_FIELDS:
-                if field.name in existing_columns:
+                if field.name in original_columns:
                     continue
                 column_definition = _migration_column_definition(
                     field.name, config_field_default(field)
@@ -105,6 +100,32 @@ class ConfigRepository:
                     ADD COLUMN {column_definition}
                     DEFAULT {_sql_literal(_to_db_value(config_field_default(field)))}
                     """)
+            current_columns = {
+                row["name"]
+                for row in connection.execute("PRAGMA table_info(app_config)")
+            }
+            if _has_schema_drift(current_columns):
+                _reset_current_schema(connection)
+
+
+def _create_table_sql(name: str) -> str:
+    return f"""
+        CREATE TABLE IF NOT EXISTS {_quote_identifier(name)} (
+            id INTEGER PRIMARY KEY CHECK (id = {_CONFIG_ROW_ID}),
+            {_column_definitions()},
+            updated_at TEXT NOT NULL
+        )
+        """
+
+
+def _has_schema_drift(column_names: set[str]) -> bool:
+    current_columns = {"id", "updated_at", *(field.name for field in CONFIG_FIELDS)}
+    return column_names != current_columns
+
+
+def _reset_current_schema(connection: Any) -> None:
+    connection.execute(f"DROP TABLE {_quote_identifier(_TABLE_NAME)}")
+    connection.execute(_create_table_sql(_TABLE_NAME))
 
 
 def _column_definitions() -> str:

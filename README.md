@@ -46,17 +46,17 @@ uv run python main.py config
 uv run python main.py web-control
 ```
 
-Open `http://localhost`.
+Open `https://localhost`.
 When mDNS is available on your network, the same UI is advertised as
-`http://gesturetvremote.local`.
+`https://gesturetvremote.local`.
 
 `web-control` starts a unified web runtime: settings are available at `/` and
 browser capture is available at `/control`. The browser provides camera and
 microphone access over WebRTC while the Python backend still performs MediaPipe
 hand tracking, gesture decisions, voice handling, and TV command dispatch.
-Browser camera/microphone access requires a secure browser context; `web-control`
-generates a local HTTPS certificate and uses `https://gesturetvremote.local/control`
-by default. The generated certificate must be trusted by the capture device.
+All web runtimes generate a local HTTPS certificate and use HTTPS by default.
+`web-control` serves browser capture at `https://gesturetvremote.local/control`.
+The generated certificate must be trusted by the web or capture device.
 
 On first run, the app downloads Google's `hand_landmarker.task` model file into
 `models/`. Pairing certificates are stored under `certs/`. Both are

@@ -98,8 +98,8 @@ Run the lightweight config UI with:
 uv run python main.py config
 ```
 
-It listens on `http://localhost` by default and advertises
-`http://gesturetvremote.local` with mDNS when local network discovery is
+It listens on `https://localhost` by default and advertises
+`https://gesturetvremote.local` with mDNS when local network discovery is
 available. Set `GESTURE_TV_CONFIG_WEB_HOST`,
 `GESTURE_TV_CONFIG_WEB_PORT`, `GESTURE_TV_CONFIG_WEB_MDNS_ENABLED`,
 `GESTURE_TV_CONFIG_WEB_MDNS_NAME`, and the web TLS variables to override the
@@ -110,12 +110,14 @@ The page groups settings by responsibility and marks whether each saved value
 applies live or requires restarting the gesture runtime. Environment variables
 still override saved values shown in the UI.
 
-If `.local` names do not resolve on a device, use `http://localhost` on the
-machine running the app or `http://<device-ip>` from another device on the
+If `.local` names do not resolve on a device, use `https://localhost` on the
+machine running the app or `https://<device-ip>` from another device on the
 same network.
 
-Binding to port `80` may require administrator permissions or a firewall rule on
-some systems. Set `GESTURE_TV_CONFIG_WEB_PORT=8765` if port `80` is unavailable.
+When the web port is left at its default `80`, HTTPS runtimes listen on port
+`443`. Binding to port `443` may require administrator permissions or a
+firewall rule on some systems. Set `GESTURE_TV_CONFIG_WEB_PORT=8443` if port
+`443` is unavailable.
 
 ## Browser Control
 
@@ -128,12 +130,12 @@ uv run python main.py web-control
 Open `https://gesturetvremote.local/control` from the capture device. The same
 web runtime also serves the config UI at `/`, so the configured `.local` name can
 host both settings and controls. When the web port is left at its default `80`,
-`web-control` serves HTTPS on port `443`; if you configure another web port, use
+HTTPS web runtimes serve on port `443`; if you configure another web port, use
 that port in the URL.
 
 Browsers require a secure context for camera and microphone APIs. `localhost`
-counts as secure for local testing. For `.local` access, `web-control` creates a
-self-signed certificate and key at `certs/web/server.crt` and
+counts as secure for local testing. For `.local` access, the web runtimes create
+a self-signed certificate and key at `certs/web/server.crt` and
 `certs/web/server.key` when they are missing:
 
 ```bash

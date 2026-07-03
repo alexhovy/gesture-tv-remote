@@ -123,6 +123,47 @@ class ConfigRepositoryTests(unittest.TestCase):
         self.assertEqual(config.tv.host, "10.0.0.63")
         self.assertEqual(config.web.port, 80)
 
+    def test_stale_schema_is_reset_to_current_schema(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            db_file = Path(temp_dir) / "config.sqlite3"
+            with closing(sqlite3.connect(db_file)) as connection:
+                with connection:
+                    connection.execute("""
+                        CREATE TABLE app_config (
+                            id INTEGER PRIMARY KEY,
+                            app_name TEXT NOT NULL,
+                            tv_adapter TEXT NOT NULL,
+                            tv_host TEXT NOT NULL,
+                            home_chord_seconds REAL NOT NULL,
+                            updated_at TEXT NOT NULL
+                        )
+                        """)
+                    connection.execute("""
+                        INSERT INTO app_config (
+                            id,
+                            app_name,
+                            tv_adapter,
+                            tv_host,
+                            home_chord_seconds,
+                            updated_at
+                        )
+                        VALUES (1, 'Old Config', 'roku', '10.0.0.63', 1.25, 'now')
+                        """)
+
+            repository = _repository(db_file)
+            config = repository.get_config()
+            repository.save_config(app_config(tv_host="10.0.0.64"))
+
+            with closing(sqlite3.connect(db_file)) as connection:
+                column_names = {
+                    row[1]
+                    for row in connection.execute("PRAGMA table_info(app_config)")
+                }
+
+        self.assertIsNone(config)
+        self.assertNotIn("home_chord_seconds", column_names)
+        self.assertIn("fist_hold_home_seconds", column_names)
+
     def test_save_config_rejects_invalid_config(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             repository = _repository(Path(temp_dir) / "config.sqlite3")

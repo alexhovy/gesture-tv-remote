@@ -39,11 +39,11 @@ uv run python main.py config
 uv run python main.py web-control
 ```
 
-`web-control` uses the browser as a camera and microphone capture device. It
-serves config at `/` and controls at `/control`. It generates a local HTTPS
-certificate when missing and, when the web port is still the default, listens on
-`https://gesturetvremote.local/control`. Trust the generated certificate on the
-capture device so browser media permissions are available.
+All web runtimes generate a local HTTPS certificate when missing. When the web
+port is still the default, they listen on HTTPS port `443`. `web-control` uses
+the browser as a camera and microphone capture device, serves config at `/`,
+and serves controls at `https://gesturetvremote.local/control`. Trust the
+generated certificate on web devices so browser media permissions are available.
 
 ## Config UI
 
@@ -51,8 +51,8 @@ capture device so browser media permissions are available.
 uv run python main.py config
 ```
 
-Open `http://localhost`. When mDNS is available on the local network, the
-UI is also advertised as `http://gesturetvremote.local`. Saved settings are
+Open `https://localhost`. When mDNS is available on the local network, the
+UI is also advertised as `https://gesturetvremote.local`. Saved settings are
 written to the local config database. Gesture, timing, voice-duration, and zoom
 tuning changes are reloaded by the running gesture process; integration and
 hardware settings still require restarting it.

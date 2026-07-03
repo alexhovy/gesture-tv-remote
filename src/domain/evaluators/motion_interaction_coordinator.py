@@ -4,7 +4,11 @@ from src.domain.constants import DEBUG_UNKNOWN, GESTURE_PINCH, GESTURE_POINT
 from src.domain.evaluators.pointer_evaluator import evaluate_pointer_motion
 from src.domain.evaluators.volume_evaluator import evaluate_volume_motion
 from src.domain.geometry.display_geometry import DisplayMotionScale
-from src.domain.geometry.landmarks import LANDMARK_INDEX_TIP, landmark_position
+from src.domain.geometry.landmarks import (
+    LANDMARK_INDEX_TIP,
+    LANDMARK_THUMB_TIP,
+    landmark_position,
+)
 from src.domain.session.session_state import GestureSessionState
 from src.domain.session.session_types import HandState
 from src.shared.config import AppConfig
@@ -166,7 +170,7 @@ class MotionInteractionCoordinator:
             state.pointer.reset_tracking()
             volume = evaluate_volume_motion(
                 state.volume,
-                active_hand.center,
+                self._volume_position(active_gesture, active_hand),
                 active_hand.size,
                 config,
                 now,
@@ -289,4 +293,25 @@ class MotionInteractionCoordinator:
             return landmark_position(active_hand.landmarks, LANDMARK_INDEX_TIP)
 
         state.pointer.position_source = "center"
+        return active_hand.center
+
+    @staticmethod
+    def _pinch_position(active_hand: HandState) -> tuple[float, float]:
+        if len(active_hand.landmarks) > max(LANDMARK_THUMB_TIP, LANDMARK_INDEX_TIP):
+            thumb = landmark_position(active_hand.landmarks, LANDMARK_THUMB_TIP)
+            index = landmark_position(active_hand.landmarks, LANDMARK_INDEX_TIP)
+            if thumb == (0.0, 0.0) or index == (0.0, 0.0):
+                return active_hand.center
+            return ((thumb[0] + index[0]) / 2, (thumb[1] + index[1]) / 2)
+
+        return active_hand.center
+
+    @staticmethod
+    def _volume_position(
+        active_gesture: str | None,
+        active_hand: HandState,
+    ) -> tuple[float, float]:
+        if active_gesture == GESTURE_PINCH:
+            return MotionInteractionCoordinator._pinch_position(active_hand)
+
         return active_hand.center

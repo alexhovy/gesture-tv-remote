@@ -71,7 +71,8 @@ dominant direction only after crossing a small activation margin. Returning
 inside the circle re-arms pointer navigation without moving the center. Holding
 the same direction repeats after the command debounce interval, while changing
 direction requires returning to neutral first. Volume gestures use the same
-fixed-center idea as a vertical neutral band around the first pinch position.
+fixed-center idea as a vertical neutral band around the first pinch contact
+point between the thumb tip and index fingertip.
 
 The camera preview draws joystick diagnostics while point navigation or pinch
 volume is active: the fixed joystick center, neutral area, directional

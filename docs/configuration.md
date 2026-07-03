@@ -236,8 +236,9 @@ the yellow circle stays visually stable as auto-zoom widens or tightens the
 preview. The first point frame captures the index fingertip as a fixed pointer
 center; moving beyond a small activation margin outside that circle emits the
 dominant direction. Volume uses a fixed vertical center from the first pinch
-frame, with its neutral band scaled from the detected active hand size and
-clamped by the volume min/max distance settings. Returning inside the neutral
+contact point between the thumb tip and index fingertip, with its neutral band
+scaled from the detected active hand size and clamped by the volume min/max
+distance settings. Returning inside the neutral
 circle or band re-arms motion without moving the anchor. Holding outside the
 activation margin repeats the same command after `GESTURE_TV_DEBOUNCE_SECONDS`;
 changing direction requires returning to neutral first.

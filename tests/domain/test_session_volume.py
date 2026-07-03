@@ -51,6 +51,20 @@ class SessionVolumeTests(unittest.TestCase):
         self.assertEqual(outside.command_gesture, GESTURE_VOLUME_DOWN)
         self.assertTrue(outside.freeze_zoom)
 
+    def test_volume_uses_pinch_tip_midpoint_for_motion_and_debug(self) -> None:
+        session = GestureSession(app_config())
+        self._activate(session, 0.50)
+
+        self._pinch(session, 0.50, now=0.1, pinch_position=(0.62, 0.50))
+        moved = self._pinch(session, 0.50, now=0.2, pinch_position=(0.62, 0.70))
+
+        self.assertEqual(moved.command_gesture, GESTURE_VOLUME_DOWN)
+        self.assertIsNotNone(moved.volume_debug)
+        assert moved.volume_debug is not None
+        self.assertEqual(moved.volume_debug.anchor, (0.62, 0.50))
+        self.assertEqual(moved.volume_debug.anchor_y, 0.50)
+        self.assertEqual(moved.volume_debug.current, (0.62, 0.70))
+
     def test_volume_return_to_neutral_rearms_without_recentering_anchor(self) -> None:
         session = GestureSession(app_config(debounce_seconds=0.3))
         self._activate(session, 0.50)
@@ -199,9 +213,22 @@ class SessionVolumeTests(unittest.TestCase):
             now=0.0,
         )
 
-    def _pinch(self, session: GestureSession, y: float, now: float):
+    def _pinch(
+        self,
+        session: GestureSession,
+        y: float,
+        now: float,
+        pinch_position: tuple[float, float] | None = None,
+    ):
         return session.evaluate(
-            [hand_state(GESTURE_PINCH, center=(0.70, y), size=0.20)],
+            [
+                hand_state(
+                    GESTURE_PINCH,
+                    center=(0.70, y),
+                    size=0.20,
+                    pinch_position=pinch_position or (0.70, y),
+                )
+            ],
             now=now,
         )
 

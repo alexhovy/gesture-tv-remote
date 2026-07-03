@@ -9,6 +9,7 @@ from src.domain.geometry.landmarks import (
     LANDMARK_COUNT,
     LANDMARK_INDEX_TIP,
     LANDMARK_MIDDLE_MCP,
+    LANDMARK_THUMB_TIP,
     LANDMARK_WRIST,
 )
 from src.domain.session import GestureSession
@@ -66,17 +67,38 @@ def evaluate_volume_move(hand_size: float, start_y: float, end_y: float) -> str 
 
     session.evaluate([open_hand, other_hand], now=0.0)
     session.evaluate(
-        [hand_state(GESTURE_PINCH, center=(0.70, start_y), size=hand_size)],
+        [
+            hand_state(
+                GESTURE_PINCH,
+                center=(0.70, start_y),
+                size=hand_size,
+                pinch_position=(0.70, start_y),
+            )
+        ],
         now=0.1,
     )
     first = session.evaluate(
-        [hand_state(GESTURE_PINCH, center=(0.70, end_y), size=hand_size)],
+        [
+            hand_state(
+                GESTURE_PINCH,
+                center=(0.70, end_y),
+                size=hand_size,
+                pinch_position=(0.70, end_y),
+            )
+        ],
         now=0.2,
     ).command_gesture
     if first is not None:
         return first
     return session.evaluate(
-        [hand_state(GESTURE_PINCH, center=(0.70, end_y), size=hand_size)],
+        [
+            hand_state(
+                GESTURE_PINCH,
+                center=(0.70, end_y),
+                size=hand_size,
+                pinch_position=(0.70, end_y),
+            )
+        ],
         now=0.3,
     ).command_gesture
 
@@ -86,6 +108,7 @@ def hand_state(
     center: tuple[float, float],
     size: float,
     index_position: tuple[float, float] = (0.0, 0.0),
+    pinch_position: tuple[float, float] | None = None,
     upright: bool = True,
     upright_vector: tuple[float, float] = (0.0, -1.0),
 ) -> HandState:
@@ -94,6 +117,15 @@ def hand_state(
         x=index_position[0],
         y=index_position[1],
     )
+    if pinch_position is not None:
+        landmarks[LANDMARK_THUMB_TIP] = SimpleNamespace(
+            x=pinch_position[0],
+            y=pinch_position[1],
+        )
+        landmarks[LANDMARK_INDEX_TIP] = SimpleNamespace(
+            x=pinch_position[0],
+            y=pinch_position[1],
+        )
     landmarks[LANDMARK_WRIST] = SimpleNamespace(x=0.0, y=0.0)
     landmarks[LANDMARK_MIDDLE_MCP] = SimpleNamespace(
         x=upright_vector[0],

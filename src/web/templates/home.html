@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+  <section class="page-header compact">
+    <div>
+      <h1>{{ app_name }}</h1>
+      <p class="intro">
+        Choose the control surface for this TV remote runtime.
+      </p>
+    </div>
+  </section>
+
+  <section class="home-grid" aria-label="App destinations">
+    <a class="home-link" href="/gesture">
+      <span>Gesture</span>
+      <small>Use browser camera and microphone capture for hand gesture control.</small>
+    </a>
+    <a class="home-link" href="/remote">
+      <span>Remote</span>
+      <small>Send direct TV commands from a button and touchpad remote.</small>
+    </a>
+    <a class="home-link" href="/settings">
+      <span>Settings</span>
+      <small>Configure TV connection, gestures, camera, and system options.</small>
+    </a>
+  </section>
+{% endblock %}

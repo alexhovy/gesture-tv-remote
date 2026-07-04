@@ -49,6 +49,7 @@ class RuntimeLoopCoordinator:
         self._config_reload = config_reload
         self._display_debug = display_debug
         self._display_metrics = display_metrics
+        self._stop_requested = False
 
     async def run(self, voice_task: asyncio.Task | None = None) -> asyncio.Task | None:
         frame_pipeline = FrameCapturePipeline(
@@ -74,7 +75,7 @@ class RuntimeLoopCoordinator:
         self._command_dispatcher.start()
         frame_pipeline.start()
 
-        while True:
+        while not self._stop_requested:
             if self._frame_source.failed():
                 self._logger.error("Could not read frame from webcam.")
                 break
@@ -129,3 +130,6 @@ class RuntimeLoopCoordinator:
             await asyncio.sleep(0)
 
         return voice_task
+
+    def stop(self) -> None:
+        self._stop_requested = True

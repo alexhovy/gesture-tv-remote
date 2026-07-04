@@ -10,8 +10,9 @@
 <body class="{{ body_class }}">
   <div class="app-shell">
     <header class="app-topbar">
-      <a class="brand" href="/gesture">{{ app_name }}</a>
+      <a class="brand" href="/">{{ app_name }}</a>
       <nav class="app-nav" aria-label="App">
+        <a class="nav-link{% if active_page == 'home' %} active{% endif %}" href="/">Home</a>
         <a class="nav-link{% if active_page == 'gesture' %} active{% endif %}" href="/gesture">Gesture</a>
         <a class="nav-link{% if active_page == 'remote' %} active{% endif %}" href="/remote">Remote</a>
         <a class="nav-link{% if active_page == 'settings' %} active{% endif %}" href="/settings">Settings</a>

@@ -159,9 +159,12 @@ Do not put here:
 - runtime process orchestration
 
 The web UI uses server-rendered Jinja templates with a shared `base.html` layout
-and plain page-specific JavaScript. Prefer extending the shared layout and
-`static/app.css` over adding standalone HTML documents or page-specific visual
-systems. Static assets are served from `/static/` by the aiohttp app; the
+and plain page-specific JavaScript. Feature route registration lives beside each
+web feature, such as `src/web/gesture/app.py`, `src/web/remote/app.py`, and the
+settings modules under `src/web/settings/`; `src/web/app.py` composes those
+feature routes into the unified aiohttp app. Prefer extending the shared layout
+and `static/app.css` over adding standalone HTML documents or page-specific
+visual systems. Static assets are served from `/static/` by the aiohttp app; the
 settings-only server serves the same shared stylesheet for local configuration
 workflows.
 
@@ -258,8 +261,8 @@ meaningful external boundaries.
 
 ## Runtime Flow
 
-The CLI in `src/runtime/cli.py` selects the unified app runtime, local gesture
-runtime, or settings-only runtime.
+The CLI in `src/runtime/cli.py` selects the unified web app runtime, local
+gesture runtime, or settings-only runtime.
 Runtime builder modules build the concrete object graph:
 
 ```mermaid

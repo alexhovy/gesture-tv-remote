@@ -26,6 +26,47 @@ class WebAppRouteTests(unittest.TestCase):
 
         self.assertIn("static", route_names)
 
+    def test_home_route_renders_destination_hub(self) -> None:
+        app = create_web_app(
+            repository=FakeRepository(),
+            config_provider=lambda: AppConfig(app_name="Gesture Test"),
+            browser_video_sink=FakeBrowserVideoSink(),
+            browser_audio_sink=FakeBrowserAudioSink(),
+            debug_source=FakeDebugSource(),
+            direct_remote=FakeDirectRemote(),
+            logger=FakeLogger(),
+        )
+        request = make_mocked_request("GET", "/", app=app)
+
+        handler = _handler_for(app, "/")
+        response = asyncio.run(handler(request))
+
+        self.assertEqual(response.status, HTTPStatus.OK)
+        self.assertIn("Gesture Test", response.text)
+        self.assertIn('href="/gesture"', response.text)
+        self.assertIn('href="/remote"', response.text)
+        self.assertIn('href="/settings"', response.text)
+
+    def test_restart_route_requests_runtime_restart(self) -> None:
+        runtime_control = FakeRuntimeControl()
+        app = create_web_app(
+            repository=FakeRepository(),
+            config_provider=lambda: AppConfig(),
+            browser_video_sink=FakeBrowserVideoSink(),
+            browser_audio_sink=FakeBrowserAudioSink(),
+            debug_source=FakeDebugSource(),
+            direct_remote=FakeDirectRemote(),
+            logger=FakeLogger(),
+            runtime_control=runtime_control,
+        )
+        request = make_mocked_request("POST", "/restart", app=app)
+
+        handler = _handler_for(app, "/restart")
+        response = asyncio.run(handler(request))
+
+        self.assertEqual(response.status, HTTPStatus.OK)
+        self.assertTrue(runtime_control.restart_requested)
+
     def test_remote_capabilities_exposes_supported_command_groups(self) -> None:
         app = create_web_app(
             repository=FakeRepository(),
@@ -85,6 +126,14 @@ class FakeDirectRemote:
     def dispatch(self, command: str) -> Any:
         del command
         raise NotImplementedError
+
+
+class FakeRuntimeControl:
+    def __init__(self) -> None:
+        self.restart_requested = False
+
+    def request_restart(self) -> None:
+        self.restart_requested = True
 
 
 def _handler_for(app, path: str):

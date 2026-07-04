@@ -6,6 +6,7 @@ from src.shared.config import (
     AppConfig,
     get_config_value,
     replace_config_value,
+    validate_config,
 )
 
 BOOLEAN_FIELD_MARKER = "__present_bool"
@@ -32,6 +33,7 @@ def config_from_form(
             _parse_field_value(field.name, raw_value, current_value),
         )
 
+    validate_config(config)
     return config
 
 

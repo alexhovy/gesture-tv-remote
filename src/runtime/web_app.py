@@ -28,12 +28,29 @@ from src.shared.config import DEFAULT_CONFIG, AppConfig, load_config_from_env
 from src.shared.logging import AppLogger, configure_app_logging
 from src.web.app import create_web_app
 
+RESTART_EXIT_CODE = 75
+
 
 @dataclass(frozen=True)
 class WebAppRuntime:
     service: GestureRemoteService
     server: "WebAppServer"
     browser_audio_source: BrowserAudioSource
+    restart_control: "RuntimeRestartControl"
+
+
+class RuntimeRestartControl:
+    def __init__(self, service: GestureRemoteService) -> None:
+        self._service = service
+        self._restart_requested = False
+
+    @property
+    def restart_requested(self) -> bool:
+        return self._restart_requested
+
+    def request_restart(self) -> None:
+        self._restart_requested = True
+        self._service.stop()
 
 
 class WebAppServer:
@@ -91,7 +108,7 @@ class WebAppServer:
                 self._logger.error(f"Web UI mDNS cleanup failed: {error}")
 
 
-async def main() -> None:
+async def main() -> int:
     runtime = build_web_app_runtime(create_config_provider())
     await runtime.server.start()
     try:
@@ -99,6 +116,9 @@ async def main() -> None:
     finally:
         await runtime.browser_audio_source.close()
         await runtime.server.stop()
+    if runtime.restart_control.restart_requested:
+        return RESTART_EXIT_CODE
+    return 0
 
 
 def build_web_app_runtime(
@@ -138,6 +158,7 @@ def build_web_app_runtime(
         config_provider=provider,
         display_metrics=display_metrics,
     )
+    restart_control = RuntimeRestartControl(service)
     app = create_web_app(
         repository=repository,
         config_provider=provider,
@@ -147,6 +168,7 @@ def build_web_app_runtime(
         direct_remote=DirectRemoteService(tv_deps.remote, tv_deps.command_dispatcher),
         display_metrics_sink=display_metrics,
         logger=logger,
+        runtime_control=restart_control,
     )
     ssl_context = _build_ssl_context(config, logger, auto_generate=True)
     scheme = "https" if ssl_context is not None else "http"
@@ -172,6 +194,7 @@ def build_web_app_runtime(
             mdns_publisher=mdns_publisher,
         ),
         browser_audio_source=browser_audio_source,
+        restart_control=restart_control,
     )
 
 
@@ -243,9 +266,12 @@ def run(configure_logging: bool = True) -> None:
         configure_app_logging()
     _configure_windows_event_loop_policy()
     try:
-        asyncio.run(main())
+        exit_code = asyncio.run(main())
     except KeyboardInterrupt:
         AppLogger().info("Web app stopped.")
+        return
+    if exit_code:
+        raise SystemExit(exit_code)
 
 
 def _configure_windows_event_loop_policy() -> None:

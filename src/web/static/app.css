@@ -90,6 +90,7 @@ a {
   min-height: 0;
 }
 
+.home-page .app-main,
 .settings-page .app-main,
 .remote-page .app-main {
   margin: 0 auto;
@@ -165,6 +166,78 @@ h2 {
   overflow: hidden;
 }
 
+.home-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.home-link {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  display: grid;
+  gap: 8px;
+  min-height: 140px;
+  padding: 18px;
+}
+
+.home-link:focus,
+.home-link:hover {
+  border-color: var(--focus);
+  outline: 0;
+}
+
+.home-link span {
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.home-link small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.settings-tabs {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 14px;
+}
+
+.settings-tab {
+  background: var(--surface);
+  border: 1px solid var(--soft-line);
+  border-radius: 8px;
+  display: grid;
+  gap: 5px;
+  min-height: 84px;
+  padding: 12px;
+}
+
+.settings-tab span {
+  font-size: 15px;
+  font-weight: 750;
+}
+
+.settings-tab small {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.settings-tab:focus,
+.settings-tab:hover,
+.settings-tab.active {
+  border-color: var(--focus);
+  outline: 0;
+}
+
+.settings-tab.active {
+  background: var(--surface-2);
+}
+
 .section {
   border-top: 1px solid var(--soft-line);
   padding: 20px 18px;
@@ -192,6 +265,52 @@ h2 {
 .section-description {
   font-size: 13px;
   margin-top: 5px;
+}
+
+.advanced-section {
+  display: block;
+}
+
+.advanced-section summary {
+  cursor: pointer;
+  display: grid;
+  gap: 5px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  list-style: none;
+}
+
+.advanced-section summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-section summary::before {
+  color: var(--warning);
+  content: "+";
+  font-size: 17px;
+  font-weight: 800;
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  justify-self: end;
+}
+
+.advanced-section[open] summary::before {
+  content: "-";
+}
+
+.advanced-section summary span {
+  font-size: 17px;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
+.advanced-section summary small {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.advanced-content {
+  margin-top: 14px;
 }
 
 .field-grid {
@@ -321,10 +440,39 @@ input[readonly] {
   color: var(--danger);
 }
 
+.button.warning {
+  color: var(--warning);
+}
+
 .button:disabled {
   background: #3a4540;
   color: #849289;
   cursor: default;
+}
+
+.restart-prompt {
+  align-items: center;
+  background: var(--warning-soft);
+  border: 1px solid #6d5a22;
+  border-radius: 8px;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+  margin-bottom: 14px;
+  padding: 14px;
+}
+
+.restart-prompt h2 {
+  color: var(--warning);
+  font-size: 16px;
+}
+
+.restart-prompt p,
+.restart-unavailable {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 5px 0 0;
 }
 
 .gesture-page {
@@ -579,7 +727,7 @@ canvas {
 
   .app-nav {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .nav-link,
@@ -587,6 +735,7 @@ canvas {
     text-align: center;
   }
 
+  .home-page .app-main,
   .settings-page .app-main,
   .remote-page .app-main {
     padding: 14px;
@@ -594,10 +743,19 @@ canvas {
 
   .page-header,
   .section-header,
+  .restart-prompt,
   .actions,
   .gesture-toolbar {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .settings-tabs {
+    grid-template-columns: 1fr;
+  }
+
+  .home-grid {
+    grid-template-columns: 1fr;
   }
 
   .field-top {

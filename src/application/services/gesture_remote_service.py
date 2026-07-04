@@ -111,3 +111,6 @@ class GestureRemoteService:
         self._voice_task = asyncio.create_task(
             self._voice_capture.capture_stream(request.stream, context)
         )
+
+    def stop(self) -> None:
+        self._runtime_loop.stop()

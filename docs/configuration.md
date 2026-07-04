@@ -102,7 +102,7 @@ The config database and config UI still use the flat setting names shown in the
 environment-variable table. Those names are user-facing storage and form fields;
 the grouped `AppConfig` sections are the internal runtime structure.
 
-## Config UI
+## Settings UI
 
 Run the settings-only UI with:
 
@@ -118,9 +118,18 @@ available. Set `GESTURE_TV_CONFIG_WEB_HOST`,
 bind address, port, mDNS publishing, advertised name, or HTTPS certificate.
 Saved settings are persisted to the config database.
 
-The page groups settings by responsibility and marks whether each saved value
-applies live or requires restarting the gesture runtime. Environment variables
-still override saved values shown in the UI.
+The settings page uses top-level tabs for TV, Gesture, Camera, and System
+settings. Each tab keeps common controls visible and places less frequently used
+controls in an Advanced disclosure section. Fields are marked when they apply
+live or require restarting the active runtime. Environment variables still
+override saved values shown in the UI.
+
+When a saved change affects restart-required fields, the unified app runtime
+shows a restart prompt. Pressing Restart runtime requests a graceful stop of the
+active app process. The process exits with code `75`; use a service manager,
+script, or shell wrapper to relaunch it when that code is returned. The
+settings-only runtime can save the same configuration but cannot restart a
+separate gesture/app process.
 
 If `.local` names do not resolve on a device, use `https://localhost` on the
 machine running the app or `https://<device-ip>` from another device on the
@@ -139,11 +148,12 @@ Run the unified web app runtime with:
 uv run python main.py app
 ```
 
-Open `https://gesturetvremote.local/gesture` from the browser capture device.
-The same web runtime serves settings at `/settings` and the direct remote at
-`/remote`, so the configured `.local` name can host the app from one backend
-server. When the web port is left at its default `80`, HTTPS web runtimes serve
-on port `443`; if you configure another web port, use that port in the URL.
+Open `https://gesturetvremote.local/` from the browser capture device. The same
+web runtime serves the home hub at `/`, settings at `/settings`, browser
+gesture capture at `/gesture`, and the direct remote at `/remote`, so the
+configured `.local` name can host the app from one backend server. When the web
+port is left at its default `80`, HTTPS web runtimes serve on port `443`; if you
+configure another web port, use that port in the URL.
 
 Browsers require a secure context for camera and microphone APIs. `localhost`
 counts as secure for local testing. For `.local` access, the web runtimes create

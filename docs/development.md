@@ -38,11 +38,11 @@ uv run python main.py local-gesture
 uv run python main.py settings
 ```
 
-The app runtime serves settings at `/settings`, browser gesture capture at
-`/gesture`, and the direct remote at `/remote`. All web runtimes generate a
-local HTTPS certificate when missing. When the web port is still the default,
-they listen on HTTPS port `443`. Trust the generated certificate on web devices
-so browser media permissions are available.
+The app runtime serves the home hub at `/`, settings at `/settings`, browser
+gesture capture at `/gesture`, and the direct remote at `/remote`. All web
+runtimes generate a local HTTPS certificate when missing. When the web port is
+still the default, they listen on HTTPS port `443`. Trust the generated
+certificate on web devices so browser media permissions are available.
 
 `local-gesture` uses the local webcam and microphone attached to the machine
 running Python. Press `q` to quit its OpenCV preview window.
@@ -53,11 +53,13 @@ running Python. Press `q` to quit its OpenCV preview window.
 uv run python main.py settings
 ```
 
-Open `https://localhost`. When mDNS is available on the local network, the
-UI is also advertised as `https://gesturetvremote.local`. Saved settings are
-written to the local config database. Gesture, timing, voice-duration, and zoom
-tuning changes are reloaded by the running gesture process; integration and
-hardware settings still require restarting it.
+Open `https://localhost/settings`. When mDNS is available on the local network,
+the UI is also advertised as `https://gesturetvremote.local`. Saved settings are
+written to the local config database. The settings page uses tabs for TV,
+Gesture, Camera, and System settings, with advanced controls hidden behind
+native disclosure sections. Gesture, timing, voice-duration, and zoom tuning
+changes are reloaded by the running gesture process; integration and hardware
+settings still require restarting it.
 
 ## Test
 

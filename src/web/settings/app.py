@@ -10,11 +10,10 @@ from src.application.ports.logger import LoggerPort
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 from src.web.assets import read_app_css
-from src.web.settings.forms import config_from_form
-from src.web.settings.templates import (
-    render_config_page,
-    reset_status_message,
-    saved_status_message,
+from src.web.settings.handlers import (
+    render_settings_page,
+    save_settings_form,
+    settings_redirect,
 )
 
 ConfigProvider = Callable[[], AppConfig]
@@ -33,12 +32,15 @@ def create_config_server(
         def do_GET(self) -> None:
             request_url = urlparse(self.path)
             path = request_url.path
-            if path in {"/", "/settings"}:
+            if path == "/":
+                self._redirect("/settings")
+                return
+            if path == "/settings":
                 web_logger.info(f"Web config page viewed from {self.client_address[0]}")
                 self._send_html(
-                    render_config_page(
+                    render_settings_page(
                         config_provider(),
-                        status_message=_status_message(request_url.query),
+                        query=request_url.query,
                     )
                 )
                 return
@@ -60,7 +62,7 @@ def create_config_server(
                 web_logger.info(
                     f"Web config settings reset from {self.client_address[0]}"
                 )
-                self._redirect("/?reset=1")
+                self._redirect("/settings?reset=1")
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 
@@ -68,18 +70,23 @@ def create_config_server(
             return
 
         def _handle_settings(self) -> None:
+            form: dict[str, list[str]] = {}
             try:
                 form = self._read_form()
-                config = config_from_form(form, config_provider())
-                repository.save_config(config)
+                active_tab, restart_fields = save_settings_form(
+                    form,
+                    config_provider(),
+                    repository,
+                )
             except ValueError as error:
                 web_logger.info(
                     "Web config validation failed from "
                     f"{self.client_address[0]}: {error}"
                 )
                 self._send_html(
-                    render_config_page(
+                    render_settings_page(
                         config_provider(),
+                        query={"tab": _first_form_value(form, "tab") or "tv"},
                         error_message=str(error),
                     ),
                     HTTPStatus.BAD_REQUEST,
@@ -87,7 +94,7 @@ def create_config_server(
                 return
 
             web_logger.info(f"Web config settings saved from {self.client_address[0]}")
-            self._redirect("/?saved=1")
+            self._redirect(settings_redirect(active_tab, restart_fields))
 
         def _read_form(self) -> dict[str, list[str]]:
             length = int(self.headers.get("Content-Length", "0"))
@@ -131,10 +138,8 @@ def create_config_server(
     return ThreadingHTTPServer((host, port), ConfigRequestHandler)
 
 
-def _status_message(query: str) -> str | None:
-    params = parse_qs(query)
-    if "saved" in params:
-        return saved_status_message()
-    if "reset" in params:
-        return reset_status_message()
-    return None
+def _first_form_value(form: dict[str, list[str]], name: str) -> str | None:
+    values = form.get(name)
+    if not values:
+        return None
+    return values[0]

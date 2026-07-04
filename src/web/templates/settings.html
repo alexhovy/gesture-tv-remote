@@ -6,13 +6,15 @@
       <h1>Settings</h1>
       <p class="intro">
         Saved settings are stored locally. Environment variables override saved
-        values; fields marked "Requires restart" take effect after restarting
-        the active runtime.
+        values. Advanced settings are available inside each section when needed.
       </p>
     </div>
   </section>
   {{ status }}
+  {{ restart_prompt }}
+  {{ tabs }}
   <form class="settings-form" method="post" action="/settings">
+    <input type="hidden" name="tab" value="{{ selected_tab }}">
     {{ sections }}
     <div class="actions">
       <button class="button primary" type="submit">Save</button>

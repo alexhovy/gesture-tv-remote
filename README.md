@@ -36,8 +36,9 @@ python -m uv sync
 python -m uv run python main.py
 ```
 
-`main.py` starts the unified web app by default. The app serves settings,
-browser-based gesture capture, and the direct remote from one backend runtime.
+`main.py` starts the unified web app by default. The app serves a home hub,
+settings, browser-based gesture capture, and the direct remote from one backend
+runtime.
 To run a specific runtime:
 
 ```bash
@@ -50,12 +51,13 @@ Open `https://localhost`.
 When mDNS is available on your network, the same UI is advertised as
 `https://gesturetvremote.local`.
 
-In the app runtime, settings are available at `/settings`, browser gesture
-capture is available at `/gesture`, and the direct remote is available at
-`/remote`. The browser provides camera and microphone access over WebRTC while
-the Python backend still performs MediaPipe hand tracking, gesture decisions,
-voice handling, and TV command dispatch. The direct remote sends adapter-neutral
-TV commands through the same backend dispatcher without gesture recognition.
+In the app runtime, `/` opens the home hub, settings are available at
+`/settings`, browser gesture capture is available at `/gesture`, and the direct
+remote is available at `/remote`. The browser provides camera and microphone
+access over WebRTC while the Python backend still performs MediaPipe hand
+tracking, gesture decisions, voice handling, and TV command dispatch. The direct
+remote sends adapter-neutral TV commands through the same backend dispatcher
+without gesture recognition.
 Web runtimes generate a local HTTPS certificate and use HTTPS by default.
 The generated certificate must be trusted by the web or capture device.
 

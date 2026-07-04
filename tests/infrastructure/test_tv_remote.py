@@ -452,6 +452,34 @@ class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(wake_on_lan.calls, 1)
 
+    async def test_command_waits_for_samsung_to_connect_after_wake(self) -> None:
+        fake_remote = _install_fake_samsung(open_failures=1)
+        wake_on_lan = FakeWakeOnLan()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = SamsungTvRemoteClient(
+                app_config(
+                    tv_host="tv.local",
+                    samsung_token_file=Path(temp_dir) / "token.txt",
+                    tv_wake_connect_timeout_seconds=1.0,
+                    tv_wake_connect_retry_seconds=0.1,
+                ),
+                wake_on_lan=wake_on_lan,
+            )
+
+            await client.send_command(TV_COMMAND_DPAD_LEFT)
+            await client.disconnect()
+
+        self.assertEqual(wake_on_lan.calls, 1)
+        self.assertEqual(len(fake_remote.instances), 2)
+        self.assertEqual(
+            [name for name, _ in fake_remote.instances[0].operations],
+            ["init", "open"],
+        )
+        self.assertEqual(
+            [name for name, _ in fake_remote.instances[1].operations],
+            ["init", "open", "send:KEY_LEFT", "close"],
+        )
+
     async def test_discovers_samsung_wifi_mac_when_network_is_wireless(self) -> None:
         _install_fake_samsung(
             device_info={
@@ -667,10 +695,12 @@ class WebOsRemoteTests(unittest.IsolatedAsyncioTestCase):
 
 def _install_fake_samsung(
     fail_first_send: bool = False,
+    open_failures: int = 0,
     device_info=None,
 ):
     class FakeSamsungTVWS:
         instances = []
+        open_count = 0
         send_count = 0
 
         def __init__(self, **kwargs):
@@ -679,7 +709,10 @@ def _install_fake_samsung(
             FakeSamsungTVWS.instances.append(self)
 
         def open(self):
+            FakeSamsungTVWS.open_count += 1
             self.operations.append(("open", threading.get_ident()))
+            if FakeSamsungTVWS.open_count <= open_failures:
+                raise OSError("connection timed out")
 
         def send_key(self, key):
             FakeSamsungTVWS.send_count += 1

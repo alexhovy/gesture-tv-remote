@@ -114,7 +114,9 @@ class RemoteCommandDispatcher:
             if request.command == TV_COMMAND_DPAD_CENTER
             else request.command
         )
-        self._logger.info(f"Remote command: {request.source} -> {display_command}")
+        self._logger.info(
+            f"Remote command attempt: {request.source} -> {display_command}"
+        )
         started_at = time.monotonic()
         await self._remote.send_command(request.command)
         self._last_send_latency_seconds = time.monotonic() - started_at

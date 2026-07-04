@@ -1,3 +1,5 @@
+import asyncio
+import time
 from typing import Any
 
 from src.application.ports.tv_remote import (
@@ -100,8 +102,7 @@ class SamsungTvRemoteClient:
 
     async def send_command(self, command: str) -> None:
         if self._remote is None:
-            await self.wake()
-            if not await self.connect():
+            if not await self._wake_and_connect():
                 self._logger.info(f"TV not connected. Skipping command: {command}")
                 return
 
@@ -113,8 +114,10 @@ class SamsungTvRemoteClient:
                 f"Samsung TV command {adapter_command} failed, reconnecting: {error}"
             )
             try:
-                await self.wake()
-                await self._executor.call(self._reconnect_sync)
+                await self._executor.call(self._close_sync, True)
+                if not await self._wake_and_connect():
+                    self._logger.info(f"TV not connected. Skipping command: {command}")
+                    return
                 await self._executor.call(self._send_key_sync, adapter_command)
             except Exception as retry_error:
                 self._logger.error(
@@ -179,6 +182,24 @@ class SamsungTvRemoteClient:
                 "wake success depends on the TV model and network standby settings."
             )
         return wifi_mac
+
+    async def _wake_and_connect(self) -> bool:
+        await self.wake()
+        deadline = time.monotonic() + self._config.tv.wake_connect_timeout_seconds
+        while True:
+            if await self.connect():
+                return True
+
+            remaining_seconds = deadline - time.monotonic()
+            if remaining_seconds <= 0:
+                return False
+
+            retry_seconds = min(
+                self._config.tv.wake_connect_retry_seconds,
+                remaining_seconds,
+            )
+            if retry_seconds > 0:
+                await asyncio.sleep(retry_seconds)
 
     def _reconnect_sync(self) -> None:
         self._close_sync(ignore_errors=True)

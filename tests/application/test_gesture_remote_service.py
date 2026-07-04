@@ -1087,6 +1087,9 @@ class FakeCleanupRemote:
     async def wake(self) -> bool:
         return True
 
+    async def discover_mac_address(self) -> None:
+        return None
+
     async def send_command(self, command: str) -> None:
         del command
 

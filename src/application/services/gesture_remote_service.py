@@ -89,7 +89,7 @@ class GestureRemoteService:
             self._logger.info("TV connection failed. Exiting.")
             await self._cleanup.cleanup(None)
             return
-        self._store_discovered_mac_address()
+        await self._store_discovered_mac_address()
 
         if not await asyncio.to_thread(self._frame_source.is_open):
             self._logger.error("Could not open webcam.")
@@ -141,13 +141,15 @@ class GestureRemoteService:
                 )
             )
 
-    def _store_discovered_mac_address(self) -> None:
+    async def _store_discovered_mac_address(self) -> None:
         if self._config_store is None or self._mac_address_resolver is None:
             return
         if self._config.tv.mac_address.strip():
             return
 
-        mac_address = self._mac_address_resolver.resolve(self._config.tv.host)
+        mac_address = await self._remote.discover_mac_address()
+        if mac_address is None:
+            mac_address = self._mac_address_resolver.resolve(self._config.tv.host)
         if mac_address is None:
             self._logger.info(
                 "Could not discover TV MAC address for Wake-on-LAN. "

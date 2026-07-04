@@ -13,16 +13,23 @@ from src.infrastructure.tv.tv_command_translation import (
     translate_tv_command,
 )
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_APPLETV
+from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
 
 class AppleTvRemoteClient:
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        wake_on_lan: WakeOnLanSender | None = None,
+    ) -> None:
         self._config = config
         self._remote: Any | None = None
+        self._device_config: Any | None = None
         self._storage: Any | None = None
         self._logger = AppLogger()
+        self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
@@ -33,7 +40,7 @@ class AppleTvRemoteClient:
             media_controls=CapabilityStatus.IMPLEMENTED,
             text_input=CapabilityStatus.NOT_IMPLEMENTED,
             source_selection=CapabilityStatus.UNSUPPORTED,
-            wake_on_lan=CapabilityStatus.UNSUPPORTED,
+            wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
             voice_input=VoiceInputCapabilities(
                 remote_mic_stream=CapabilityStatus.UNSUPPORTED,
@@ -50,6 +57,9 @@ class AppleTvRemoteClient:
             known_limitations=(
                 "Pair Apple TV separately with atvremote wizard and the same "
                 "storage file before using this adapter.",
+                "Wake-on-LAN sends a generic magic packet when a MAC address is "
+                "configured, then pyatv power management can turn on connected "
+                "tvOS devices.",
                 "Text input, app launching, and touch gestures are not mapped.",
             ),
         )
@@ -85,7 +95,10 @@ class AppleTvRemoteClient:
                 )
                 return False
 
-            self._remote = await pyatv.connect(devices[0], loop, storage=storage)
+            self._device_config = devices[0]
+            self._remote = await pyatv.connect(
+                self._device_config, loop, storage=storage
+            )
             self._storage = storage
             await storage.save()
         except Exception as error:
@@ -93,6 +106,7 @@ class AppleTvRemoteClient:
                 f"Could not connect to Apple TV at {self._config.tv.host}: {error}"
             )
             self._remote = None
+            self._device_config = None
             self._storage = None
             return False
 
@@ -100,8 +114,14 @@ class AppleTvRemoteClient:
         return True
 
     async def wake(self) -> bool:
+        try:
+            result = await asyncio.to_thread(self._wake_on_lan.wake)
+        except Exception as error:
+            self._logger.error(f"Apple TV Wake-on-LAN failed: {error}")
+            return False
+        if result.attempted and result.sent_packets > 0:
+            return True
         if self._remote is None:
-            self._logger.debug("Apple TV wake requires an active pyatv connection.")
             return False
         try:
             await self._remote.power.turn_on()
@@ -109,6 +129,20 @@ class AppleTvRemoteClient:
             self._logger.error(f"Apple TV wake failed: {error}")
             return False
         return True
+
+    async def discover_mac_address(self) -> str | None:
+        if self._device_config is None:
+            return None
+        device_info = getattr(self._device_config, "device_info", None)
+        mac_address = normalize_mac_address(str(getattr(device_info, "mac", "") or ""))
+        if mac_address is not None:
+            return mac_address
+        identifiers: set[str] = getattr(self._device_config, "all_identifiers", set())
+        for identifier in identifiers:
+            mac_address = normalize_mac_address(str(identifier))
+            if mac_address is not None:
+                return mac_address
+        return None
 
     async def send_command(self, command: str) -> None:
         if self._remote is None:
@@ -135,3 +169,4 @@ class AppleTvRemoteClient:
         if pending_tasks:
             await asyncio.gather(*pending_tasks, return_exceptions=True)
         self._remote = None
+        self._device_config = None

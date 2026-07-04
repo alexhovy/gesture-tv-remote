@@ -13,7 +13,7 @@ from src.infrastructure.tv.tv_command_translation import (
     translate_tv_command,
 )
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_SAMSUNG
-from src.infrastructure.tv.wake_on_lan import WakeOnLanSender
+from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -89,6 +89,15 @@ class SamsungTvRemoteClient:
             return False
         return result.attempted and result.sent_packets > 0
 
+    async def discover_mac_address(self) -> str | None:
+        if self._remote is None:
+            return None
+        try:
+            return await self._executor.call(self._discover_mac_address_sync)
+        except Exception as error:
+            self._logger.debug(f"Samsung MAC discovery failed: {error}")
+            return None
+
     async def send_command(self, command: str) -> None:
         if self._remote is None:
             await self.wake()
@@ -148,6 +157,28 @@ class SamsungTvRemoteClient:
         if self._remote is None:
             raise RuntimeError("Samsung TV is not connected")
         self._remote.send_key(adapter_command)
+
+    def _discover_mac_address_sync(self) -> str | None:
+        if self._remote is None:
+            return None
+        rest_device_info = getattr(self._remote, "rest_device_info", None)
+        if rest_device_info is None:
+            return None
+        info = rest_device_info()
+        device_info = info.get("device", {}) if isinstance(info, dict) else {}
+        if not isinstance(device_info, dict):
+            return None
+        network_type = str(device_info.get("networkType", "")).strip().lower()
+        wifi_mac = normalize_mac_address(str(device_info.get("wifiMac", "")))
+        if wifi_mac is None:
+            return None
+        if network_type == "wired":
+            self._logger.info(
+                "Samsung reported only a Wi-Fi MAC address while the TV is using "
+                "wired networking. Saving it as the Wake-on-LAN candidate; "
+                "wake success depends on the TV model and network standby settings."
+            )
+        return wifi_mac
 
     def _reconnect_sync(self) -> None:
         self._close_sync(ignore_errors=True)

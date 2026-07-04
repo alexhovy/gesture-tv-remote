@@ -13,15 +13,21 @@ from src.infrastructure.tv.tv_command_translation import (
     translate_tv_command,
 )
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU
+from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
 
 class RokuRemoteClient:
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        wake_on_lan: WakeOnLanSender | None = None,
+    ) -> None:
         self._config = config
         self._remote: Any | None = None
         self._logger = AppLogger()
+        self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
         self._executor = ThreadBoundRemoteExecutor("roku-tv")
 
     def capabilities(self) -> TvAdapterCapabilities:
@@ -33,7 +39,7 @@ class RokuRemoteClient:
             media_controls=CapabilityStatus.IMPLEMENTED,
             text_input=CapabilityStatus.NOT_IMPLEMENTED,
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
-            wake_on_lan=CapabilityStatus.UNSUPPORTED,
+            wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.UNSUPPORTED,
             voice_input=VoiceInputCapabilities(
                 remote_mic_stream=CapabilityStatus.UNSUPPORTED,
@@ -50,8 +56,10 @@ class RokuRemoteClient:
             known_limitations=(
                 "PowerOff is available on Roku TV devices; standalone Roku "
                 "streaming players may not support TV power control.",
-                "Remote microphone streaming, pairing, text input, source "
-                "selection, and Wake-on-LAN are not implemented.",
+                "Wake-on-LAN uses Roku device-info MAC data when available; "
+                "model and Fast TV Start support vary.",
+                "Remote microphone streaming, pairing, text input, and source "
+                "selection are not implemented.",
             ),
         )
 
@@ -75,8 +83,25 @@ class RokuRemoteClient:
         return True
 
     async def wake(self) -> bool:
-        self._logger.debug("Roku Wake-on-LAN is not supported.")
-        return False
+        try:
+            result = await self._executor.call(self._wake_on_lan.wake)
+        except Exception as error:
+            self._logger.error(f"Roku Wake-on-LAN failed: {error}")
+            return False
+        return result.attempted and result.sent_packets > 0
+
+    async def discover_mac_address(self) -> str | None:
+        if self._remote is None:
+            return None
+        try:
+            update = getattr(self._remote, "update", None)
+            if update is None:
+                return None
+            device = await self._executor.call(update)
+            return _mac_address_from_roku_device(device)
+        except Exception as error:
+            self._logger.debug(f"Roku MAC discovery failed: {error}")
+            return None
 
     async def send_command(self, command: str) -> None:
         if self._remote is None:
@@ -149,3 +174,15 @@ class RokuRemoteClient:
                 raise
         finally:
             self._remote = None
+
+
+def _mac_address_from_roku_device(device: Any) -> str | None:
+    info = getattr(device, "info", None)
+    network_type = str(getattr(info, "network_type", "") or "").lower()
+    if network_type == "ethernet":
+        return normalize_mac_address(str(getattr(info, "ethernet_mac", "") or ""))
+    if network_type in {"wifi", "wireless"}:
+        return normalize_mac_address(str(getattr(info, "wifi_mac", "") or ""))
+    return normalize_mac_address(str(getattr(info, "ethernet_mac", "") or "")) or (
+        normalize_mac_address(str(getattr(info, "wifi_mac", "") or ""))
+    )

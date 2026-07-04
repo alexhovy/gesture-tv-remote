@@ -66,10 +66,21 @@ address, it saves `tv_mac_address` and enables `tv_wake_enabled` for future
 launches.
 
 Wake behavior is best-effort and depends on TV settings and the local network.
-Samsung and LG webOS are the primary Wake-on-LAN targets. Their TVs usually need
-network standby, mobile wake, or an equivalent setting enabled. Android TV,
-Roku, and Apple TV do not have a reliable generic pre-connect Wake-on-LAN path
-through the current adapters.
+Every adapter can send a generic Wake-on-LAN magic packet once `tv_mac_address`
+is known, but automatic MAC discovery varies by platform. Android TV can learn a
+MAC from its pairing certificate, Roku can learn the active network MAC from ECP
+device info, and Apple TV can learn a MAC from pyatv scan metadata when
+available. Samsung exposes a Wi-Fi MAC through device info; the app stores it as
+a Wake-on-LAN candidate even when the TV reports wired networking because that
+is the only MAC Samsung exposes through the current REST endpoint. LG webOS can
+use Wake-on-LAN when a MAC is known; the app tries webOS connection-manager and
+system payloads after pairing, but LG does not expose a reliable public
+MAC-address API across all webOS TV models.
+
+Local neighbor/ARP discovery only works when the TV is on the same layer-2
+network as the machine running Python. If the TV is reached through a router,
+mesh segment, VPN, container bridge, or WSL NAT, the local neighbor table usually
+contains the router or virtual gateway MAC instead of the TV MAC.
 
 If automatic discovery cannot find the MAC address, set `tv_mac_address`
 manually in settings or with `GESTURE_TV_MAC_ADDRESS`. Once the MAC is known,

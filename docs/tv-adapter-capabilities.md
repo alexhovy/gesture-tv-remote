@@ -16,11 +16,11 @@ Capability status is explicit:
 
 | Adapter | Connection | Power | Volume | Navigation | Media Controls | Text Input | Source Selection | Wake-on-LAN | Pairing | Remote Mic Stream | Native Voice UI | App Voice Input |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` | `implemented` | `implemented` |
+| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` |
 | Samsung TV | `samsungtvws` websocket | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
 | LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
-| Roku | Roku ECP HTTP | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
-| Apple TV | `pyatv` Media Remote Protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
+| Roku | Roku ECP HTTP | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
+| Apple TV | `pyatv` Media Remote Protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
 
 ## Common Commands
 
@@ -66,12 +66,23 @@ Power behavior varies by protocol:
   players may not support TV power control.
 - Apple TV exposes separate `turn_on` and `turn_off` through pyatv power
   management.
-- Samsung and LG webOS can send Wake-on-LAN packets before connecting when the
-  TV MAC address is known. The app attempts to learn the MAC address from the
-  local neighbor/ARP table after a successful connection and enables future wake
-  attempts once it stores that address.
-- Android TV / Google TV, Roku, and Apple TV do not expose a reliable generic
-  pre-connect Wake-on-LAN path through the current adapter implementations.
+- All adapters can send a generic Wake-on-LAN magic packet before connecting
+  when `tv_mac_address` is known and `tv_wake_enabled` is true.
+- Android TV / Google TV can learn a MAC address from the Android TV Remote
+  Protocol pairing certificate.
+- Roku can learn the active network MAC address from ECP `query/device-info`
+  while the device is awake.
+- Apple TV can learn a MAC address from pyatv scan/device metadata when that
+  metadata is available, and can use pyatv power management after connecting.
+- Samsung can learn the reported Wi-Fi MAC from the REST device info endpoint
+  and saves it as the Wake-on-LAN candidate. Some Samsung TVs report wired
+  networking while still exposing only `wifiMac`, so wake success depends on
+  model and network standby behavior.
+- LG webOS can use Wake-on-LAN when a MAC address is known. The app tries webOS
+  connection-manager and system payloads after a successful connection, then
+  falls back to local neighbor/ARP discovery. LG does not expose a reliable
+  public MAC-address API across all webOS TV models, so manual entry or router
+  lookup can still be required.
 
 Voice input is split by protocol capability:
 

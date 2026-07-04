@@ -110,6 +110,36 @@ class ApplicationPortsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(store.saved_config.tv.mac_address, "aa:bb:cc:dd:ee:ff")
         self.assertTrue(store.saved_config.tv.wake_enabled)
 
+    async def test_gesture_remote_service_prefers_adapter_discovered_mac(
+        self,
+    ) -> None:
+        config = app_config(tv_wake_enabled=False, tv_mac_address="")
+        store = FakeConfigStore(config)
+        resolver = FakeMacAddressResolver("aa:bb:cc:dd:ee:ff")
+
+        service = GestureRemoteService(
+            config,
+            remote=FakeTVRemote(discovered_mac_address="00:11:22:33:44:55"),
+            frame_source=FakeFrameSource(frames=[object()]),
+            hand_tracker=FakeHandTracker(),
+            camera=FakeCamera(),
+            frame_processor=FakeFrameProcessor(),
+            display=FakeDisplay(),
+            voice_capture=FakeVoiceCapture(),
+            command_dispatcher=FakeCommandDispatcher(),
+            logger=FakeLogger(),
+            metrics=PipelineMetrics(config.tv.adapter),
+            config_store=store,
+            mac_address_resolver=resolver,
+        )
+
+        await service.run()
+
+        self.assertIsNotNone(store.saved_config)
+        assert store.saved_config is not None
+        self.assertEqual(store.saved_config.tv.mac_address, "00:11:22:33:44:55")
+        self.assertEqual(resolver.hosts, [])
+
 
 class FakeConfigStore:
     def __init__(self, config):

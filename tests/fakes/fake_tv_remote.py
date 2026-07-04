@@ -8,8 +8,13 @@ from src.application.ports.tv_remote import (
 
 
 class FakeTVRemote:
-    def __init__(self, connected: bool = True) -> None:
+    def __init__(
+        self,
+        connected: bool = True,
+        discovered_mac_address: str | None = None,
+    ) -> None:
         self.connected = connected
+        self.discovered_mac_address = discovered_mac_address
         self.commands: list[str] = []
         self.connect_calls = 0
         self.wake_calls = 0
@@ -30,6 +35,9 @@ class FakeTVRemote:
     async def wake(self) -> bool:
         self.wake_calls += 1
         return True
+
+    async def discover_mac_address(self) -> str | None:
+        return self.discovered_mac_address
 
     async def send_command(self, command: str) -> None:
         self.commands.append(command)

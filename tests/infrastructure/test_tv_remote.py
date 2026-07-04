@@ -5,6 +5,7 @@ import threading
 import types
 import unittest
 from pathlib import Path
+from typing import Any
 from unittest.mock import patch
 
 from src.application.ports.tv_remote import CapabilityStatus, VoiceInputMode
@@ -45,7 +46,10 @@ from src.infrastructure.tv.tv_remote import (
     TvRemoteCommandError,
 )
 from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
-from src.infrastructure.tv.webos_remote import WebOsRemoteClient
+from src.infrastructure.tv.webos_remote import (
+    WebOsRemoteClient,
+    _mac_address_from_webos_payload,
+)
 from tests.helpers.config_helpers import app_config
 
 BASE_REMOTE_COMMANDS = (
@@ -292,6 +296,19 @@ class AndroidTvRemoteTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNone(stream)
         self.assertEqual(remote.operations, ["send:SEARCH"])
 
+    async def test_discovers_android_tv_mac_from_certificate_identity(self) -> None:
+        client = AndroidTvRemoteClient(app_config())
+
+        async def remote_name_and_mac():
+            return "Living Room TV", "AA-BB-CC-DD-EE-FF"
+
+        client._remote_name_and_mac = remote_name_and_mac
+
+        self.assertEqual(
+            await client.discover_mac_address(),
+            "aa:bb:cc:dd:ee:ff",
+        )
+
     async def test_app_voice_begin_notifies_registered_handler(self) -> None:
         remote = FakeAndroidProtocolRemote()
         logger = FakeLogger()
@@ -435,6 +452,52 @@ class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(wake_on_lan.calls, 1)
 
+    async def test_discovers_samsung_wifi_mac_when_network_is_wireless(self) -> None:
+        _install_fake_samsung(
+            device_info={
+                "device": {
+                    "networkType": "wireless",
+                    "wifiMac": "AA-BB-CC-DD-EE-FF",
+                }
+            }
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = SamsungTvRemoteClient(
+                app_config(
+                    tv_host="tv.local",
+                    samsung_token_file=Path(temp_dir) / "token.txt",
+                )
+            )
+
+            self.assertTrue(await client.connect())
+            mac_address = await client.discover_mac_address()
+            await client.disconnect()
+
+        self.assertEqual(mac_address, "aa:bb:cc:dd:ee:ff")
+
+    async def test_uses_samsung_wifi_mac_as_wired_wake_candidate(self) -> None:
+        _install_fake_samsung(
+            device_info={
+                "device": {
+                    "networkType": "wired",
+                    "wifiMac": "AA-BB-CC-DD-EE-FF",
+                }
+            }
+        )
+        with tempfile.TemporaryDirectory() as temp_dir:
+            client = SamsungTvRemoteClient(
+                app_config(
+                    tv_host="tv.local",
+                    samsung_token_file=Path(temp_dir) / "token.txt",
+                )
+            )
+
+            self.assertTrue(await client.connect())
+            mac_address = await client.discover_mac_address()
+            await client.disconnect()
+
+        self.assertEqual(mac_address, "aa:bb:cc:dd:ee:ff")
+
 
 class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -494,6 +557,37 @@ class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
             ["init", "keypress:Search", "close"],
         )
 
+    async def test_wake_uses_wake_on_lan_sender(self) -> None:
+        wake_on_lan = FakeWakeOnLan()
+        client = RokuRemoteClient(
+            app_config(tv_host="roku.local"),
+            wake_on_lan=wake_on_lan,
+        )
+
+        self.assertTrue(await client.wake())
+        await client.disconnect()
+
+        self.assertEqual(wake_on_lan.calls, 1)
+
+    async def test_discovers_active_roku_network_mac(self) -> None:
+        fake_remote = _install_fake_roku(
+            device=types.SimpleNamespace(
+                info=types.SimpleNamespace(
+                    network_type="ethernet",
+                    ethernet_mac="00:11:22:33:44:55",
+                    wifi_mac="aa:bb:cc:dd:ee:ff",
+                )
+            )
+        )
+        client = RokuRemoteClient(app_config(tv_host="roku.local"))
+
+        self.assertTrue(await client.connect())
+        mac_address = await client.discover_mac_address()
+        await client.disconnect()
+
+        self.assertEqual(mac_address, "00:11:22:33:44:55")
+        self.assertEqual(fake_remote.instances[0].operations[1][0], "update")
+
 
 class AppleTvRemoteTests(unittest.IsolatedAsyncioTestCase):
     async def test_remote_command_uses_remote_control_interface(self) -> None:
@@ -538,8 +632,43 @@ class WebOsRemoteTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(wake_on_lan.calls, 1)
 
+    async def test_discovers_webos_mac_from_connection_manager(self) -> None:
+        client = WebOsRemoteClient(app_config(tv_host="webos.local"))
+        client._client = FakeWebOsClient(
+            {
+                "wired": {
+                    "state": "connected",
+                    "macAddress": "00:11:22:33:44:55",
+                },
+                "wifi": {
+                    "state": "disconnected",
+                    "macAddress": "aa:bb:cc:dd:ee:ff",
+                },
+            }
+        )
 
-def _install_fake_samsung(fail_first_send: bool = False):
+        self.assertEqual(await client.discover_mac_address(), "00:11:22:33:44:55")
+
+    def test_webos_mac_parser_falls_back_to_nested_mac_fields(self) -> None:
+        self.assertEqual(
+            _mac_address_from_webos_payload(
+                {
+                    "returnValue": True,
+                    "network": {
+                        "interface": {
+                            "mac_address": "AA-BB-CC-DD-EE-FF",
+                        }
+                    },
+                }
+            ),
+            "aa:bb:cc:dd:ee:ff",
+        )
+
+
+def _install_fake_samsung(
+    fail_first_send: bool = False,
+    device_info=None,
+):
     class FakeSamsungTVWS:
         instances = []
         send_count = 0
@@ -560,6 +689,10 @@ def _install_fake_samsung(fail_first_send: bool = False):
 
         def close(self):
             self.operations.append(("close", threading.get_ident()))
+
+        def rest_device_info(self):
+            self.operations.append(("rest_device_info", threading.get_ident()))
+            return device_info or {}
 
     module = types.SimpleNamespace(SamsungTVWS=FakeSamsungTVWS)
     sys.modules["samsungtvws"] = module
@@ -615,6 +748,24 @@ class FakeAppleTvRemoteInterface:
             self.operations.append(name)
 
         return call
+
+
+class FakeWebOsClient:
+    def __init__(self, payload: dict[str, Any]) -> None:
+        self.payload = payload
+
+    async def request(self, endpoint: str):
+        del endpoint
+        return self.payload
+
+    async def get_system_info(self):
+        return {}
+
+    async def get_software_info(self):
+        return {}
+
+    async def get_services(self):
+        return {}
 
 
 class FakeAndroidProtocol:
@@ -678,7 +829,7 @@ class FakeLogger:
         self.messages.append(message)
 
 
-def _install_fake_roku(fail_first_send: bool = False):
+def _install_fake_roku(fail_first_send: bool = False, device=None):
     class FakeRoku:
         instances = []
         send_count = 0
@@ -697,6 +848,10 @@ def _install_fake_roku(fail_first_send: bool = False):
 
         def close(self):
             self.operations.append(("close", threading.get_ident()))
+
+        def update(self):
+            self.operations.append(("update", threading.get_ident()))
+            return device
 
     module = types.SimpleNamespace(Roku=FakeRoku)
     sys.modules["rokuecp"] = module

@@ -17,15 +17,21 @@ from src.infrastructure.tv.tv_command_translation import (
     translate_tv_command,
 )
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV
+from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
 
 class AndroidTvRemoteClient:
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        wake_on_lan: WakeOnLanSender | None = None,
+    ) -> None:
         self._config = config
         self._remote: Any | None = None
         self._logger = AppLogger()
+        self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
         self._app_voice_input_handler: AppVoiceInputHandler | None = None
 
     def capabilities(self) -> TvAdapterCapabilities:
@@ -37,7 +43,7 @@ class AndroidTvRemoteClient:
             media_controls=CapabilityStatus.IMPLEMENTED,
             text_input=CapabilityStatus.NOT_IMPLEMENTED,
             source_selection=CapabilityStatus.UNSUPPORTED,
-            wake_on_lan=CapabilityStatus.UNSUPPORTED,
+            wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
             voice_input=VoiceInputCapabilities(
                 remote_mic_stream=CapabilityStatus.IMPLEMENTED,
@@ -55,6 +61,8 @@ class AndroidTvRemoteClient:
             known_limitations=(
                 "Power uses the Android TV power key and may toggle either the "
                 "streaming device or attached TV depending on device settings.",
+                "Wake-on-LAN sends a generic magic packet when a MAC address is "
+                "configured; Android TV model support varies.",
                 "Text input and source selection are not mapped.",
             ),
         )
@@ -120,8 +128,24 @@ class AndroidTvRemoteClient:
         return True
 
     async def wake(self) -> bool:
-        self._logger.debug("Android TV Wake-on-LAN is not supported.")
-        return False
+        try:
+            result = await call_remote_method(self._wake_on_lan.wake)
+        except Exception as error:
+            self._logger.error(f"Android TV Wake-on-LAN failed: {error}")
+            return False
+        return result.attempted and result.sent_packets > 0
+
+    async def discover_mac_address(self) -> str | None:
+        try:
+            name, mac_address = await self._remote_name_and_mac()
+        except Exception as error:
+            self._logger.debug(f"Android TV MAC discovery failed: {error}")
+            return None
+        normalized = normalize_mac_address(mac_address)
+        if normalized is None:
+            return None
+        self._logger.info(f"Android TV reported device identity for {name}.")
+        return normalized
 
     async def send_command(self, command: str) -> None:
         if self._remote is None:
@@ -141,6 +165,17 @@ class AndroidTvRemoteClient:
             self._logger.error("Android TV connection closed. Command not sent.")
         except ValueError as error:
             self._logger.error(f"Invalid Android TV command {adapter_command}: {error}")
+
+    async def _remote_name_and_mac(self) -> tuple[str, str]:
+        from androidtvremote2 import AndroidTVRemote
+
+        remote = AndroidTVRemote(
+            self._config.app_name,
+            str(self._config.tv.android_cert_file),
+            str(self._config.tv.android_key_file),
+            self._config.tv.host,
+        )
+        return await remote.async_get_name_and_mac()
 
     async def start_voice(self, mode: VoiceInputMode):
         if self._remote is None:

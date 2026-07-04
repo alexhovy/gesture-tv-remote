@@ -1,3 +1,4 @@
+import re
 from typing import Any
 
 from src.application.ports.tv_remote import (
@@ -13,7 +14,7 @@ from src.infrastructure.tv.tv_command_translation import (
     translate_tv_command,
 )
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_WEBOS
-from src.infrastructure.tv.wake_on_lan import WakeOnLanSender
+from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
@@ -109,6 +110,15 @@ class WebOsRemoteClient:
             return False
         return result.attempted and result.sent_packets > 0
 
+    async def discover_mac_address(self) -> str | None:
+        if self._client is None:
+            return None
+        for payload in await self._mac_discovery_payloads():
+            mac_address = _mac_address_from_webos_payload(payload)
+            if mac_address is not None:
+                return mac_address
+        return None
+
     async def send_command(self, command: str) -> None:
         if self._client is None:
             await self.wake()
@@ -165,3 +175,65 @@ class WebOsRemoteClient:
         if self._input is None:
             raise RuntimeError("webOS input control is not connected")
         await call_remote_method(getattr(self._input, adapter_command))
+
+    async def _mac_discovery_payloads(self) -> list[dict[str, Any]]:
+        if self._client is None:
+            return []
+        payloads: list[dict[str, Any]] = []
+        for endpoint in (
+            "com.webos.service.connectionmanager/getinfo",
+            "com.webos.service.connectionmanager/getStatus",
+            "com.palm.connectionmanager/getStatus",
+        ):
+            try:
+                payloads.append(
+                    await call_remote_method(self._client.request, endpoint)
+                )
+            except Exception as error:
+                self._logger.debug(f"webOS MAC discovery endpoint failed: {error}")
+
+        for method in ("get_system_info", "get_software_info", "get_services"):
+            try:
+                payload = await call_remote_method(getattr(self._client, method))
+            except Exception as error:
+                self._logger.debug(f"webOS MAC discovery method failed: {error}")
+                continue
+            if isinstance(payload, dict):
+                payloads.append(payload)
+        return payloads
+
+
+_MAC_KEY_PATTERN = re.compile(r"(?i)(^|[_-])mac([_-]?address)?$")
+
+
+def _mac_address_from_webos_payload(payload: dict[str, Any]) -> str | None:
+    for section_name in ("wired", "wifi", "wifiDirect"):
+        section = payload.get(section_name)
+        if not isinstance(section, dict):
+            continue
+        state = str(section.get("state") or section.get("status") or "").lower()
+        if state and state not in {"connected", "online", "ready"}:
+            continue
+        mac_address = _find_mac_address(section)
+        if mac_address is not None:
+            return mac_address
+    return _find_mac_address(payload)
+
+
+def _find_mac_address(value: Any) -> str | None:
+    if isinstance(value, dict):
+        for key, item in value.items():
+            if _MAC_KEY_PATTERN.search(str(key)):
+                mac_address = normalize_mac_address(str(item))
+                if mac_address is not None:
+                    return mac_address
+        for item in value.values():
+            mac_address = _find_mac_address(item)
+            if mac_address is not None:
+                return mac_address
+    if isinstance(value, list | tuple):
+        for item in value:
+            mac_address = _find_mac_address(item)
+            if mac_address is not None:
+                return mac_address
+    return None

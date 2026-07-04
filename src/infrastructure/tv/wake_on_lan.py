@@ -46,8 +46,20 @@ class WakeOnLanSender:
 
 
 def _magic_packet(mac_address: str) -> bytes:
-    normalized = mac_address.strip().replace("-", "").replace(":", "")
-    mac_bytes = bytes.fromhex(normalized)
-    if len(mac_bytes) != 6:
+    normalized = normalize_mac_address(mac_address)
+    if normalized is None:
         raise ValueError("tv_mac_address must be a MAC address")
+    mac_bytes = bytes.fromhex(normalized.replace(":", ""))
     return b"\xff" * 6 + mac_bytes * 16
+
+
+def normalize_mac_address(value: str) -> str | None:
+    normalized = value.strip().lower().replace("-", ":")
+    parts = normalized.split(":")
+    if len(parts) != 6 or any(len(part) != 2 for part in parts):
+        return None
+    try:
+        bytes.fromhex("".join(parts))
+    except ValueError:
+        return None
+    return ":".join(parts)

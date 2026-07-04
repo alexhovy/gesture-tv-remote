@@ -76,7 +76,7 @@ SECTIONS: tuple[ConfigSection, ...] = (
     ),
     ConfigSection(
         "Config UI",
-        "Control where this settings page listens and how it is advertised.",
+        "Configure where the web app listens and how it is advertised.",
         (
             "app_name",
             "config_db_file",
@@ -111,7 +111,7 @@ SECTIONS: tuple[ConfigSection, ...] = (
 )
 
 FIELD_HELP: dict[str, str] = {
-    "tv_adapter": "Select the TV platform to control.",
+    "tv_adapter": "Select the TV platform to gesture.",
     "tv_host": "IP address or host name of the TV.",
     "voice_input_target": (
         "Voice target for the MIC gesture: auto, remote_search, or native_search."
@@ -132,7 +132,7 @@ FIELD_HELP: dict[str, str] = {
     "volume_distance_ratio": "Volume movement threshold scaled by hand size.",
     "pinch_distance_ratio": "Finger pinch threshold scaled by hand size.",
     "require_upright_hands": (
-        "Blocks sideways or upside-down hands from activating controls."
+        "Blocks sideways or upside-down hands from activating gestures."
     ),
     "hand_upright_max_tilt_ratio": "Higher values allow more hand tilt.",
     "active_hand_lost_grace_seconds": (
@@ -144,7 +144,7 @@ FIELD_HELP: dict[str, str] = {
     "model_file": "Downloaded automatically on first run when missing.",
     "model_url": "Source URL used for model downloads.",
     "max_hands": (
-        "Maximum hands MediaPipe tracks. Two hands are required to start controls."
+        "Maximum hands MediaPipe tracks. Two hands are required to start gestures."
     ),
     "min_hand_detection_confidence": "MediaPipe detection confidence from 0.0 to 1.0.",
     "min_hand_presence_confidence": (

@@ -6,12 +6,12 @@ from src.domain.constants import GESTURE_POINT
 from src.domain.geometry.display_geometry import motion_scale_for_rendered_crop
 from src.domain.session.session_types import HandState
 from src.infrastructure.camera.camera_zoom import CameraZoomController
-from src.infrastructure.camera.frame_source import LatestFrameSource
 from src.infrastructure.camera.landmark_projection import (
     hand_state_to_original_space,
     landmarks_to_crop_space,
     landmarks_to_original_bounds,
 )
+from src.infrastructure.camera.local_frame_source import LocalCameraFrameSource
 from src.infrastructure.camera.video_preprocessing import (
     CropRect,
     apply_center_crop_zoom,
@@ -59,7 +59,7 @@ class VideoPreprocessingTests(unittest.TestCase):
         first_frame = FakeFrame(4, 6)
         second_frame = FakeFrame(5, 7)
         capture = FakeCapture([first_frame, second_frame])
-        source = LatestFrameSource(capture)
+        source = LocalCameraFrameSource(capture)
 
         source.start()
         self.assertTrue(capture.finished.wait(timeout=1.0))

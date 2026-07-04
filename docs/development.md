@@ -28,27 +28,29 @@ python -m uv sync
 uv run python main.py
 ```
 
-`main.py` starts both the gesture runtime and config UI by default. Press `q` to
-quit the webcam window.
+`main.py` starts the unified web app by default.
 
 Run only one runtime with:
 
 ```bash
-uv run python main.py gesture
-uv run python main.py config
-uv run python main.py web-control
+uv run python main.py app
+uv run python main.py local-gesture
+uv run python main.py settings
 ```
 
-All web runtimes generate a local HTTPS certificate when missing. When the web
-port is still the default, they listen on HTTPS port `443`. `web-control` uses
-the browser as a camera and microphone capture device, serves config at `/`,
-and serves controls at `https://gesturetvremote.local/control`. Trust the
-generated certificate on web devices so browser media permissions are available.
+The app runtime serves settings at `/settings`, browser gesture capture at
+`/gesture`, and the direct remote at `/remote`. All web runtimes generate a
+local HTTPS certificate when missing. When the web port is still the default,
+they listen on HTTPS port `443`. Trust the generated certificate on web devices
+so browser media permissions are available.
+
+`local-gesture` uses the local webcam and microphone attached to the machine
+running Python. Press `q` to quit its OpenCV preview window.
 
 ## Config UI
 
 ```bash
-uv run python main.py config
+uv run python main.py settings
 ```
 
 Open `https://localhost`. When mDNS is available on the local network, the

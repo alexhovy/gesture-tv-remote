@@ -10,14 +10,21 @@ from aiortc import RTCSessionDescription
 from src.application.ports.config_provider import ConfigStorePort
 from src.application.ports.logger import LoggerPort
 from src.shared.config import AppConfig
-from src.web.config_forms import config_from_form
-from src.web.config_templates import (
+from src.web.assets import (
+    read_config_css,
+    read_gesture_css,
+    read_gesture_js,
+    read_remote_css,
+    read_remote_js,
+)
+from src.web.gesture.templates import render_gesture_page
+from src.web.remote.templates import render_remote_page
+from src.web.settings.forms import config_from_form
+from src.web.settings.templates import (
     render_config_page,
     reset_status_message,
     saved_status_message,
 )
-from src.web.control_templates import render_control_page
-from src.web.static_files import read_config_css, read_control_css, read_control_js
 
 
 class BrowserVideoSink(Protocol):
@@ -36,13 +43,20 @@ class BrowserDisplayMetricsSink(Protocol):
     def update_size(self, width: float, height: float) -> None: ...
 
 
-def create_browser_control_app(
+class DirectRemote(Protocol):
+    def supported_commands(self) -> tuple[str, ...]: ...
+
+    def dispatch(self, command: str) -> Any: ...
+
+
+def create_web_app(
     *,
     repository: ConfigStorePort,
     config_provider: Callable[[], AppConfig],
-    video_sink: BrowserVideoSink,
-    audio_sink: BrowserAudioSink,
+    browser_video_sink: BrowserVideoSink,
+    browser_audio_sink: BrowserAudioSink,
     debug_source: BrowserDebugSource,
+    direct_remote: DirectRemote,
     logger: LoggerPort,
     display_metrics_sink: BrowserDisplayMetricsSink | None = None,
 ) -> web.Application:
@@ -60,10 +74,17 @@ def create_browser_control_app(
             content_type="text/html",
         )
 
-    async def control_page(request: web.Request) -> web.Response:
-        logger.info(f"Web control page viewed from {_remote(request)}")
+    async def gesture_page(request: web.Request) -> web.Response:
+        logger.info(f"Web gesture page viewed from {_remote(request)}")
         return web.Response(
-            text=render_control_page(config_provider()),
+            text=render_gesture_page(config_provider()),
+            content_type="text/html",
+        )
+
+    async def remote_page(request: web.Request) -> web.Response:
+        logger.info(f"Web remote page viewed from {_remote(request)}")
+        return web.Response(
+            text=render_remote_page(config_provider()),
             content_type="text/html",
         )
 
@@ -71,14 +92,25 @@ def create_browser_control_app(
         del request
         return web.Response(text=read_config_css(), content_type="text/css")
 
-    async def control_css(request: web.Request) -> web.Response:
+    async def gesture_css(request: web.Request) -> web.Response:
         del request
-        return web.Response(text=read_control_css(), content_type="text/css")
+        return web.Response(text=read_gesture_css(), content_type="text/css")
 
-    async def control_js(request: web.Request) -> web.Response:
+    async def gesture_js(request: web.Request) -> web.Response:
         del request
         return web.Response(
-            text=read_control_js(),
+            text=read_gesture_js(),
+            content_type="application/javascript",
+        )
+
+    async def remote_css(request: web.Request) -> web.Response:
+        del request
+        return web.Response(text=read_remote_css(), content_type="text/css")
+
+    async def remote_js(request: web.Request) -> web.Response:
+        del request
+        return web.Response(
+            text=read_remote_js(),
             content_type="application/javascript",
         )
 
@@ -114,6 +146,32 @@ def create_browser_control_app(
         repository.reset_config()
         logger.info(f"Web config settings reset from {_remote(request)}")
         raise web.HTTPSeeOther("/?reset=1")
+
+    async def remote_capabilities(request: web.Request) -> web.Response:
+        del request
+        return web.json_response(
+            {"supportedCommands": list(direct_remote.supported_commands())}
+        )
+
+    async def remote_command(request: web.Request) -> web.Response:
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
+        result = direct_remote.dispatch(str(payload.get("command", "")))
+        status = HTTPStatus.OK if result.accepted else HTTPStatus.BAD_REQUEST
+        logger.info(
+            "Web remote command from "
+            f"{_remote(request)} command={result.command} accepted={result.accepted}"
+        )
+        return web.json_response(
+            {
+                "accepted": result.accepted,
+                "command": result.command,
+                "reason": result.reason,
+            },
+            status=status,
+        )
 
     async def client_log(request: web.Request) -> web.Response:
         try:
@@ -171,14 +229,18 @@ def create_browser_control_app(
         params = await request.json()
         peer = RTCPeerConnection()
         app["peers"].add(peer)
-        logger.info(f"Browser control offer received from {_remote(request)}")
+        logger.info(f"Browser gesture offer received from {_remote(request)}")
 
         @peer.on("track")
         def on_track(track) -> None:
             if track.kind == "video":
-                task = asyncio.create_task(_consume_video(track, video_sink, logger))
+                task = asyncio.create_task(
+                    _consume_video(track, browser_video_sink, logger)
+                )
             elif track.kind == "audio":
-                task = asyncio.create_task(_consume_audio(track, audio_sink, logger))
+                task = asyncio.create_task(
+                    _consume_audio(track, browser_audio_sink, logger)
+                )
             else:
                 return
             app["track_tasks"].add(task)
@@ -190,7 +252,7 @@ def create_browser_control_app(
                 await peer.close()
                 app["peers"].discard(peer)
                 logger.info(
-                    "Browser control peer disconnected: "
+                    "Browser gesture peer disconnected: "
                     f"state={peer.connectionState}"
                 )
 
@@ -199,7 +261,7 @@ def create_browser_control_app(
         )
         answer = await peer.createAnswer()
         await peer.setLocalDescription(answer)
-        logger.info(f"Browser control offer accepted from {_remote(request)}")
+        logger.info(f"Browser gesture offer accepted from {_remote(request)}")
         return web.json_response(
             {
                 "sdp": peer.localDescription.sdp,
@@ -221,17 +283,23 @@ def create_browser_control_app(
         app["peers"].clear()
 
     app.router.add_get("/", config_page)
-    app.router.add_get("/control", control_page)
+    app.router.add_get("/settings", config_page)
+    app.router.add_get("/gesture", gesture_page)
+    app.router.add_get("/remote", remote_page)
     app.router.add_get("/health", health)
     app.router.add_get("/static/config.css", config_css)
-    app.router.add_get("/static/control.css", control_css)
-    app.router.add_get("/static/control.js", control_js)
+    app.router.add_get("/static/gesture.css", gesture_css)
+    app.router.add_get("/static/gesture.js", gesture_js)
+    app.router.add_get("/static/remote.css", remote_css)
+    app.router.add_get("/static/remote.js", remote_js)
     app.router.add_post("/settings", save_settings)
     app.router.add_post("/reset", reset_settings)
     app.router.add_post("/api/log/client", client_log)
-    app.router.add_post("/api/control/layout", layout_metrics)
-    app.router.add_post("/api/control/offer", offer)
-    app.router.add_get("/api/control/debug", debug_events)
+    app.router.add_get("/api/remote/capabilities", remote_capabilities)
+    app.router.add_post("/api/remote/commands", remote_command)
+    app.router.add_post("/api/gesture/layout", layout_metrics)
+    app.router.add_post("/api/gesture/offer", offer)
+    app.router.add_get("/api/gesture/debug", debug_events)
     app.on_shutdown.append(cleanup)
     return app
 

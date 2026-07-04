@@ -24,13 +24,15 @@ def build_camera_dependencies(config: AppConfig) -> CameraRuntimeDependencies:
     from src.infrastructure.camera.camera_zoom import CameraZoomController
     from src.infrastructure.camera.display import OpenCvDisplay
     from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor
-    from src.infrastructure.camera.frame_source import LatestFrameSource
+    from src.infrastructure.camera.local_frame_source import LocalCameraFrameSource
     from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
     from src.infrastructure.hand_tracking.model_store import MediaPipeModelStore
 
     MediaPipeModelStore(config).ensure_model()
     return CameraRuntimeDependencies(
-        frame_source=LatestFrameSource(cv2.VideoCapture(config.camera.webcam_index)),
+        frame_source=LocalCameraFrameSource(
+            cv2.VideoCapture(config.camera.webcam_index)
+        ),
         hand_tracker=MediaPipeHandTracker(config),
         camera=CameraZoomController(config),
         frame_processor=OpenCvFrameProcessor(),

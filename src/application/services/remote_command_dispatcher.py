@@ -13,7 +13,7 @@ MAX_PENDING_COMMANDS = 8
 
 @dataclass(frozen=True)
 class RemoteCommandRequest:
-    gesture: str
+    source: str
     command: str
     enqueued_at: float
 
@@ -35,14 +35,14 @@ class RemoteCommandDispatcher:
         self._has_work = asyncio.Event()
         self._worker_task = asyncio.create_task(self._run())
 
-    def enqueue(self, gesture: str, command: str) -> None:
+    def enqueue(self, source: str, command: str) -> None:
         if self._closed:
             return
         if not self._supports_command(command):
             self._dropped_commands += 1
             self._logger.info(
                 "Adapter does not support command. "
-                f"Skipping gesture={gesture} command={command}"
+                f"Skipping source={source} command={command}"
             )
             return
         if self._has_work is None:
@@ -52,7 +52,7 @@ class RemoteCommandDispatcher:
             return
 
         request = RemoteCommandRequest(
-            gesture=gesture,
+            source=source,
             command=command,
             enqueued_at=time.monotonic(),
         )
@@ -114,7 +114,7 @@ class RemoteCommandDispatcher:
             if request.command == TV_COMMAND_DPAD_CENTER
             else request.command
         )
-        self._logger.info(f"Gesture: {request.gesture} -> {display_command}")
+        self._logger.info(f"Remote command: {request.source} -> {display_command}")
         started_at = time.monotonic()
         await self._remote.send_command(request.command)
         self._last_send_latency_seconds = time.monotonic() - started_at

@@ -79,7 +79,7 @@ async function connect() {
     await peerConnection.setLocalDescription(offer);
     await waitForIceGathering(peerConnection);
 
-    const response = await fetch("/api/control/offer", {
+    const response = await fetch("/api/gesture/offer", {
       body: JSON.stringify(peerConnection.localDescription),
       headers: { "Content-Type": "application/json" },
       method: "POST",
@@ -92,11 +92,11 @@ async function connect() {
     await peerConnection.setRemoteDescription(answer);
     disconnectButton.disabled = false;
     setStatus("connected");
-    await postClientLog("info", "browser control connected", {
+    await postClientLog("info", "browser gesture connected", {
       tracks: stream.getTracks().map((track) => track.kind),
     });
   } catch (error) {
-    await postClientLog("error", "browser control connection failed", {
+    await postClientLog("error", "browser gesture connection failed", {
       message: error.message || String(error),
     });
     setStatus(error.message || "Connection failed");
@@ -151,7 +151,7 @@ function startDebugEvents() {
   stopDebugEvents();
   debugStreamLoggedOpen = false;
   debugStreamLoggedError = false;
-  debugEvents = new EventSource("/api/control/debug");
+  debugEvents = new EventSource("/api/gesture/debug");
   debugEvents.onopen = async () => {
     if (debugStreamLoggedOpen) {
       return;
@@ -528,7 +528,7 @@ function postLayoutMetrics(area) {
   }
   lastLayoutMetrics = metrics;
   lastLayoutPostTime = now;
-  fetch("/api/control/layout", {
+  fetch("/api/gesture/layout", {
     body: JSON.stringify(metrics),
     headers: { "Content-Type": "application/json" },
     keepalive: true,

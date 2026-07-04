@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from aiohttp import web
 
 from src.application.ports.config_provider import ConfigProviderPort, ConfigStorePort
+from src.application.services.direct_remote_service import DirectRemoteService
 from src.application.services.gesture_remote_service import GestureRemoteService
 from src.infrastructure.audio.browser_voice_capture import (
     BrowserAudioSource,
@@ -25,17 +26,17 @@ from src.runtime.builders.config import build_config_provider, build_config_repo
 from src.runtime.builders.tv import build_tv_dependencies
 from src.shared.config import DEFAULT_CONFIG, AppConfig, load_config_from_env
 from src.shared.logging import AppLogger, configure_app_logging
-from src.web.control_app import create_browser_control_app
+from src.web.app import create_web_app
 
 
 @dataclass(frozen=True)
-class BrowserControlRuntime:
+class WebAppRuntime:
     service: GestureRemoteService
-    server: "BrowserControlServer"
-    audio_source: BrowserAudioSource
+    server: "WebAppServer"
+    browser_audio_source: BrowserAudioSource
 
 
-class BrowserControlServer:
+class WebAppServer:
     def __init__(
         self,
         app: web.Application,
@@ -70,11 +71,11 @@ class BrowserControlServer:
                 await asyncio.to_thread(self._mdns_publisher.start)
             except Exception as error:
                 self._logger.error(f"Web UI mDNS advertising failed: {error}")
-            self._logger.info(f"Open browser control at {self._mdns_publisher.url}")
+            self._logger.info(f"Open browser gesture at {self._mdns_publisher.url}")
         scheme = "https" if self._ssl_context is not None else "http"
         self._logger.info(
             f"Web UI listening on {scheme}://{self._host}:{self._port} "
-            f"(config=/ control=/control)"
+            f"(settings=/settings gesture=/gesture remote=/remote)"
         )
 
     async def stop(self) -> None:
@@ -91,19 +92,19 @@ class BrowserControlServer:
 
 
 async def main() -> None:
-    runtime = build_browser_control_runtime(create_config_provider())
+    runtime = build_web_app_runtime(create_config_provider())
     await runtime.server.start()
     try:
         await runtime.service.run()
     finally:
-        await runtime.audio_source.close()
+        await runtime.browser_audio_source.close()
         await runtime.server.stop()
 
 
-def build_browser_control_runtime(
+def build_web_app_runtime(
     config_provider: ConfigProviderPort | None = None,
     repository: ConfigStorePort | None = None,
-) -> BrowserControlRuntime:
+) -> WebAppRuntime:
     if config_provider is None or repository is None:
         repository, provider = create_config_dependencies()
     else:
@@ -111,8 +112,8 @@ def build_browser_control_runtime(
     config = provider()
     logger = AppLogger()
     tv_deps = build_tv_dependencies(config, logger)
-    frame_source = BrowserFrameSource()
-    audio_source = BrowserAudioSource()
+    browser_frame_source = BrowserFrameSource()
+    browser_audio_source = BrowserAudioSource()
     debug_stream = BrowserDebugStream()
     display_metrics = BrowserDisplayMetrics()
 
@@ -120,14 +121,14 @@ def build_browser_control_runtime(
     service = GestureRemoteService(
         config,
         remote=tv_deps.remote,
-        frame_source=frame_source,
+        frame_source=browser_frame_source,
         hand_tracker=MediaPipeHandTracker(config),
         camera=CameraZoomController(config),
         frame_processor=OpenCvFrameProcessor(),
         display=BrowserDebugDisplay(debug_stream),
         voice_capture=BrowserVoiceCapture(
             tv_deps.remote,
-            audio_source,
+            browser_audio_source,
             config,
             logger,
         ),
@@ -137,31 +138,32 @@ def build_browser_control_runtime(
         config_provider=provider,
         display_metrics=display_metrics,
     )
-    app = create_browser_control_app(
+    app = create_web_app(
         repository=repository,
         config_provider=provider,
-        video_sink=frame_source,
-        audio_sink=audio_source,
+        browser_video_sink=browser_frame_source,
+        browser_audio_sink=browser_audio_source,
         debug_source=debug_stream,
+        direct_remote=DirectRemoteService(tv_deps.remote, tv_deps.command_dispatcher),
         display_metrics_sink=display_metrics,
         logger=logger,
     )
     ssl_context = _build_ssl_context(config, logger, auto_generate=True)
     scheme = "https" if ssl_context is not None else "http"
-    bind_port = _browser_control_port(config, ssl_context)
+    bind_port = _web_app_port(config, ssl_context)
     mdns_publisher = None
     if config.web.mdns_enabled:
         mdns_publisher = MdnsPublisher(
             config.web.mdns_name,
             bind_port,
             logger,
-            path="/control",
+            path="/gesture",
             scheme=scheme,
             service_label="Web UI",
         )
-    return BrowserControlRuntime(
+    return WebAppRuntime(
         service=service,
-        server=BrowserControlServer(
+        server=WebAppServer(
             app,
             config.web.host,
             bind_port,
@@ -169,7 +171,7 @@ def build_browser_control_runtime(
             ssl_context=ssl_context,
             mdns_publisher=mdns_publisher,
         ),
-        audio_source=audio_source,
+        browser_audio_source=browser_audio_source,
     )
 
 
@@ -205,7 +207,7 @@ def _build_ssl_context(
         )
     logger.info(
         "Using web TLS certificate. Trust this certificate on capture devices "
-        f"before opening https://{_mdns_host(config.web.mdns_name)}/control"
+        f"before opening https://{_mdns_host(config.web.mdns_name)}/gesture"
     )
     context = ssl.create_default_context(ssl.Purpose.CLIENT_AUTH)
     try:
@@ -223,7 +225,7 @@ def _build_ssl_context(
     return context
 
 
-def _browser_control_port(config: AppConfig, ssl_context: ssl.SSLContext | None) -> int:
+def _web_app_port(config: AppConfig, ssl_context: ssl.SSLContext | None) -> int:
     if ssl_context is not None and config.web.port == DEFAULT_CONFIG.web.port:
         return 443
     return config.web.port
@@ -243,7 +245,7 @@ def run(configure_logging: bool = True) -> None:
     try:
         asyncio.run(main())
     except KeyboardInterrupt:
-        AppLogger().info("Browser control stopped.")
+        AppLogger().info("Web app stopped.")
 
 
 def _configure_windows_event_loop_policy() -> None:

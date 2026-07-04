@@ -14,7 +14,7 @@ def build_config_server_runner(
     port: int | None = None,
 ) -> ConfigServerRunner:
     from src.infrastructure.network.mdns import MdnsPublisher
-    from src.web.config_app import create_config_server
+    from src.web.settings.app import create_config_server
 
     bootstrap_config = load_config_from_env()
     repository = build_config_repository(bootstrap_config)

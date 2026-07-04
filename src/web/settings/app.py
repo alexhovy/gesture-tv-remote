@@ -9,13 +9,13 @@ from src.application.ports.config_provider import ConfigStorePort
 from src.application.ports.logger import LoggerPort
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
-from src.web.config_forms import config_from_form
-from src.web.config_templates import (
+from src.web.assets import read_config_css
+from src.web.settings.forms import config_from_form
+from src.web.settings.templates import (
     render_config_page,
     reset_status_message,
     saved_status_message,
 )
-from src.web.static_files import read_config_css
 
 ConfigProvider = Callable[[], AppConfig]
 

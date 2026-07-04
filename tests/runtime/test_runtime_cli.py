@@ -1,71 +1,67 @@
 import unittest
 from unittest.mock import Mock, patch
 
-from src.runtime import cli, gesture_app
+from src.runtime import cli, local_gesture_app
 
 
 class RuntimeCliTests(unittest.TestCase):
-    def test_run_defaults_to_all_runtime(self) -> None:
-        with patch("src.runtime.cli.run_all") as run_all:
+    def test_run_defaults_to_web_app_runtime(self) -> None:
+        with patch("src.runtime.web_app.run") as run_app:
             cli.run([])
 
-        run_all.assert_called_once_with()
+        run_app.assert_called_once_with()
 
-    def test_run_starts_gesture_runtime(self) -> None:
-        with patch("src.runtime.gesture_app.run") as run_gesture:
-            cli.run(["gesture"])
+    def test_run_starts_local_gesture_runtime(self) -> None:
+        with patch("src.runtime.local_gesture_app.run") as run_local_gesture:
+            cli.run(["local-gesture"])
 
-        run_gesture.assert_called_once_with()
+        run_local_gesture.assert_called_once_with()
 
-    def test_run_starts_config_runtime(self) -> None:
-        with patch("src.runtime.config_server.run") as run_config:
-            cli.run(["config"])
+    def test_run_starts_settings_runtime(self) -> None:
+        with patch("src.runtime.config_server.run") as run_settings:
+            cli.run(["settings"])
 
-        run_config.assert_called_once_with()
+        run_settings.assert_called_once_with()
 
-    def test_run_starts_web_control_runtime(self) -> None:
-        with patch("src.runtime.browser_control_app.run") as run_web_control:
-            cli.run(["web-control"])
-
-        run_web_control.assert_called_once_with()
-
-    def test_run_all_stops_config_runner_after_gesture_runtime(self) -> None:
+    def test_run_all_stops_config_runner_after_local_gesture_runtime(self) -> None:
         runner = Mock()
         with (
             patch("src.runtime.cli.configure_app_logging"),
             patch("src.runtime.config_server.create_runner", return_value=runner),
-            patch("src.runtime.gesture_app.run") as run_gesture,
+            patch("src.runtime.local_gesture_app.run") as run_local_gesture,
         ):
             cli.run_all()
 
         runner.start.assert_called_once_with()
-        run_gesture.assert_called_once_with(configure_logging=False)
+        run_local_gesture.assert_called_once_with(configure_logging=False)
         runner.stop.assert_called_once_with()
 
     def test_run_all_continues_when_config_runner_fails_to_start(self) -> None:
         with (
             patch("src.runtime.cli.configure_app_logging"),
             patch("src.runtime.config_server.create_runner", side_effect=OSError),
-            patch("src.runtime.gesture_app.run") as run_gesture,
+            patch("src.runtime.local_gesture_app.run") as run_local_gesture,
         ):
             cli.run_all()
 
-        run_gesture.assert_called_once_with(configure_logging=False)
+        run_local_gesture.assert_called_once_with(configure_logging=False)
 
-    def test_windows_gesture_runtime_uses_selector_event_loop_policy(self) -> None:
+    def test_windows_local_gesture_runtime_uses_selector_event_loop_policy(
+        self,
+    ) -> None:
         policy = object()
         with (
-            patch("src.runtime.gesture_app.sys.platform", "win32"),
+            patch("src.runtime.local_gesture_app.sys.platform", "win32"),
             patch(
-                "src.runtime.gesture_app.asyncio.WindowsSelectorEventLoopPolicy",
+                "src.runtime.local_gesture_app.asyncio.WindowsSelectorEventLoopPolicy",
                 return_value=policy,
                 create=True,
             ) as policy_factory,
             patch(
-                "src.runtime.gesture_app.asyncio.set_event_loop_policy"
+                "src.runtime.local_gesture_app.asyncio.set_event_loop_policy"
             ) as set_policy,
         ):
-            gesture_app._configure_windows_event_loop_policy()
+            local_gesture_app._configure_windows_event_loop_policy()
 
         policy_factory.assert_called_once_with()
         set_policy.assert_called_once_with(policy)

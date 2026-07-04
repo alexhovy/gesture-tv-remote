@@ -1,7 +1,7 @@
 import argparse
 import sys
 
-from src.runtime import config_server, gesture_app
+from src.runtime import config_server, local_gesture_app, web_app
 from src.shared.logging import AppLogger, configure_app_logging
 
 
@@ -12,24 +12,21 @@ def run(argv: list[str] | None = None) -> None:
     parser.add_argument(
         "runtime",
         nargs="?",
-        choices=("all", "gesture", "config", "web-control"),
-        default="all",
-        help="Runtime to start. Defaults to all.",
+        choices=("app", "local-gesture", "settings"),
+        default="app",
+        help="Runtime to start. Defaults to app.",
     )
     args = parser.parse_args(argv)
 
-    if args.runtime == "gesture":
-        gesture_app.run()
+    if args.runtime == "app":
+        web_app.run()
         return
-    if args.runtime == "config":
+    if args.runtime == "local-gesture":
+        local_gesture_app.run()
+        return
+    if args.runtime == "settings":
         config_server.run()
         return
-    if args.runtime == "web-control":
-        from src.runtime import browser_control_app
-
-        browser_control_app.run()
-        return
-    run_all()
 
 
 def run_all() -> None:
@@ -43,7 +40,7 @@ def run_all() -> None:
         logger.error(f"Config UI failed to start: {error}")
 
     try:
-        gesture_app.run(configure_logging=False)
+        local_gesture_app.run(configure_logging=False)
     finally:
         if config_runner is not None:
             config_runner.stop()

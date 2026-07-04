@@ -9,7 +9,7 @@ from src.application.ports.tv_remote import (
     VoiceInputCapabilities,
     VoiceInputMode,
 )
-from src.infrastructure.audio.voice_capture import MicrophoneVoiceCapture
+from src.infrastructure.audio.local_voice_capture import LocalMicrophoneVoiceCapture
 from tests.helpers.config_helpers import app_config
 
 
@@ -42,7 +42,7 @@ class VoiceCaptureTests(unittest.TestCase):
     def test_unsupported_voice_returns_without_starting_microphone(self) -> None:
         remote = UnsupportedVoiceRemote()
         logger = FakeLogger()
-        service = MicrophoneVoiceCapture(
+        service = LocalMicrophoneVoiceCapture(
             remote,
             app_config(voice_input_target="auto"),
             logger,
@@ -59,7 +59,7 @@ class VoiceCaptureTests(unittest.TestCase):
     def test_voice_capture_logs_sent_audio_chunks(self) -> None:
         remote = SupportedVoiceRemote()
         logger = FakeLogger()
-        service = MicrophoneVoiceCapture(
+        service = LocalMicrophoneVoiceCapture(
             remote,
             app_config(
                 voice_capture_seconds=0.01,
@@ -95,7 +95,7 @@ class VoiceCaptureTests(unittest.TestCase):
     ) -> None:
         remote = NativeVoiceRemote()
         logger = FakeLogger()
-        service = MicrophoneVoiceCapture(
+        service = LocalMicrophoneVoiceCapture(
             remote,
             app_config(voice_input_target="native_search"),
             logger,
@@ -109,7 +109,7 @@ class VoiceCaptureTests(unittest.TestCase):
     def test_voice_capture_auto_requests_auto_when_app_voice_is_supported(self) -> None:
         remote = AppVoiceRemote()
         logger = FakeLogger()
-        service = MicrophoneVoiceCapture(
+        service = LocalMicrophoneVoiceCapture(
             remote,
             app_config(voice_capture_seconds=0.01),
             logger,
@@ -132,7 +132,7 @@ class VoiceCaptureTests(unittest.TestCase):
     def test_capture_stream_sends_audio_to_existing_voice_stream(self) -> None:
         remote = SupportedVoiceRemote()
         logger = FakeLogger()
-        service = MicrophoneVoiceCapture(
+        service = LocalMicrophoneVoiceCapture(
             remote,
             app_config(voice_capture_seconds=0.01),
             logger,

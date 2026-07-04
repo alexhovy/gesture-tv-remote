@@ -3,8 +3,8 @@ from pathlib import Path
 from string import Template
 
 from src.shared.config import AppConfig, get_config_value
-from src.web.config_forms import BOOLEAN_FIELD_MARKER
-from src.web.config_view import (
+from src.web.settings.forms import BOOLEAN_FIELD_MARKER
+from src.web.settings.view import (
     SECTIONS,
     TV_ADAPTERS,
     ConfigSection,
@@ -14,7 +14,7 @@ from src.web.config_view import (
     input_constraints,
 )
 
-_TEMPLATE_FILE = Path(__file__).with_name("templates") / "config_page.html"
+_TEMPLATE_FILE = Path(__file__).parents[1] / "templates" / "config_page.html"
 
 
 def render_config_page(

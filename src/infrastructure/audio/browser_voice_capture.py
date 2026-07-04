@@ -10,7 +10,7 @@ from src.application.ports.tv_remote import (
     VoiceStreamPort,
 )
 from src.application.ports.voice_capture import VoiceCapturePort
-from src.infrastructure.audio.voice_capture import VOICE_SAMPLE_RATE
+from src.infrastructure.audio.local_voice_capture import VOICE_SAMPLE_RATE
 from src.infrastructure.tv.async_call import call_remote_method
 from src.shared.config import AppConfig, VoiceInputTarget
 

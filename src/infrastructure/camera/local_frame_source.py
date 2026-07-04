@@ -2,7 +2,7 @@ import threading
 from typing import Any
 
 
-class LatestFrameSource:
+class LocalCameraFrameSource:
     def __init__(self, capture: Any) -> None:
         self._capture = capture
         self._lock = threading.Lock()

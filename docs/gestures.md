@@ -79,7 +79,7 @@ volume is active: the fixed joystick center, neutral area, directional
 boundaries, current hand position, and the active or blocked state. Use that
 overlay to verify whether the hand entered the center return area before
 attempting the next direction.
-Browser-control diagnostics and trigger thresholds are scaled from the rendered
+Browser gesture diagnostics and trigger thresholds are scaled from the rendered
 preview dimensions, so portrait and landscape screens keep comparable visible
 movement tolerance.
 While a pointer or volume anchor exists, the preview crop is locked so the

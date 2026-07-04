@@ -11,7 +11,7 @@ from urllib.parse import urlencode
 from src.infrastructure.data_access.sqlite_store import SqliteStore
 from src.infrastructure.repositories.config_repository import ConfigRepository
 from src.shared.config import AppConfig, load_config_from_env
-from src.web.config_app import create_config_server
+from src.web.settings.app import create_config_server
 from tests.helpers.config_helpers import app_config
 
 

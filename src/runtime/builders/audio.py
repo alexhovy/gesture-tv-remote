@@ -11,6 +11,6 @@ def build_voice_capture(
     config: AppConfig,
     logger: LoggerPort,
 ) -> VoiceCapturePort:
-    from src.infrastructure.audio.voice_capture import MicrophoneVoiceCapture
+    from src.infrastructure.audio.local_voice_capture import LocalMicrophoneVoiceCapture
 
-    return MicrophoneVoiceCapture(remote, config, logger)
+    return LocalMicrophoneVoiceCapture(remote, config, logger)

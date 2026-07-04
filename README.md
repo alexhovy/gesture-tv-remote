@@ -35,28 +35,31 @@ python -m uv sync
 python -m uv run python main.py
 ```
 
-Press `q` to quit the webcam window.
-
-`main.py` starts the gesture runtime and config UI by default. To run only one
-runtime:
+`main.py` starts the unified web app by default. The app serves settings,
+browser-based gesture capture, and the direct remote from one backend runtime.
+To run a specific runtime:
 
 ```bash
-uv run python main.py gesture
-uv run python main.py config
-uv run python main.py web-control
+uv run python main.py app
+uv run python main.py local-gesture
+uv run python main.py settings
 ```
 
 Open `https://localhost`.
 When mDNS is available on your network, the same UI is advertised as
 `https://gesturetvremote.local`.
 
-`web-control` starts a unified web runtime: settings are available at `/` and
-browser capture is available at `/control`. The browser provides camera and
-microphone access over WebRTC while the Python backend still performs MediaPipe
-hand tracking, gesture decisions, voice handling, and TV command dispatch.
-All web runtimes generate a local HTTPS certificate and use HTTPS by default.
-`web-control` serves browser capture at `https://gesturetvremote.local/control`.
+In the app runtime, settings are available at `/settings`, browser gesture
+capture is available at `/gesture`, and the direct remote is available at
+`/remote`. The browser provides camera and microphone access over WebRTC while
+the Python backend still performs MediaPipe hand tracking, gesture decisions,
+voice handling, and TV command dispatch. The direct remote sends adapter-neutral
+TV commands through the same backend dispatcher without gesture recognition.
+Web runtimes generate a local HTTPS certificate and use HTTPS by default.
 The generated certificate must be trusted by the web or capture device.
+
+`local-gesture` uses the webcam and microphone attached to the machine running
+Python. Press `q` to quit its OpenCV preview window.
 
 On first run, the app downloads Google's `hand_landmarker.task` model file into
 `models/`. Pairing certificates are stored under `certs/`. Both are

@@ -66,6 +66,9 @@ from src.application.services.coordinators.config_reload import (  # noqa: E402
 from src.application.services.coordinators.display_debug import (  # noqa: E402
     DisplayDebugCoordinator,
 )
+from src.application.services.direct_remote_service import (  # noqa: E402
+    DirectRemoteService,
+)
 from src.application.services.gesture_remote_service import (  # noqa: E402
     GestureRemoteService,
 )
@@ -788,11 +791,48 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         self.assertIn(
             (
                 "Adapter does not support command. "
-                f"Skipping gesture=VOLUME_UP command={TV_COMMAND_VOLUME_UP}"
+                f"Skipping source=VOLUME_UP command={TV_COMMAND_VOLUME_UP}"
             ),
             logger.messages,
         )
         await dispatcher.close()
+
+
+class DirectRemoteServiceTests(unittest.TestCase):
+    def test_dispatch_enqueues_supported_direct_remote_command(self) -> None:
+        remote = BlockingRemote(supported_commands=frozenset({TV_COMMAND_HOME}))
+        dispatcher = FakeCommandDispatcher()
+        service = DirectRemoteService(remote, dispatcher)
+
+        result = service.dispatch(TV_COMMAND_HOME)
+
+        self.assertTrue(result.accepted)
+        self.assertEqual(
+            dispatcher.enqueued,
+            [(f"remote:{TV_COMMAND_HOME}", TV_COMMAND_HOME)],
+        )
+
+    def test_dispatch_rejects_unknown_direct_remote_command(self) -> None:
+        remote = BlockingRemote(supported_commands=frozenset({TV_COMMAND_HOME}))
+        dispatcher = FakeCommandDispatcher()
+        service = DirectRemoteService(remote, dispatcher)
+
+        result = service.dispatch("NOPE")
+
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.reason, "unknown_command")
+        self.assertEqual(dispatcher.enqueued, [])
+
+    def test_dispatch_rejects_unsupported_direct_remote_command(self) -> None:
+        remote = BlockingRemote(supported_commands=frozenset({TV_COMMAND_HOME}))
+        dispatcher = FakeCommandDispatcher()
+        service = DirectRemoteService(remote, dispatcher)
+
+        result = service.dispatch(TV_COMMAND_VOLUME_UP)
+
+        self.assertFalse(result.accepted)
+        self.assertEqual(result.reason, "unsupported_command")
+        self.assertEqual(dispatcher.enqueued, [])
 
 
 class BlockingRemote:
@@ -942,8 +982,8 @@ class FakeCommandDispatcher:
     def __init__(self) -> None:
         self.enqueued = []
 
-    def enqueue(self, gesture, command) -> None:
-        self.enqueued.append((gesture, command))
+    def enqueue(self, source, command) -> None:
+        self.enqueued.append((source, command))
 
 
 class FakeDebugDisplay:

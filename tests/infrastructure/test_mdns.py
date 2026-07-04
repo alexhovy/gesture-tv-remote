@@ -60,14 +60,14 @@ class MdnsPublisherTests(unittest.TestCase):
         publisher = MdnsPublisher(
             "GestureTvRemote",
             443,
-            path="/control",
+            path="/gesture",
             scheme="https",
             service_label="Web UI",
         )
 
-        self.assertEqual(publisher.url, "https://gesturetvremote.local/control")
+        self.assertEqual(publisher.url, "https://gesturetvremote.local/gesture")
         self.assertEqual(publisher.origin, "https://gesturetvremote.local")
-        self.assertEqual(publisher.path, "/control")
+        self.assertEqual(publisher.path, "/gesture")
         self.assertEqual(publisher.service_label, "Web UI")
 
     def test_rejects_empty_normalized_name(self) -> None:

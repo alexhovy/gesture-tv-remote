@@ -49,7 +49,7 @@ Android TV remote microphone search when available, then falls back to an
 adapter's native voice UI. Foreground app voice input is separate: on Android
 TV, microphone capture starts only after the foreground app requests a voice
 session through the Android TV Remote Protocol. The app does not press a
-focused on-screen mic control before voice capture.
+focused on-screen mic gesture before voice capture.
 
 Use `voice_input_target=remote_search` for Android TV remote microphone search,
 or `voice_input_target=native_search` to ask adapters such as Roku and Samsung
@@ -92,10 +92,10 @@ the grouped `AppConfig` sections are the internal runtime structure.
 
 ## Config UI
 
-Run the lightweight config UI with:
+Run the settings-only UI with:
 
 ```bash
-uv run python main.py config
+uv run python main.py settings
 ```
 
 It listens on `https://localhost` by default and advertises
@@ -119,19 +119,19 @@ When the web port is left at its default `80`, HTTPS runtimes listen on port
 firewall rule on some systems. Set `GESTURE_TV_CONFIG_WEB_PORT=8443` if port
 `443` is unavailable.
 
-## Browser Control
+## Web App Runtime
 
-Run the browser capture runtime with:
+Run the unified web app runtime with:
 
 ```bash
-uv run python main.py web-control
+uv run python main.py app
 ```
 
-Open `https://gesturetvremote.local/control` from the capture device. The same
-web runtime also serves the config UI at `/`, so the configured `.local` name can
-host both settings and controls. When the web port is left at its default `80`,
-HTTPS web runtimes serve on port `443`; if you configure another web port, use
-that port in the URL.
+Open `https://gesturetvremote.local/gesture` from the browser capture device.
+The same web runtime serves settings at `/settings` and the direct remote at
+`/remote`, so the configured `.local` name can host the app from one backend
+server. When the web port is left at its default `80`, HTTPS web runtimes serve
+on port `443`; if you configure another web port, use that port in the URL.
 
 Browsers require a secure context for camera and microphone APIs. `localhost`
 counts as secure for local testing. For `.local` access, the web runtimes create
@@ -139,7 +139,7 @@ a self-signed certificate and key at `certs/web/server.crt` and
 `certs/web/server.key` when they are missing:
 
 ```bash
-uv run python main.py web-control
+uv run python main.py app
 ```
 
 The generated certificate must still be trusted by the browser or operating
@@ -244,8 +244,8 @@ distance settings. Returning inside the neutral
 circle or band re-arms motion without moving the anchor. Holding outside the
 activation margin repeats the same command after `GESTURE_TV_DEBOUNCE_SECONDS`;
 changing direction requires returning to neutral first.
-In browser-control mode, the browser reports the rendered preview dimensions so
-the backend can keep pointer and volume trigger distances visually consistent on
+In the app runtime, the browser reports the rendered preview dimensions so the
+backend can keep pointer and volume trigger distances visually consistent on
 portrait phones, landscape tablets, and desktop windows.
 
 `GESTURE_TV_CAMERA_ZOOM` is the starting digital center-crop zoom for MediaPipe
@@ -271,7 +271,7 @@ Boolean settings accept `1`, `true`, `yes`, `on`, `0`, `false`, `no`, and `off`.
 
 `GESTURE_TV_REQUIRE_UPRIGHT_HANDS` and
 `GESTURE_TV_HAND_UPRIGHT_MAX_TILT_RATIO` apply to the active hand. This
-prevents sideways or upside-down hands from activating controls or being
+prevents sideways or upside-down hands from activating gestures or being
 misclassified as command gestures.
 
 Gesture sessions start only when two upright open palms are visible. After the
@@ -293,4 +293,4 @@ Set `GESTURE_TV_VERBOSE_PIPELINE_DIAGNOSTICS=true` to log camera FPS, detection
 time, gesture decision time, command queue depth, command send latency, dropped
 command count, dropped stale frames, active adapter, and the current gesture
 decision. The app uses simple internal counters and timers.
-`GESTURE_TV_METRICS_LOG_SECONDS` controls how often those metrics are logged.
+`GESTURE_TV_METRICS_LOG_SECONDS` gestures how often those metrics are logged.

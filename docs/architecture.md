@@ -136,8 +136,9 @@ Do not put here:
 
 Responsibility:
 
-- lightweight configuration UI
-- browser capture UI and signaling endpoints
+- settings UI
+- browser gesture capture UI and signaling endpoints
+- direct remote UI and command endpoints
 - HTTP endpoints
 - form parsing
 - HTML/static rendering
@@ -145,6 +146,7 @@ Responsibility:
 Allowed dependencies:
 
 - application-facing config ports
+- web-local protocols for application services
 - shared config values
 - web-local rendering and form helpers
 
@@ -196,14 +198,15 @@ MediaPipe, OpenCV, TV adapters, SQLite storage, mDNS, and audio. Infrastructure
 may translate between third-party APIs and application/domain types, but it must
 not own gesture business rules.
 
-Browser-control media receivers are infrastructure adapters too: they feed
-decoded browser video into `FrameSourcePort` and browser microphone chunks into
-the voice capture boundary while backend application and domain code keep owning
-gesture and command behavior.
+Browser media receivers are infrastructure adapters too: they feed decoded
+browser video into `FrameSourcePort` and browser microphone chunks into the voice
+capture boundary while backend application and domain code keep owning gesture
+and command behavior. Local media receivers use the same ports for the webcam and
+microphone attached to the Python host.
 
-The browser-control web runtime serves config and controls from one origin so
-the configured mDNS name can be used for both. Camera and microphone access from
-that `.local` origin requires HTTPS with a certificate trusted by the browser.
+The web app runtime serves settings, browser gestures, and the direct remote
+from one origin. Camera and microphone access from that `.local` origin requires
+HTTPS with a certificate trusted by the browser.
 
 ### Runtime
 
@@ -246,7 +249,8 @@ meaningful external boundaries.
 
 ## Runtime Flow
 
-The CLI in `src/runtime/cli.py` selects the gesture runtime, config UI, or both.
+The CLI in `src/runtime/cli.py` selects the unified app runtime, local gesture
+runtime, or settings-only runtime.
 Runtime builder modules build the concrete object graph:
 
 ```mermaid

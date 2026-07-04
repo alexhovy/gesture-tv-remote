@@ -15,7 +15,7 @@ VOICE_SAMPLE_RATE = 8000
 VOICE_FRAMES_PER_BUFFER = 8192
 
 
-class MicrophoneVoiceCapture:
+class LocalMicrophoneVoiceCapture:
     def __init__(
         self,
         remote: TVRemotePort,

@@ -8,6 +8,7 @@ from src.shared.config import (
     replace_config_value,
     validate_config,
 )
+from src.web.settings.view import field_readonly
 
 BOOLEAN_FIELD_MARKER = "__present_bool"
 
@@ -19,6 +20,8 @@ def config_from_form(
     config = base_config
     present_bool_fields = set(form.get(BOOLEAN_FIELD_MARKER, []))
     for field in CONFIG_FIELDS:
+        if field_readonly(field.name):
+            continue
         current_value = get_config_value(config, field.name)
         raw_value = _first_form_value(form, field.name)
         if isinstance(current_value, bool):

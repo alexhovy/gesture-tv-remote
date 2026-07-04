@@ -60,6 +60,20 @@ class ConfigWebTests(unittest.TestCase):
         self.assertEqual(config.tv.host, "10.0.0.61")
         self.assertEqual(config.camera.webcam_index, 2)
 
+    def test_model_file_setting_is_not_editable_from_settings_form(self) -> None:
+        base_config = AppConfig()
+        html = render_config_page(base_config, active_tab="system")
+
+        self.assertIn('name="model_file"', html)
+        self.assertIn('value="models/hand_landmarker.task" readonly', html)
+
+        config = config_from_form(
+            {"model_file": ["models/custom.task"]},
+            base_config,
+        )
+
+        self.assertEqual(config.model.file, base_config.model.file)
+
     def test_restart_impact_detects_only_restart_required_changes(self) -> None:
         before = app_config(tv_host="10.0.0.60", camera_zoom=1.0)
         after = app_config(tv_host="10.0.0.61", camera_zoom=2.0)

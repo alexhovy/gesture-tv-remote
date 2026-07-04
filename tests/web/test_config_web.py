@@ -74,6 +74,49 @@ class ConfigWebTests(unittest.TestCase):
 
         self.assertEqual(config.model.file, base_config.model.file)
 
+    def test_tv_credential_file_settings_are_not_editable_from_settings_form(
+        self,
+    ) -> None:
+        base_config = AppConfig()
+        html = render_config_page(base_config, active_tab="tv")
+
+        self.assertIn('name="android_cert_file"', html)
+        self.assertIn('name="android_key_file"', html)
+        self.assertIn('name="samsung_token_file"', html)
+        self.assertIn('name="webos_client_key_file"', html)
+        self.assertIn('name="appletv_storage_file"', html)
+        self.assertIn('value="certs/android/cert.pem" readonly', html)
+        self.assertIn('value="certs/android/key.pem" readonly', html)
+        self.assertIn('value="certs/samsung/token.txt" readonly', html)
+        self.assertIn('value="certs/webos/client_key.txt" readonly', html)
+        self.assertIn('value="certs/appletv/pyatv.json" readonly', html)
+
+        config = config_from_form(
+            {
+                "android_cert_file": ["custom/android/cert.pem"],
+                "android_key_file": ["custom/android/key.pem"],
+                "samsung_token_file": ["custom/samsung/token.txt"],
+                "webos_client_key_file": ["custom/webos/client_key.txt"],
+                "appletv_storage_file": ["custom/appletv/pyatv.json"],
+            },
+            base_config,
+        )
+
+        self.assertEqual(config.tv.android_cert_file, base_config.tv.android_cert_file)
+        self.assertEqual(config.tv.android_key_file, base_config.tv.android_key_file)
+        self.assertEqual(
+            config.tv.samsung_token_file,
+            base_config.tv.samsung_token_file,
+        )
+        self.assertEqual(
+            config.tv.webos_client_key_file,
+            base_config.tv.webos_client_key_file,
+        )
+        self.assertEqual(
+            config.tv.appletv_storage_file,
+            base_config.tv.appletv_storage_file,
+        )
+
     def test_restart_impact_detects_only_restart_required_changes(self) -> None:
         before = app_config(tv_host="10.0.0.60", camera_zoom=1.0)
         after = app_config(tv_host="10.0.0.61", camera_zoom=2.0)

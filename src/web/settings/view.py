@@ -8,7 +8,15 @@ from src.shared.config import (
     get_config_value,
 )
 
-READONLY_FIELDS = {"config_db_file", "model_file"}
+READONLY_FIELDS = {
+    "android_cert_file",
+    "android_key_file",
+    "appletv_storage_file",
+    "config_db_file",
+    "model_file",
+    "samsung_token_file",
+    "webos_client_key_file",
+}
 TV_ADAPTERS = ("androidtv", "samsung", "webos", "roku", "appletv")
 VOICE_INPUT_TARGETS = tuple(target.value for target in VoiceInputTarget)
 

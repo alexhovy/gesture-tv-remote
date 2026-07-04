@@ -30,9 +30,9 @@ class ConfigWebTests(unittest.TestCase):
             response = client.request("GET", "/")
 
         self.assertEqual(response.status, 200)
-        self.assertIn(
-            '<link rel="stylesheet" href="/static/config.css">', response.body
-        )
+        self.assertIn('<link rel="stylesheet" href="/static/app.css">', response.body)
+        self.assertIn('href="/gesture"', response.body)
+        self.assertIn('href="/remote"', response.body)
         self.assertIn("TV Connection", response.body)
         self.assertIn("Camera", response.body)
         self.assertIn("Gestures", response.body)
@@ -43,11 +43,12 @@ class ConfigWebTests(unittest.TestCase):
 
     def test_config_css_is_served(self) -> None:
         with _running_config_server() as client:
-            response = client.request("GET", "/static/config.css")
+            response = client.request("GET", "/static/app.css")
 
         self.assertEqual(response.status, 200)
         self.assertIn(".field-grid", response.body)
         self.assertIn(".badge.live", response.body)
+        self.assertIn("color-scheme: dark", response.body)
 
     def test_settings_post_saves_config(self) -> None:
         with _running_config_server() as client:

@@ -10,6 +10,8 @@ dependencies = [
     "aiohttp",
     "aiortc",
     "cryptography",
+    "jinja2",
+    "markupsafe",
     "mediapipe",
     "opencv-python",
     "rokuecp",

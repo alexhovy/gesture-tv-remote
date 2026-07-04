@@ -9,7 +9,7 @@ from src.application.ports.config_provider import ConfigStorePort
 from src.application.ports.logger import LoggerPort
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
-from src.web.assets import read_config_css
+from src.web.assets import read_app_css
 from src.web.settings.forms import config_from_form
 from src.web.settings.templates import (
     render_config_page,
@@ -33,7 +33,7 @@ def create_config_server(
         def do_GET(self) -> None:
             request_url = urlparse(self.path)
             path = request_url.path
-            if path == "/":
+            if path in {"/", "/settings"}:
                 web_logger.info(f"Web config page viewed from {self.client_address[0]}")
                 self._send_html(
                     render_config_page(
@@ -45,8 +45,8 @@ def create_config_server(
             if path == "/health":
                 self._send_json({"status": "ok"})
                 return
-            if path == "/static/config.css":
-                self._send_css(read_config_css())
+            if path == "/static/app.css":
+                self._send_css(read_app_css())
                 return
             self.send_error(HTTPStatus.NOT_FOUND)
 

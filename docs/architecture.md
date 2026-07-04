@@ -141,7 +141,8 @@ Responsibility:
 - direct remote UI and command endpoints
 - HTTP endpoints
 - form parsing
-- HTML/static rendering
+- Jinja template rendering
+- shared dark app shell, navigation, and static assets
 
 Allowed dependencies:
 
@@ -149,12 +150,20 @@ Allowed dependencies:
 - web-local protocols for application services
 - shared config values
 - web-local rendering and form helpers
+- Jinja template primitives
 
 Do not put here:
 
 - direct infrastructure construction
 - gesture logic
 - runtime process orchestration
+
+The web UI uses server-rendered Jinja templates with a shared `base.html` layout
+and plain page-specific JavaScript. Prefer extending the shared layout and
+`static/app.css` over adding standalone HTML documents or page-specific visual
+systems. Static assets are served from `/static/` by the aiohttp app; the
+settings-only server serves the same shared stylesheet for local configuration
+workflows.
 
 ### `src/shared`
 

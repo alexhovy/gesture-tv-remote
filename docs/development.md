@@ -87,7 +87,7 @@ Test files are grouped by the layer or feature they validate:
 - `tests/application/`: use-case orchestration, pipelines, ports, and dispatch flow
 - `tests/infrastructure/`: adapter and integration-boundary behavior
 - `tests/runtime/`: CLI, composition, and runtime runner behavior
-- `tests/web/`: config UI request handling and rendering
+- `tests/web/`: web UI request handling, rendering, shared navigation, and assets
 - `tests/shared/`: configuration, logging, and shared primitives
 - `tests/architecture/`: layer-boundary import checks
 - `tests/fakes/`: reusable test doubles
@@ -102,7 +102,7 @@ Use `docs/architecture.md` as the canonical layer guide. The short version:
 - OpenCV, MediaPipe, TV SDKs, SQLite, mDNS, and audio belong in `src/infrastructure`
 - concrete wiring belongs in focused `src/runtime/builders/` modules, with
   final service composition in `src/runtime/container.py`
-- config UI request handling belongs in `src/web`
+- web UI request handling, Jinja templates, and static assets belong in `src/web`
 
 Application code should depend on domain and application ports. Infrastructure
 implements those ports. Runtime wires concrete implementations into application
@@ -135,8 +135,8 @@ services with explicit constructor injection.
 4. Add adapter-neutral command translations in
    `src/infrastructure/tv/tv_command_translation.py`.
 5. Register the adapter in `src/infrastructure/tv/tv_remote_factory.py`,
-   `src/shared/config.py`, and the config UI adapter list in
-   `src/web/config_view.py`.
+   `src/shared/config.py`, and the settings UI adapter list in
+   `src/web/settings/view.py`.
 6. Add tests for factory selection, command translation, capability metadata,
    and adapter behavior using fakes.
 7. Update `docs/configuration.md` and `docs/tv-adapter-capabilities.md`.

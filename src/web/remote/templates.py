@@ -1,19 +1,15 @@
 import time
-from pathlib import Path
-from string import Template
 
 from src.shared.config import AppConfig
-
-_REMOTE_TEMPLATE = Template(
-    (Path(__file__).parents[1] / "templates" / "remote_page.html").read_text(
-        encoding="utf-8"
-    )
-)
+from src.web.rendering import render_template
 
 
 def render_remote_page(config: AppConfig) -> str:
-    return _REMOTE_TEMPLATE.substitute(
+    return render_template(
+        "remote.html",
+        active_page="remote",
+        app_name=config.app_name,
+        body_class="remote-page",
+        cache_buster=str(time.time_ns()),
         page_title=f"{config.app_name} Remote",
-        heading=config.app_name,
-        remote_cache_buster=str(time.time_ns()),
     )

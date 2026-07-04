@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block status %}
+  <div class="status-pill" id="status">Ready</div>
+{% endblock %}
+
+{% block content %}
+  <section class="page-header compact">
+    <div>
+      <h1>Remote</h1>
+      <p class="intro">Send direct TV commands without gesture recognition.</p>
+    </div>
+  </section>
+  <section class="remote-pad" aria-label="TV remote">
+    <button class="button remote-key" type="button" data-command="HOME">Home</button>
+    <button class="button remote-key" type="button" data-command="DPAD_UP">Up</button>
+    <button class="button remote-key" type="button" data-command="BACK">Back</button>
+    <button class="button remote-key" type="button" data-command="DPAD_LEFT">Left</button>
+    <button class="button remote-key select" type="button" data-command="DPAD_CENTER">Select</button>
+    <button class="button remote-key" type="button" data-command="DPAD_RIGHT">Right</button>
+    <span></span>
+    <button class="button remote-key" type="button" data-command="DPAD_DOWN">Down</button>
+    <span></span>
+    <button class="button remote-key" type="button" data-command="VOLUME_DOWN">Vol -</button>
+    <span></span>
+    <button class="button remote-key" type="button" data-command="VOLUME_UP">Vol +</button>
+  </section>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/remote.js?v={{ cache_buster }}"></script>
+{% endblock %}

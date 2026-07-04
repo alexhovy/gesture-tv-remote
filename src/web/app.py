@@ -10,13 +10,7 @@ from aiortc import RTCSessionDescription
 from src.application.ports.config_provider import ConfigStorePort
 from src.application.ports.logger import LoggerPort
 from src.shared.config import AppConfig
-from src.web.assets import (
-    read_config_css,
-    read_gesture_css,
-    read_gesture_js,
-    read_remote_css,
-    read_remote_js,
-)
+from src.web.assets import static_dir
 from src.web.gesture.templates import render_gesture_page
 from src.web.remote.templates import render_remote_page
 from src.web.settings.forms import config_from_form
@@ -49,6 +43,10 @@ class DirectRemote(Protocol):
     def dispatch(self, command: str) -> Any: ...
 
 
+PEERS_KEY = web.AppKey("peers", set[Any])
+TRACK_TASKS_KEY = web.AppKey("track_tasks", set[asyncio.Task[Any]])
+
+
 def create_web_app(
     *,
     repository: ConfigStorePort,
@@ -61,8 +59,8 @@ def create_web_app(
     display_metrics_sink: BrowserDisplayMetricsSink | None = None,
 ) -> web.Application:
     app = web.Application()
-    app["peers"] = set()
-    app["track_tasks"] = set()
+    app[PEERS_KEY] = set()
+    app[TRACK_TASKS_KEY] = set()
 
     async def config_page(request: web.Request) -> web.Response:
         logger.info(f"Web config page viewed from {_remote(request)}")
@@ -86,32 +84,6 @@ def create_web_app(
         return web.Response(
             text=render_remote_page(config_provider()),
             content_type="text/html",
-        )
-
-    async def config_css(request: web.Request) -> web.Response:
-        del request
-        return web.Response(text=read_config_css(), content_type="text/css")
-
-    async def gesture_css(request: web.Request) -> web.Response:
-        del request
-        return web.Response(text=read_gesture_css(), content_type="text/css")
-
-    async def gesture_js(request: web.Request) -> web.Response:
-        del request
-        return web.Response(
-            text=read_gesture_js(),
-            content_type="application/javascript",
-        )
-
-    async def remote_css(request: web.Request) -> web.Response:
-        del request
-        return web.Response(text=read_remote_css(), content_type="text/css")
-
-    async def remote_js(request: web.Request) -> web.Response:
-        del request
-        return web.Response(
-            text=read_remote_js(),
-            content_type="application/javascript",
         )
 
     async def health(request: web.Request) -> web.Response:
@@ -228,7 +200,7 @@ def create_web_app(
 
         params = await request.json()
         peer = RTCPeerConnection()
-        app["peers"].add(peer)
+        app[PEERS_KEY].add(peer)
         logger.info(f"Browser gesture offer received from {_remote(request)}")
 
         @peer.on("track")
@@ -243,14 +215,14 @@ def create_web_app(
                 )
             else:
                 return
-            app["track_tasks"].add(task)
-            task.add_done_callback(app["track_tasks"].discard)
+            app[TRACK_TASKS_KEY].add(task)
+            task.add_done_callback(app[TRACK_TASKS_KEY].discard)
 
         @peer.on("connectionstatechange")
         async def on_connectionstatechange() -> None:
             if peer.connectionState in {"failed", "closed", "disconnected"}:
                 await peer.close()
-                app["peers"].discard(peer)
+                app[PEERS_KEY].discard(peer)
                 logger.info(
                     "Browser gesture peer disconnected: "
                     f"state={peer.connectionState}"
@@ -270,28 +242,24 @@ def create_web_app(
         )
 
     async def cleanup(app: web.Application) -> None:
-        track_tasks = set(app["track_tasks"])
+        track_tasks = app[TRACK_TASKS_KEY].copy()
         for task in track_tasks:
             task.cancel()
         for task in track_tasks:
             with contextlib.suppress(asyncio.CancelledError):
                 await task
         await asyncio.gather(
-            *(peer.close() for peer in set(app["peers"])),
+            *(peer.close() for peer in app[PEERS_KEY].copy()),
             return_exceptions=True,
         )
-        app["peers"].clear()
+        app[PEERS_KEY].clear()
 
     app.router.add_get("/", config_page)
     app.router.add_get("/settings", config_page)
     app.router.add_get("/gesture", gesture_page)
     app.router.add_get("/remote", remote_page)
     app.router.add_get("/health", health)
-    app.router.add_get("/static/config.css", config_css)
-    app.router.add_get("/static/gesture.css", gesture_css)
-    app.router.add_get("/static/gesture.js", gesture_js)
-    app.router.add_get("/static/remote.css", remote_css)
-    app.router.add_get("/static/remote.js", remote_js)
+    app.router.add_static("/static", static_dir(), name="static")
     app.router.add_post("/settings", save_settings)
     app.router.add_post("/reset", reset_settings)
     app.router.add_post("/api/log/client", client_log)

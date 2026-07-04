@@ -1,8 +1,9 @@
 from html import escape
-from pathlib import Path
-from string import Template
+
+from markupsafe import Markup
 
 from src.shared.config import AppConfig, get_config_value
+from src.web.rendering import render_template
 from src.web.settings.forms import BOOLEAN_FIELD_MARKER
 from src.web.settings.view import (
     SECTIONS,
@@ -13,8 +14,6 @@ from src.web.settings.view import (
     field_readonly,
     input_constraints,
 )
-
-_TEMPLATE_FILE = Path(__file__).parents[1] / "templates" / "config_page.html"
 
 
 def render_config_page(
@@ -29,11 +28,14 @@ def render_config_page(
         status = f'<div class="status">{escape(status_message)}</div>'
 
     sections_html = "\n".join(_render_section(config, section) for section in SECTIONS)
-    return _load_page_template().substitute(
-        page_title="Gesture TV Remote Config",
-        heading="Gesture TV Remote Config",
-        status=status,
-        sections=sections_html,
+    return render_template(
+        "settings.html",
+        active_page="settings",
+        app_name=config.app_name,
+        body_class="settings-page",
+        page_title=f"{config.app_name} Settings",
+        status=Markup(status),
+        sections=Markup(sections_html),
     )
 
 
@@ -49,10 +51,6 @@ def reset_status_message() -> str:
         "Reset. Live settings reload automatically; "
         "integration changes require restart."
     )
-
-
-def _load_page_template() -> Template:
-    return Template(_TEMPLATE_FILE.read_text(encoding="utf-8"))
 
 
 def _render_section(config: AppConfig, section: ConfigSection) -> str:

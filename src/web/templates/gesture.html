@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+
+{% block status %}
+  <div class="status-pill" id="status">Disconnected</div>
+{% endblock %}
+
+{% block content %}
+  <section class="gesture-panel" aria-label="Browser gesture capture">
+    <video id="preview" autoplay muted playsinline></video>
+    <canvas id="overlay" aria-hidden="true"></canvas>
+    <div class="empty" id="empty">Camera preview appears after connecting.</div>
+  </section>
+  <footer class="gesture-toolbar">
+    <button class="button primary" id="connect" type="button">Connect</button>
+    <button class="button" id="disconnect" type="button" disabled>Disconnect</button>
+    <span id="detail">Camera and microphone stay in the browser and stream to the backend.</span>
+  </footer>
+{% endblock %}
+
+{% block scripts %}
+  <script src="/static/gesture.js?v={{ cache_buster }}"></script>
+{% endblock %}

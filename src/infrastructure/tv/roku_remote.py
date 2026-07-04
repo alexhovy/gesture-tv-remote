@@ -74,6 +74,10 @@ class RokuRemoteClient:
         self._logger.info(f"Connected to Roku at {self._config.tv.host}")
         return True
 
+    async def wake(self) -> bool:
+        self._logger.debug("Roku Wake-on-LAN is not supported.")
+        return False
+
     async def send_command(self, command: str) -> None:
         if self._remote is None:
             self._logger.info(f"TV not connected. Skipping command: {command}")

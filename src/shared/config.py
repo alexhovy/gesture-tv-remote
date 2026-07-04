@@ -18,6 +18,13 @@ class EnvVar:
     CONFIG_WEB_TLS_KEY_FILE = "GESTURE_TV_CONFIG_WEB_TLS_KEY_FILE"
     TV_ADAPTER = "GESTURE_TV_ADAPTER"
     TV_HOST = "GESTURE_TV_HOST"
+    TV_WAKE_ENABLED = "GESTURE_TV_WAKE_ENABLED"
+    TV_MAC_ADDRESS = "GESTURE_TV_MAC_ADDRESS"
+    TV_WAKE_BROADCAST_ADDRESS = "GESTURE_TV_WAKE_BROADCAST_ADDRESS"
+    TV_WAKE_PORT = "GESTURE_TV_WAKE_PORT"
+    TV_WAKE_PACKET_COUNT = "GESTURE_TV_WAKE_PACKET_COUNT"
+    TV_WAKE_CONNECT_TIMEOUT_SECONDS = "GESTURE_TV_WAKE_CONNECT_TIMEOUT_SECONDS"
+    TV_WAKE_CONNECT_RETRY_SECONDS = "GESTURE_TV_WAKE_CONNECT_RETRY_SECONDS"
     ANDROID_CERT_FILE = "GESTURE_TV_ANDROID_CERT_FILE"
     ANDROID_KEY_FILE = "GESTURE_TV_ANDROID_KEY_FILE"
     SAMSUNG_TOKEN_FILE = "GESTURE_TV_SAMSUNG_TOKEN_FILE"
@@ -72,6 +79,13 @@ class VoiceInputTarget(StrEnum):
 class TvConfig:
     adapter: str = "samsung"
     host: str = "192.168.8.7"
+    wake_enabled: bool = False
+    mac_address: str = ""
+    wake_broadcast_address: str = "255.255.255.255"
+    wake_port: int = 9
+    wake_packet_count: int = 3
+    wake_connect_timeout_seconds: float = 20.0
+    wake_connect_retry_seconds: float = 2.0
     android_cert_file: Path = Path("certs/android/cert.pem")
     android_key_file: Path = Path("certs/android/key.pem")
     samsung_token_file: Path = Path("certs/samsung/token.txt")
@@ -235,6 +249,24 @@ def validate_config(config: AppConfig) -> None:
             raise ValueError("config_web_tls_key_file must not be empty")
     if not config.tv.host.strip():
         raise ValueError("tv_host must not be empty")
+    if config.tv.wake_enabled:
+        _require_mac_address(config.tv.mac_address, "tv_mac_address")
+    elif config.tv.mac_address.strip():
+        _require_mac_address(config.tv.mac_address, "tv_mac_address")
+    if not config.tv.wake_broadcast_address.strip():
+        raise ValueError("tv_wake_broadcast_address must not be empty")
+    _require_between(config.tv.wake_port, "tv_wake_port", 1, 65535)
+    _require_at_least(config.tv.wake_packet_count, "tv_wake_packet_count", 1)
+    _require_at_least(
+        config.tv.wake_connect_timeout_seconds,
+        "tv_wake_connect_timeout_seconds",
+        0.0,
+    )
+    _require_at_least(
+        config.tv.wake_connect_retry_seconds,
+        "tv_wake_connect_retry_seconds",
+        0.1,
+    )
     _require_between(config.tv.samsung_port, "samsung_port", 1, 65535)
     _require_between(config.tv.roku_port, "roku_port", 1, 65535)
     supported_voice_targets = {target.value for target in VoiceInputTarget}
@@ -421,6 +453,17 @@ def _require_between(
         raise ValueError(f"{field_name} must be between {minimum} and {maximum}")
 
 
+def _require_mac_address(value: str, field_name: str) -> None:
+    normalized = value.strip().replace("-", ":")
+    parts = normalized.split(":")
+    if len(parts) != 6 or any(len(part) != 2 for part in parts):
+        raise ValueError(f"{field_name} must be a MAC address")
+    try:
+        bytes.fromhex("".join(parts))
+    except ValueError as error:
+        raise ValueError(f"{field_name} must be a MAC address") from error
+
+
 CONFIG_FIELDS: tuple[ConfigField, ...] = (
     ConfigField("app_name", EnvVar.APP_NAME, None, "app_name", _str),
     ConfigField("config_db_file", EnvVar.CONFIG_DB_FILE, None, "config_db_file", _path),
@@ -459,6 +502,37 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
     ),
     ConfigField("tv_adapter", EnvVar.TV_ADAPTER, "tv", "adapter", _str),
     ConfigField("tv_host", EnvVar.TV_HOST, "tv", "host", _str),
+    ConfigField("tv_wake_enabled", EnvVar.TV_WAKE_ENABLED, "tv", "wake_enabled", _bool),
+    ConfigField("tv_mac_address", EnvVar.TV_MAC_ADDRESS, "tv", "mac_address", _str),
+    ConfigField(
+        "tv_wake_broadcast_address",
+        EnvVar.TV_WAKE_BROADCAST_ADDRESS,
+        "tv",
+        "wake_broadcast_address",
+        _str,
+    ),
+    ConfigField("tv_wake_port", EnvVar.TV_WAKE_PORT, "tv", "wake_port", _int),
+    ConfigField(
+        "tv_wake_packet_count",
+        EnvVar.TV_WAKE_PACKET_COUNT,
+        "tv",
+        "wake_packet_count",
+        _int,
+    ),
+    ConfigField(
+        "tv_wake_connect_timeout_seconds",
+        EnvVar.TV_WAKE_CONNECT_TIMEOUT_SECONDS,
+        "tv",
+        "wake_connect_timeout_seconds",
+        _float,
+    ),
+    ConfigField(
+        "tv_wake_connect_retry_seconds",
+        EnvVar.TV_WAKE_CONNECT_RETRY_SECONDS,
+        "tv",
+        "wake_connect_retry_seconds",
+        _float,
+    ),
     ConfigField(
         "android_cert_file", EnvVar.ANDROID_CERT_FILE, "tv", "android_cert_file", _path
     ),

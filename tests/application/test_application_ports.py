@@ -52,6 +52,90 @@ class ApplicationPortsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(display.rendered, 1)
         self.assertTrue(display.closed)
 
+    async def test_gesture_remote_service_wakes_before_connect_when_enabled(
+        self,
+    ) -> None:
+        config = app_config(
+            tv_wake_enabled=True,
+            tv_mac_address="00:11:22:33:44:55",
+            tv_wake_connect_timeout_seconds=0.0,
+        )
+        remote = FakeTVRemote()
+
+        service = GestureRemoteService(
+            config,
+            remote=remote,
+            frame_source=FakeFrameSource(open=False),
+            hand_tracker=FakeHandTracker(),
+            camera=FakeCamera(),
+            frame_processor=FakeFrameProcessor(),
+            display=FakeDisplay(),
+            voice_capture=FakeVoiceCapture(),
+            command_dispatcher=FakeCommandDispatcher(),
+            logger=FakeLogger(),
+            metrics=PipelineMetrics(config.tv.adapter),
+        )
+
+        await service.run()
+
+        self.assertEqual(remote.wake_calls, 1)
+        self.assertEqual(remote.connect_calls, 1)
+
+    async def test_gesture_remote_service_stores_discovered_mac_and_enables_wake(
+        self,
+    ) -> None:
+        config = app_config(tv_wake_enabled=False, tv_mac_address="")
+        store = FakeConfigStore(config)
+
+        service = GestureRemoteService(
+            config,
+            remote=FakeTVRemote(),
+            frame_source=FakeFrameSource(frames=[object()]),
+            hand_tracker=FakeHandTracker(),
+            camera=FakeCamera(),
+            frame_processor=FakeFrameProcessor(),
+            display=FakeDisplay(),
+            voice_capture=FakeVoiceCapture(),
+            command_dispatcher=FakeCommandDispatcher(),
+            logger=FakeLogger(),
+            metrics=PipelineMetrics(config.tv.adapter),
+            config_store=store,
+            mac_address_resolver=FakeMacAddressResolver("aa:bb:cc:dd:ee:ff"),
+        )
+
+        await service.run()
+
+        self.assertIsNotNone(store.saved_config)
+        assert store.saved_config is not None
+        self.assertEqual(store.saved_config.tv.mac_address, "aa:bb:cc:dd:ee:ff")
+        self.assertTrue(store.saved_config.tv.wake_enabled)
+
+
+class FakeConfigStore:
+    def __init__(self, config):
+        self.config = config
+        self.saved_config = None
+
+    def get_config(self):
+        return self.config
+
+    def save_config(self, config) -> None:
+        self.saved_config = config
+        self.config = config
+
+    def reset_config(self) -> None:
+        self.config = None
+
+
+class FakeMacAddressResolver:
+    def __init__(self, mac_address: str | None) -> None:
+        self.mac_address = mac_address
+        self.hosts: list[str] = []
+
+    def resolve(self, host: str) -> str | None:
+        self.hosts.append(host)
+        return self.mac_address
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -18,6 +18,7 @@ from src.infrastructure.camera.camera_zoom import CameraZoomController
 from src.infrastructure.camera.frame_processor import OpenCvFrameProcessor
 from src.infrastructure.hand_tracking.hand_tracking import MediaPipeHandTracker
 from src.infrastructure.hand_tracking.model_store import MediaPipeModelStore
+from src.infrastructure.network.mac_address import LocalNetworkMacAddressResolver
 from src.infrastructure.network.mdns import MdnsPublisher
 from src.infrastructure.web.debug_stream import BrowserDebugStream
 from src.infrastructure.web.display_metrics import BrowserDisplayMetrics
@@ -155,7 +156,9 @@ def build_web_app_runtime(
         command_dispatcher=tv_deps.command_dispatcher,
         logger=logger,
         metrics=tv_deps.metrics,
+        config_store=repository,
         config_provider=provider,
+        mac_address_resolver=LocalNetworkMacAddressResolver(logger),
         display_metrics=display_metrics,
     )
     restart_control = RuntimeRestartControl(service)

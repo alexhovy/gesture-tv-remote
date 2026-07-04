@@ -29,6 +29,13 @@ class ConfigTests(unittest.TestCase):
             {
                 EnvVar.TV_ADAPTER: "samsung",
                 EnvVar.TV_HOST: "10.0.0.25",
+                EnvVar.TV_WAKE_ENABLED: "true",
+                EnvVar.TV_MAC_ADDRESS: "00:11:22:33:44:55",
+                EnvVar.TV_WAKE_BROADCAST_ADDRESS: "10.0.0.255",
+                EnvVar.TV_WAKE_PORT: "7",
+                EnvVar.TV_WAKE_PACKET_COUNT: "5",
+                EnvVar.TV_WAKE_CONNECT_TIMEOUT_SECONDS: "12.5",
+                EnvVar.TV_WAKE_CONNECT_RETRY_SECONDS: "1.25",
                 EnvVar.CONFIG_DB_FILE: "local/config.sqlite3",
                 EnvVar.CONFIG_WEB_HOST: "127.0.0.1",
                 EnvVar.CONFIG_WEB_PORT: "9000",
@@ -66,6 +73,13 @@ class ConfigTests(unittest.TestCase):
 
         self.assertEqual(config.tv.adapter, "samsung")
         self.assertEqual(config.tv.host, "10.0.0.25")
+        self.assertTrue(config.tv.wake_enabled)
+        self.assertEqual(config.tv.mac_address, "00:11:22:33:44:55")
+        self.assertEqual(config.tv.wake_broadcast_address, "10.0.0.255")
+        self.assertEqual(config.tv.wake_port, 7)
+        self.assertEqual(config.tv.wake_packet_count, 5)
+        self.assertEqual(config.tv.wake_connect_timeout_seconds, 12.5)
+        self.assertEqual(config.tv.wake_connect_retry_seconds, 1.25)
         self.assertEqual(config.config_db_file, Path("local/config.sqlite3"))
         self.assertEqual(config.web.host, "127.0.0.1")
         self.assertEqual(config.web.port, 9000)
@@ -161,6 +175,14 @@ class ConfigTests(unittest.TestCase):
     def test_load_config_rejects_empty_host(self) -> None:
         with self.assertRaisesRegex(ValueError, "tv_host"):
             load_config_from_env({EnvVar.TV_HOST: " "})
+
+    def test_load_config_rejects_wake_enabled_without_mac_address(self) -> None:
+        with self.assertRaisesRegex(ValueError, "tv_mac_address"):
+            load_config_from_env({EnvVar.TV_WAKE_ENABLED: "true"})
+
+    def test_load_config_rejects_invalid_mac_address(self) -> None:
+        with self.assertRaisesRegex(ValueError, "tv_mac_address"):
+            load_config_from_env({EnvVar.TV_MAC_ADDRESS: "not-a-mac"})
 
     def test_load_config_rejects_invalid_adapter_port(self) -> None:
         with self.assertRaisesRegex(ValueError, "roku_port"):

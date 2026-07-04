@@ -8,7 +8,8 @@ from src.shared.logging import AppLogger, configure_app_logging
 
 
 async def main() -> None:
-    service = build_gesture_remote_service(create_config_provider())
+    repository, provider = create_config_dependencies()
+    service = build_gesture_remote_service(provider, repository)
     await service.run()
 
 
@@ -17,9 +18,14 @@ def load_config() -> AppConfig:
 
 
 def create_config_provider():
+    _, provider = create_config_dependencies()
+    return provider
+
+
+def create_config_dependencies():
     bootstrap_config = load_config_from_env()
     repository = build_config_repository(bootstrap_config)
-    return build_config_provider(repository)
+    return repository, build_config_provider(repository)
 
 
 def run(configure_logging: bool = True) -> None:

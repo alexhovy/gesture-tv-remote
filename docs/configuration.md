@@ -17,6 +17,7 @@ Current runtime defaults:
 - Android TV cert file: `certs/android/cert.pem`
 - Android TV key file: `certs/android/key.pem`
 - Apple TV pyatv storage file: `certs/appletv/pyatv.json`
+- Wake-on-LAN: disabled until the app discovers and stores the TV MAC address
 
 ## Pairing Credentials
 
@@ -54,6 +55,27 @@ uv run atvremote --storage-filename certs/appletv/pyatv.json wizard
 
 Use the same storage file in `GESTURE_TV_APPLETV_STORAGE_FILE` if you choose a
 non-default location.
+
+## Wake Before Connect
+
+The app can send Wake-on-LAN packets before connecting to adapters that support
+network wake. Wake starts disabled by default because it requires the TV network
+MAC address. After a successful normal connection, the app attempts to read the
+local neighbor/ARP table for the configured `tv_host`. When it finds a valid MAC
+address, it saves `tv_mac_address` and enables `tv_wake_enabled` for future
+launches.
+
+Wake behavior is best-effort and depends on TV settings and the local network.
+Samsung and LG webOS are the primary Wake-on-LAN targets. Their TVs usually need
+network standby, mobile wake, or an equivalent setting enabled. Android TV,
+Roku, and Apple TV do not have a reliable generic pre-connect Wake-on-LAN path
+through the current adapters.
+
+If automatic discovery cannot find the MAC address, set `tv_mac_address`
+manually in settings or with `GESTURE_TV_MAC_ADDRESS`. Once the MAC is known,
+`tv_wake_enabled` can remain enabled so startup sends wake packets, retries
+connection for `tv_wake_connect_timeout_seconds`, and then continues only after
+the TV accepts the adapter connection.
 
 Holding the active hand in a two-finger pose for about one second starts the
 configured TV/global voice target. The default `voice_input_target=auto` uses
@@ -182,6 +204,7 @@ settings apply while the process is running.
 Restart the gesture runtime after changing resource or integration settings:
 
 - TV adapter, host, adapter ports, pairing credential paths, or app name
+- Wake-on-LAN settings and learned TV MAC address
 - webcam index
 - model file, model URL, model download settings, or MediaPipe confidence settings
 - max tracked hands
@@ -206,6 +229,13 @@ will not override that environment value.
 | `GESTURE_TV_CONFIG_WEB_TLS_KEY_FILE` | `certs/web/server.key` |
 | `GESTURE_TV_ADAPTER` | `samsung` |
 | `GESTURE_TV_HOST` | `192.168.8.7` |
+| `GESTURE_TV_WAKE_ENABLED` | `False` |
+| `GESTURE_TV_MAC_ADDRESS` | empty |
+| `GESTURE_TV_WAKE_BROADCAST_ADDRESS` | `255.255.255.255` |
+| `GESTURE_TV_WAKE_PORT` | `9` |
+| `GESTURE_TV_WAKE_PACKET_COUNT` | `3` |
+| `GESTURE_TV_WAKE_CONNECT_TIMEOUT_SECONDS` | `20.0` |
+| `GESTURE_TV_WAKE_CONNECT_RETRY_SECONDS` | `2.0` |
 | `GESTURE_TV_ANDROID_CERT_FILE` | `certs/android/cert.pem` |
 | `GESTURE_TV_ANDROID_KEY_FILE` | `certs/android/key.pem` |
 | `GESTURE_TV_SAMSUNG_TOKEN_FILE` | `certs/samsung/token.txt` |

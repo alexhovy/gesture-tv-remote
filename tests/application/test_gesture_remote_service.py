@@ -1084,6 +1084,9 @@ class FakeCleanupRemote:
     async def connect(self) -> bool:
         return True
 
+    async def wake(self) -> bool:
+        return True
+
     async def send_command(self, command: str) -> None:
         del command
 

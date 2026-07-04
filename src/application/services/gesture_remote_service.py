@@ -1,13 +1,15 @@
 import asyncio
+import time
 
 from src.application.ports.camera import CameraPort, FrameProcessorPort
 from src.application.ports.command_dispatcher import CommandDispatcherPort
-from src.application.ports.config_provider import ConfigProviderPort
+from src.application.ports.config_provider import ConfigProviderPort, ConfigStorePort
 from src.application.ports.display import DisplayPort
 from src.application.ports.display_metrics import DisplayMetricsPort
 from src.application.ports.frame_source import FrameSourcePort
 from src.application.ports.hand_tracker import HandTrackerPort
 from src.application.ports.logger import LoggerPort
+from src.application.ports.mac_address_resolver import MacAddressResolverPort
 from src.application.ports.tv_remote import AppVoiceInputRequest, TVRemotePort
 from src.application.ports.voice_capture import VoiceCapturePort
 from src.application.services.coordinators.cleanup import CleanupCoordinator
@@ -34,14 +36,19 @@ class GestureRemoteService:
         command_dispatcher: CommandDispatcherPort,
         logger: LoggerPort,
         metrics: PipelineMetrics,
+        config_store: ConfigStorePort | None = None,
         config_provider: ConfigProviderPort | None = None,
+        mac_address_resolver: MacAddressResolverPort | None = None,
         display_metrics: DisplayMetricsPort | None = None,
         gesture_session: GestureSession | None = None,
     ) -> None:
+        self._config = config
         self._remote = remote
         self._frame_source = frame_source
         self._voice_capture = voice_capture
         self._logger = logger
+        self._config_store = config_store
+        self._mac_address_resolver = mac_address_resolver
         self._gesture_session = gesture_session or GestureSession(config)
         self._voice_task: asyncio.Task | None = None
         config_reload = ConfigReloadCoordinator(
@@ -78,10 +85,11 @@ class GestureRemoteService:
         )
 
     async def run(self) -> None:
-        if not await self._remote.connect():
+        if not await self._connect_remote():
             self._logger.info("TV connection failed. Exiting.")
             await self._cleanup.cleanup(None)
             return
+        self._store_discovered_mac_address()
 
         if not await asyncio.to_thread(self._frame_source.is_open):
             self._logger.error("Could not open webcam.")
@@ -114,3 +122,55 @@ class GestureRemoteService:
 
     def stop(self) -> None:
         self._runtime_loop.stop()
+
+    async def _connect_remote(self) -> bool:
+        if not self._config.tv.wake_enabled:
+            return await self._remote.connect()
+
+        await self._remote.wake()
+        deadline = time.monotonic() + self._config.tv.wake_connect_timeout_seconds
+        while True:
+            if await self._remote.connect():
+                return True
+            if time.monotonic() >= deadline:
+                return False
+            await asyncio.sleep(
+                min(
+                    self._config.tv.wake_connect_retry_seconds,
+                    max(0.0, deadline - time.monotonic()),
+                )
+            )
+
+    def _store_discovered_mac_address(self) -> None:
+        if self._config_store is None or self._mac_address_resolver is None:
+            return
+        if self._config.tv.mac_address.strip():
+            return
+
+        mac_address = self._mac_address_resolver.resolve(self._config.tv.host)
+        if mac_address is None:
+            self._logger.info(
+                "Could not discover TV MAC address for Wake-on-LAN. "
+                "Set tv_mac_address manually if wake is needed."
+            )
+            return
+
+        from src.shared.config import replace_config_value
+
+        saved_config = self._config_store.get_config() or self._config
+        if saved_config.tv.mac_address.strip():
+            return
+        updated_config = replace_config_value(
+            saved_config,
+            "tv_mac_address",
+            mac_address,
+        )
+        updated_config = replace_config_value(
+            updated_config,
+            "tv_wake_enabled",
+            True,
+        )
+        self._config_store.save_config(updated_config)
+        self._config = replace_config_value(self._config, "tv_mac_address", mac_address)
+        self._config = replace_config_value(self._config, "tv_wake_enabled", True)
+        self._logger.info("Stored discovered TV MAC address and enabled Wake-on-LAN.")

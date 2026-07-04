@@ -13,15 +13,21 @@ from src.infrastructure.tv.tv_command_translation import (
     translate_tv_command,
 )
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_SAMSUNG
+from src.infrastructure.tv.wake_on_lan import WakeOnLanSender
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
 
 class SamsungTvRemoteClient:
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        wake_on_lan: WakeOnLanSender | None = None,
+    ) -> None:
         self._config = config
         self._remote: Any | None = None
         self._logger = AppLogger()
+        self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
         self._executor = ThreadBoundRemoteExecutor("samsung-tv")
 
     def capabilities(self) -> TvAdapterCapabilities:
@@ -33,7 +39,7 @@ class SamsungTvRemoteClient:
             media_controls=CapabilityStatus.IMPLEMENTED,
             text_input=CapabilityStatus.NOT_IMPLEMENTED,
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
-            wake_on_lan=CapabilityStatus.NOT_IMPLEMENTED,
+            wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
             voice_input=VoiceInputCapabilities(
                 remote_mic_stream=CapabilityStatus.UNSUPPORTED,
@@ -51,8 +57,8 @@ class SamsungTvRemoteClient:
             known_limitations=(
                 "Power uses Samsung KEY_POWER toggle; wake-from-off support "
                 "depends on the TV accepting websocket commands while asleep.",
-                "Remote microphone streaming, text input, source selection, and "
-                "Wake-on-LAN are not implemented.",
+                "Remote microphone streaming, text input, and source selection "
+                "are not implemented.",
             ),
         )
 
@@ -75,10 +81,20 @@ class SamsungTvRemoteClient:
         self._logger.info(f"Connected to Samsung TV at {self._config.tv.host}")
         return True
 
+    async def wake(self) -> bool:
+        try:
+            result = await self._executor.call(self._wake_on_lan.wake)
+        except Exception as error:
+            self._logger.error(f"Samsung Wake-on-LAN failed: {error}")
+            return False
+        return result.attempted and result.sent_packets > 0
+
     async def send_command(self, command: str) -> None:
         if self._remote is None:
-            self._logger.info(f"TV not connected. Skipping command: {command}")
-            return
+            await self.wake()
+            if not await self.connect():
+                self._logger.info(f"TV not connected. Skipping command: {command}")
+                return
 
         adapter_command = translate_tv_command(TV_ADAPTER_SAMSUNG, command)
         try:
@@ -88,6 +104,7 @@ class SamsungTvRemoteClient:
                 f"Samsung TV command {adapter_command} failed, reconnecting: {error}"
             )
             try:
+                await self.wake()
                 await self._executor.call(self._reconnect_sync)
                 await self._executor.call(self._send_key_sync, adapter_command)
             except Exception as retry_error:

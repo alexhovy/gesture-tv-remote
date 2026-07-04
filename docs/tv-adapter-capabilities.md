@@ -17,8 +17,8 @@ Capability status is explicit:
 | Adapter | Connection | Power | Volume | Navigation | Media Controls | Text Input | Source Selection | Wake-on-LAN | Pairing | Remote Mic Stream | Native Voice UI | App Voice Input |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | Android TV / Google TV | `androidtvremote2` TLS remote protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` | `implemented` | `implemented` |
-| Samsung TV | `samsungtvws` websocket | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
-| LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
+| Samsung TV | `samsungtvws` websocket | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
+| LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
 | Roku | Roku ECP HTTP | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
 | Apple TV | `pyatv` Media Remote Protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
 
@@ -55,7 +55,7 @@ selected adapter advertises them:
 
 Power and media controls are available to the direct remote when the selected
 adapter advertises those commands. They remain outside the current gesture
-command surface. Text input, source selection, and Wake-on-LAN are tracked as
+command surface. Text input and source selection are tracked as
 `not_implemented` when an adapter extension could reasonably add them without
 changing the gesture pipeline.
 
@@ -66,8 +66,12 @@ Power behavior varies by protocol:
   players may not support TV power control.
 - Apple TV exposes separate `turn_on` and `turn_off` through pyatv power
   management.
-- LG webOS power-off and Wake-on-LAN need additional verified API and
-  configuration work before being advertised.
+- Samsung and LG webOS can send Wake-on-LAN packets before connecting when the
+  TV MAC address is known. The app attempts to learn the MAC address from the
+  local neighbor/ARP table after a successful connection and enables future wake
+  attempts once it stores that address.
+- Android TV / Google TV, Roku, and Apple TV do not expose a reliable generic
+  pre-connect Wake-on-LAN path through the current adapter implementations.
 
 Voice input is split by protocol capability:
 

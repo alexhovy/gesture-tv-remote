@@ -41,6 +41,8 @@ TABS: tuple[ConfigTab, ...] = (
                 (
                     "tv_adapter",
                     "tv_host",
+                    "tv_wake_enabled",
+                    "tv_mac_address",
                     "voice_input_target",
                     "voice_capture_seconds",
                 ),
@@ -51,6 +53,11 @@ TABS: tuple[ConfigTab, ...] = (
                 (
                     "samsung_port",
                     "roku_port",
+                    "tv_wake_broadcast_address",
+                    "tv_wake_port",
+                    "tv_wake_packet_count",
+                    "tv_wake_connect_timeout_seconds",
+                    "tv_wake_connect_retry_seconds",
                     "android_cert_file",
                     "android_key_file",
                     "samsung_token_file",
@@ -191,6 +198,21 @@ TABS: tuple[ConfigTab, ...] = (
 FIELD_HELP: dict[str, str] = {
     "tv_adapter": "Select the TV platform to gesture.",
     "tv_host": "IP address or host name of the TV.",
+    "tv_wake_enabled": (
+        "Sends a wake packet before connecting. The app enables this after "
+        "discovering the TV MAC address."
+    ),
+    "tv_mac_address": (
+        "TV network MAC address used for Wake-on-LAN. Discovered after a "
+        "successful connection when possible."
+    ),
+    "tv_wake_broadcast_address": "Broadcast address used for Wake-on-LAN packets.",
+    "tv_wake_port": "UDP port used for Wake-on-LAN packets.",
+    "tv_wake_packet_count": "Number of wake packets sent before connect retries.",
+    "tv_wake_connect_timeout_seconds": (
+        "Maximum time spent retrying connection after a wake packet."
+    ),
+    "tv_wake_connect_retry_seconds": "Delay between wake connection attempts.",
     "voice_input_target": (
         "Voice target for the MIC gesture: auto, remote_search, or native_search."
     ),
@@ -332,8 +354,11 @@ def input_constraints(name: str) -> str:
         "config_web_port",
         "samsung_port",
         "roku_port",
+        "tv_wake_port",
     }:
         return ' min="1" max="65535"'
+    if name == "tv_wake_packet_count":
+        return ' min="1"'
     if name in {
         "min_hand_detection_confidence",
         "min_hand_presence_confidence",

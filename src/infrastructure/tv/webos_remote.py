@@ -13,17 +13,23 @@ from src.infrastructure.tv.tv_command_translation import (
     translate_tv_command,
 )
 from src.infrastructure.tv.tv_remote import TV_ADAPTER_WEBOS
+from src.infrastructure.tv.wake_on_lan import WakeOnLanSender
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
 
 
 class WebOsRemoteClient:
-    def __init__(self, config: AppConfig) -> None:
+    def __init__(
+        self,
+        config: AppConfig,
+        wake_on_lan: WakeOnLanSender | None = None,
+    ) -> None:
         self._config = config
         self._client: Any | None = None
         self._input: Any | None = None
         self._media: Any | None = None
         self._logger = AppLogger()
+        self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
@@ -34,7 +40,7 @@ class WebOsRemoteClient:
             media_controls=CapabilityStatus.NOT_IMPLEMENTED,
             text_input=CapabilityStatus.NOT_IMPLEMENTED,
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
-            wake_on_lan=CapabilityStatus.NOT_IMPLEMENTED,
+            wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
             voice_input=VoiceInputCapabilities(
                 remote_mic_stream=CapabilityStatus.UNSUPPORTED,
@@ -51,8 +57,7 @@ class WebOsRemoteClient:
             connection_type="aiowebostv websocket",
             known_limitations=(
                 "Only input-control navigation and volume commands are implemented.",
-                "Voice input, text input, source selection, and Wake-on-LAN "
-                "are not implemented.",
+                "Voice input, text input, and source selection are not implemented.",
             ),
         )
 
@@ -96,15 +101,38 @@ class WebOsRemoteClient:
         self._logger.info(f"Connected to webOS TV at {self._config.tv.host}")
         return True
 
+    async def wake(self) -> bool:
+        try:
+            result = await call_remote_method(self._wake_on_lan.wake)
+        except Exception as error:
+            self._logger.error(f"webOS Wake-on-LAN failed: {error}")
+            return False
+        return result.attempted and result.sent_packets > 0
+
     async def send_command(self, command: str) -> None:
         if self._client is None:
-            self._logger.info(f"TV not connected. Skipping command: {command}")
-            return
+            await self.wake()
+            if not await self.connect():
+                self._logger.info(f"TV not connected. Skipping command: {command}")
+                return
 
         adapter_command = translate_tv_command(TV_ADAPTER_WEBOS, command)
         try:
             await self._send(adapter_command)
         except Exception as error:
+            self._logger.debug(
+                f"webOS TV command {adapter_command} failed, reconnecting: {error}"
+            )
+            self._client = None
+            self._input = None
+            self._media = None
+            await self.wake()
+            if await self.connect():
+                try:
+                    await self._send(adapter_command)
+                    return
+                except Exception as retry_error:
+                    error = retry_error
             self._logger.error(f"webOS TV command {adapter_command} failed: {error}")
 
     async def start_voice(self, mode: VoiceInputMode):

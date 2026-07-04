@@ -423,6 +423,18 @@ class SamsungTvRemoteTests(unittest.IsolatedAsyncioTestCase):
             ["init", "open", "send:KEY_VOICE", "close"],
         )
 
+    async def test_wake_uses_wake_on_lan_sender(self) -> None:
+        wake_on_lan = FakeWakeOnLan()
+        client = SamsungTvRemoteClient(
+            app_config(tv_host="tv.local"),
+            wake_on_lan=wake_on_lan,
+        )
+
+        self.assertTrue(await client.wake())
+        await client.disconnect()
+
+        self.assertEqual(wake_on_lan.calls, 1)
+
 
 class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
     async def asyncSetUp(self) -> None:
@@ -514,6 +526,19 @@ class AppleTvRemoteTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(remote.closed)
 
 
+class WebOsRemoteTests(unittest.IsolatedAsyncioTestCase):
+    async def test_wake_uses_wake_on_lan_sender(self) -> None:
+        wake_on_lan = FakeWakeOnLan()
+        client = WebOsRemoteClient(
+            app_config(tv_host="webos.local"),
+            wake_on_lan=wake_on_lan,
+        )
+
+        self.assertTrue(await client.wake())
+
+        self.assertEqual(wake_on_lan.calls, 1)
+
+
 def _install_fake_samsung(fail_first_send: bool = False):
     class FakeSamsungTVWS:
         instances = []
@@ -539,6 +564,15 @@ def _install_fake_samsung(fail_first_send: bool = False):
     module = types.SimpleNamespace(SamsungTVWS=FakeSamsungTVWS)
     sys.modules["samsungtvws"] = module
     return FakeSamsungTVWS
+
+
+class FakeWakeOnLan:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def wake(self):
+        self.calls += 1
+        return types.SimpleNamespace(attempted=True, sent_packets=1)
 
 
 class FakeAndroidRemote:

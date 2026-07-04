@@ -99,6 +99,17 @@ class AppleTvRemoteClient:
         self._logger.info(f"Connected to Apple TV at {self._config.tv.host}")
         return True
 
+    async def wake(self) -> bool:
+        if self._remote is None:
+            self._logger.debug("Apple TV wake requires an active pyatv connection.")
+            return False
+        try:
+            await self._remote.power.turn_on()
+        except Exception as error:
+            self._logger.error(f"Apple TV wake failed: {error}")
+            return False
+        return True
+
     async def send_command(self, command: str) -> None:
         if self._remote is None:
             self._logger.info(f"TV not connected. Skipping command: {command}")

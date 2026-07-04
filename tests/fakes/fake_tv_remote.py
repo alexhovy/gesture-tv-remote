@@ -12,6 +12,7 @@ class FakeTVRemote:
         self.connected = connected
         self.commands: list[str] = []
         self.connect_calls = 0
+        self.wake_calls = 0
         self.disconnect_calls = 0
         self.voice_started = False
         self.app_voice_input_handler: AppVoiceInputHandler | None = None
@@ -25,6 +26,10 @@ class FakeTVRemote:
     async def connect(self) -> bool:
         self.connect_calls += 1
         return self.connected
+
+    async def wake(self) -> bool:
+        self.wake_calls += 1
+        return True
 
     async def send_command(self, command: str) -> None:
         self.commands.append(command)

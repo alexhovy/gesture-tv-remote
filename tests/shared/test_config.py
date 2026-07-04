@@ -47,6 +47,7 @@ class ConfigTests(unittest.TestCase):
                 EnvVar.SAMSUNG_PORT: "8001",
                 EnvVar.WEBOS_CLIENT_KEY_FILE: "local/webos/client_key.txt",
                 EnvVar.ROKU_PORT: "8061",
+                EnvVar.APPLETV_STORAGE_FILE: "local/appletv/pyatv.json",
                 EnvVar.VOICE_INPUT_TARGET: "remote_search",
                 EnvVar.MODEL_DOWNLOAD_TIMEOUT_SECONDS: "3.5",
                 EnvVar.MODEL_DOWNLOAD_RETRIES: "4",
@@ -86,6 +87,10 @@ class ConfigTests(unittest.TestCase):
             Path("local/webos/client_key.txt"),
         )
         self.assertEqual(config.tv.roku_port, 8061)
+        self.assertEqual(
+            config.tv.appletv_storage_file,
+            Path("local/appletv/pyatv.json"),
+        )
         self.assertEqual(config.tv.voice_input_target, "remote_search")
         self.assertEqual(config.model.download_timeout_seconds, 3.5)
         self.assertEqual(config.model.download_retries, 4)

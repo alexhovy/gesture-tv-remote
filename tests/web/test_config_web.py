@@ -39,6 +39,8 @@ class ConfigWebTests(unittest.TestCase):
         self.assertIn("Applies live", response.body)
         self.assertIn("Requires restart", response.body)
         self.assertIn('option value="roku" selected', response.body)
+        self.assertIn('option value="appletv"', response.body)
+        self.assertIn("Appletv Storage File", response.body)
         self.assertIn('value="10.0.0.60"', response.body)
 
     def test_config_css_is_served(self) -> None:

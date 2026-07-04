@@ -1,11 +1,60 @@
 const statusLabel = document.getElementById("status");
-const commandButtons = Array.from(document.querySelectorAll("[data-command]"));
+const commandButtons = Array.from(
+  document.querySelectorAll("[data-command], [data-command-options]"),
+);
+const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
+const modePanels = Array.from(document.querySelectorAll("[data-panel]"));
+const touchpad = document.getElementById("touchpad");
+
+let supportedCommands = new Set();
+let pointerStart = null;
 
 loadCapabilities();
 
 for (const button of commandButtons) {
   button.addEventListener("click", async () => {
-    await sendCommand(button.dataset.command);
+    await sendCommand(commandForButton(button));
+  });
+}
+
+for (const button of modeButtons) {
+  button.addEventListener("click", () => {
+    activateMode(button.dataset.mode);
+  });
+}
+
+if (touchpad) {
+  touchpad.addEventListener("pointerdown", (event) => {
+    pointerStart = { x: event.clientX, y: event.clientY };
+    touchpad.setPointerCapture(event.pointerId);
+  });
+  touchpad.addEventListener("pointerup", async (event) => {
+    if (!pointerStart) {
+      return;
+    }
+    const command = commandFromTouch(pointerStart, {
+      x: event.clientX,
+      y: event.clientY,
+    });
+    pointerStart = null;
+    if (command) {
+      await sendCommand(command);
+    }
+  });
+  touchpad.addEventListener("keydown", async (event) => {
+    const commandsByKey = {
+      ArrowDown: "DPAD_DOWN",
+      ArrowLeft: "DPAD_LEFT",
+      ArrowRight: "DPAD_RIGHT",
+      ArrowUp: "DPAD_UP",
+      Enter: "DPAD_CENTER",
+      " ": "DPAD_CENTER",
+    };
+    const command = commandsByKey[event.key];
+    if (command) {
+      event.preventDefault();
+      await sendCommand(command);
+    }
   });
 }
 
@@ -16,16 +65,21 @@ async function loadCapabilities() {
       throw new Error(`Capabilities failed: ${response.status}`);
     }
     const payload = await response.json();
-    const supported = new Set(payload.supportedCommands || []);
+    supportedCommands = new Set(payload.supportedCommands || []);
     for (const button of commandButtons) {
-      button.disabled = !supported.has(button.dataset.command);
+      button.disabled = !commandForButton(button);
     }
+    setStatus("Ready");
   } catch (error) {
     setStatus(error.message || "Capabilities unavailable");
   }
 }
 
 async function sendCommand(command) {
+  if (!supportedCommands.has(command)) {
+    setStatus("Unsupported");
+    return;
+  }
   setStatus(command);
   try {
     const response = await fetch("/api/remote/commands", {
@@ -41,6 +95,37 @@ async function sendCommand(command) {
   } catch (error) {
     setStatus(error.message || "Command failed");
   }
+}
+
+function activateMode(mode) {
+  for (const button of modeButtons) {
+    const active = button.dataset.mode === mode;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-selected", active ? "true" : "false");
+  }
+  for (const panel of modePanels) {
+    panel.classList.toggle("active", panel.dataset.panel === mode);
+  }
+}
+
+function commandFromTouch(start, end) {
+  const deltaX = end.x - start.x;
+  const deltaY = end.y - start.y;
+  const distance = Math.hypot(deltaX, deltaY);
+  if (distance < 24) {
+    return "DPAD_CENTER";
+  }
+  if (Math.abs(deltaX) > Math.abs(deltaY)) {
+    return deltaX > 0 ? "DPAD_RIGHT" : "DPAD_LEFT";
+  }
+  return deltaY > 0 ? "DPAD_DOWN" : "DPAD_UP";
+}
+
+function commandForButton(button) {
+  const commands = button.dataset.commandOptions
+    ? button.dataset.commandOptions.split(" ")
+    : [button.dataset.command];
+  return commands.find((command) => supportedCommands.has(command)) || "";
 }
 
 function setStatus(value) {

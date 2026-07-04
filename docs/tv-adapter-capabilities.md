@@ -16,10 +16,11 @@ Capability status is explicit:
 
 | Adapter | Connection | Power | Volume | Navigation | Media Controls | Text Input | Source Selection | Wake-on-LAN | Pairing | Remote Mic Stream | Native Voice UI | App Voice Input |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` | `implemented` | `implemented` |
-| Samsung TV | `samsungtvws` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
+| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` | `implemented` | `implemented` |
+| Samsung TV | `samsungtvws` websocket | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
 | LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
-| Roku | Roku ECP HTTP | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
+| Roku | Roku ECP HTTP | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `unsupported` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
+| Apple TV | `pyatv` Media Remote Protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `unsupported` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
 
 ## Common Commands
 
@@ -40,12 +41,33 @@ adapter advertises its supported adapter-neutral commands from the same mapping
 used for protocol translation. Adapter translations live in
 `src/infrastructure/tv/tv_command_translation.py`.
 
+The direct remote UI can expose additional adapter-neutral commands when the
+selected adapter advertises them:
+
+- `POWER_TOGGLE`: Android TV / Google TV and Samsung.
+- `POWER_ON`: Apple TV.
+- `POWER_OFF`: Roku TV devices and Apple TV.
+- `MUTE`: Android TV / Google TV, Samsung, and Roku TV devices.
+- `PLAY_PAUSE`, `REWIND`, `FAST_FORWARD`: Android TV / Google TV, Samsung,
+  Roku, and Apple TV.
+
 ## Platform Gaps
 
-Power, media controls, text input, source selection, and Wake-on-LAN are outside
-the current gesture command surface. They are tracked as `not_implemented`
-when an adapter extension could reasonably add them without changing the
-gesture pipeline.
+Power and media controls are available to the direct remote when the selected
+adapter advertises those commands. They remain outside the current gesture
+command surface. Text input, source selection, and Wake-on-LAN are tracked as
+`not_implemented` when an adapter extension could reasonably add them without
+changing the gesture pipeline.
+
+Power behavior varies by protocol:
+
+- Android TV / Google TV and Samsung expose a power toggle key.
+- Roku ECP exposes `PowerOff` for Roku TV devices; standalone Roku streaming
+  players may not support TV power control.
+- Apple TV exposes separate `turn_on` and `turn_off` through pyatv power
+  management.
+- LG webOS power-off and Wake-on-LAN need additional verified API and
+  configuration work before being advertised.
 
 Voice input is split by protocol capability:
 

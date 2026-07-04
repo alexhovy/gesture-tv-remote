@@ -27,10 +27,10 @@ class SamsungTvRemoteClient:
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
             supported_commands=frozenset(SAMSUNG_COMMANDS),
-            power=CapabilityStatus.NOT_IMPLEMENTED,
+            power=CapabilityStatus.IMPLEMENTED,
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,
-            media_controls=CapabilityStatus.NOT_IMPLEMENTED,
+            media_controls=CapabilityStatus.IMPLEMENTED,
             text_input=CapabilityStatus.NOT_IMPLEMENTED,
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
             wake_on_lan=CapabilityStatus.NOT_IMPLEMENTED,
@@ -49,7 +49,8 @@ class SamsungTvRemoteClient:
             ),
             connection_type="samsungtvws websocket",
             known_limitations=(
-                "Only key commands and native voice UI key injection are implemented.",
+                "Power uses Samsung KEY_POWER toggle; wake-from-off support "
+                "depends on the TV accepting websocket commands while asleep.",
                 "Remote microphone streaming, text input, source selection, and "
                 "Wake-on-LAN are not implemented.",
             ),

@@ -57,6 +57,9 @@ class GestureWebTests(unittest.TestCase):
         self.assertIn("/static/app.css", html)
         self.assertIn("/static/remote.js?v=123456789", html)
         self.assertIn('data-command="DPAD_CENTER"', html)
+        self.assertIn('data-command-options="POWER_TOGGLE POWER_OFF POWER_ON"', html)
+        self.assertIn('data-mode="touchpad"', html)
+        self.assertIn('id="touchpad"', html)
         self.assertIn('href="/gesture"', html)
         self.assertIn('href="/settings"', html)
 
@@ -64,7 +67,13 @@ class GestureWebTests(unittest.TestCase):
         self.assertIn("/api/remote/capabilities", read_remote_js())
         self.assertIn("/api/remote/commands", read_remote_js())
         self.assertIn("[data-command]", read_remote_js())
-        self.assertIn(".remote-pad", read_app_css())
+        self.assertIn("[data-command-options]", read_remote_js())
+        self.assertIn("[data-mode]", read_remote_js())
+        self.assertIn("commandFromTouch", read_remote_js())
+        self.assertIn("commandForButton", read_remote_js())
+        self.assertIn(".remote-shell", read_app_css())
+        self.assertIn(".remote-touchpad", read_app_css())
+        self.assertIn(".remote-dpad", read_app_css())
 
     def test_shared_app_css_is_dark_and_contains_navigation(self) -> None:
         css = read_app_css()

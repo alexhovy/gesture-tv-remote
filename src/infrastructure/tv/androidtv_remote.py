@@ -31,10 +31,10 @@ class AndroidTvRemoteClient:
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
             supported_commands=frozenset(ANDROIDTV_COMMANDS),
-            power=CapabilityStatus.NOT_IMPLEMENTED,
+            power=CapabilityStatus.IMPLEMENTED,
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,
-            media_controls=CapabilityStatus.NOT_IMPLEMENTED,
+            media_controls=CapabilityStatus.IMPLEMENTED,
             text_input=CapabilityStatus.NOT_IMPLEMENTED,
             source_selection=CapabilityStatus.UNSUPPORTED,
             wake_on_lan=CapabilityStatus.UNSUPPORTED,
@@ -53,10 +53,9 @@ class AndroidTvRemoteClient:
             ),
             connection_type="androidtvremote2 TLS remote protocol",
             known_limitations=(
-                "Only key commands and Android TV Remote Protocol microphone "
-                "streaming are implemented.",
-                "Power, text input, source selection, and media controls are "
-                "not mapped.",
+                "Power uses the Android TV power key and may toggle either the "
+                "streaming device or attached TV depending on device settings.",
+                "Text input and source selection are not mapped.",
             ),
         )
 

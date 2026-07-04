@@ -11,6 +11,7 @@ from src.domain.constants import (
     GESTURE_MIC,
     TV_COMMAND_DPAD_DOWN,
     TV_COMMAND_HOME,
+    TV_COMMAND_POWER_TOGGLE,
     TV_COMMAND_VOLUME_DOWN,
     TV_COMMAND_VOLUME_UP,
 )
@@ -833,6 +834,44 @@ class DirectRemoteServiceTests(unittest.TestCase):
         self.assertFalse(result.accepted)
         self.assertEqual(result.reason, "unsupported_command")
         self.assertEqual(dispatcher.enqueued, [])
+
+    def test_dispatch_enqueues_supported_power_command(self) -> None:
+        remote = BlockingRemote(supported_commands=frozenset({TV_COMMAND_POWER_TOGGLE}))
+        dispatcher = FakeCommandDispatcher()
+        service = DirectRemoteService(remote, dispatcher)
+
+        result = service.dispatch(TV_COMMAND_POWER_TOGGLE)
+
+        self.assertTrue(result.accepted)
+        self.assertEqual(
+            dispatcher.enqueued,
+            [(f"remote:{TV_COMMAND_POWER_TOGGLE}", TV_COMMAND_POWER_TOGGLE)],
+        )
+
+    def test_capabilities_group_supported_direct_remote_commands(self) -> None:
+        remote = BlockingRemote(
+            supported_commands=frozenset(
+                {
+                    TV_COMMAND_HOME,
+                    TV_COMMAND_POWER_TOGGLE,
+                    TV_COMMAND_VOLUME_UP,
+                }
+            )
+        )
+        dispatcher = FakeCommandDispatcher()
+        service = DirectRemoteService(remote, dispatcher)
+
+        capabilities = service.capabilities()
+
+        self.assertEqual(
+            capabilities.supported_commands,
+            (TV_COMMAND_POWER_TOGGLE, TV_COMMAND_HOME, TV_COMMAND_VOLUME_UP),
+        )
+        self.assertEqual(
+            capabilities.command_groups["power"],
+            (TV_COMMAND_POWER_TOGGLE,),
+        )
+        self.assertEqual(capabilities.command_groups["navigation"], (TV_COMMAND_HOME,))
 
 
 class BlockingRemote:

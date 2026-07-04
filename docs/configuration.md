@@ -16,6 +16,7 @@ Current runtime defaults:
 - model file: `models/hand_landmarker.task`
 - Android TV cert file: `certs/android/cert.pem`
 - Android TV key file: `certs/android/key.pem`
+- Apple TV pyatv storage file: `certs/appletv/pyatv.json`
 
 ## Pairing Credentials
 
@@ -28,7 +29,8 @@ On first Android TV pairing, `androidtvremote2` generates:
 - `certs/android/key.pem`
 
 Samsung tokens are stored in `certs/samsung/token.txt` by default. webOS client
-keys are stored in `certs/webos/client_key.txt` by default.
+keys are stored in `certs/webos/client_key.txt` by default. Apple TV credentials
+are read from pyatv storage at `certs/appletv/pyatv.json` by default.
 
 Do not commit those files.
 
@@ -42,6 +44,16 @@ Set `GESTURE_TV_ADAPTER` to select the TV integration:
 | `samsung` | `samsungtvws` | Supports TV commands. Accept the pairing prompt on the TV when required. |
 | `webos` | `aiowebostv` | Supports TV commands. Accept the pairing prompt on the TV when required. |
 | `roku` | `rokuecp` | Supports ECP TV commands. |
+| `appletv` | `pyatv` | Supports Apple TV remote commands using paired pyatv credentials. |
+
+Apple TV pairing is handled with pyatv tooling before starting this app:
+
+```bash
+uv run atvremote --storage-filename certs/appletv/pyatv.json wizard
+```
+
+Use the same storage file in `GESTURE_TV_APPLETV_STORAGE_FILE` if you choose a
+non-default location.
 
 Holding the active hand in a two-finger pose for about one second starts the
 configured TV/global voice target. The default `voice_input_target=auto` uses
@@ -190,6 +202,7 @@ will not override that environment value.
 | `GESTURE_TV_SAMSUNG_PORT` | `8002` |
 | `GESTURE_TV_WEBOS_CLIENT_KEY_FILE` | `certs/webos/client_key.txt` |
 | `GESTURE_TV_ROKU_PORT` | `8060` |
+| `GESTURE_TV_APPLETV_STORAGE_FILE` | `certs/appletv/pyatv.json` |
 | `GESTURE_TV_VOICE_INPUT_TARGET` | `auto` |
 | `GESTURE_TV_VOICE_CAPTURE_SECONDS` | `5.0` |
 | `GESTURE_TV_MODEL_FILE` | `models/hand_landmarker.task` |

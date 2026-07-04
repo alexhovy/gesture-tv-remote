@@ -24,6 +24,7 @@ class EnvVar:
     SAMSUNG_PORT = "GESTURE_TV_SAMSUNG_PORT"
     WEBOS_CLIENT_KEY_FILE = "GESTURE_TV_WEBOS_CLIENT_KEY_FILE"
     ROKU_PORT = "GESTURE_TV_ROKU_PORT"
+    APPLETV_STORAGE_FILE = "GESTURE_TV_APPLETV_STORAGE_FILE"
     VOICE_INPUT_TARGET = "GESTURE_TV_VOICE_INPUT_TARGET"
     MODEL_FILE = "GESTURE_TV_MODEL_FILE"
     MODEL_URL = "GESTURE_TV_MODEL_URL"
@@ -77,6 +78,7 @@ class TvConfig:
     samsung_port: int = 8002
     webos_client_key_file: Path = Path("certs/webos/client_key.txt")
     roku_port: int = 8060
+    appletv_storage_file: Path = Path("certs/appletv/pyatv.json")
     voice_input_target: str = VoiceInputTarget.AUTO.value
     voice_capture_seconds: float = 5.0
 
@@ -172,7 +174,7 @@ class ConfigField:
 
 DEFAULT_CONFIG = AppConfig()
 
-_SUPPORTED_TV_ADAPTERS = {"androidtv", "samsung", "webos", "roku"}
+_SUPPORTED_TV_ADAPTERS = {"androidtv", "samsung", "webos", "roku", "appletv"}
 RELOADABLE_CONFIG_FIELDS = (
     "debounce_seconds",
     "fist_hold_home_seconds",
@@ -479,6 +481,13 @@ CONFIG_FIELDS: tuple[ConfigField, ...] = (
         _path,
     ),
     ConfigField("roku_port", EnvVar.ROKU_PORT, "tv", "roku_port", _int),
+    ConfigField(
+        "appletv_storage_file",
+        EnvVar.APPLETV_STORAGE_FILE,
+        "tv",
+        "appletv_storage_file",
+        _path,
+    ),
     ConfigField(
         "voice_input_target",
         EnvVar.VOICE_INPUT_TARGET,

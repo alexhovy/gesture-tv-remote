@@ -5,25 +5,52 @@
 {% endblock %}
 
 {% block content %}
-  <section class="page-header compact">
-    <div>
-      <h1>Remote</h1>
-      <p class="intro">Send direct TV commands without gesture recognition.</p>
+  <section class="remote-shell" aria-label="TV remote">
+    <div class="remote-top-row">
+      <button class="remote-icon-key danger" type="button" data-command-options="POWER_TOGGLE POWER_OFF POWER_ON" title="Power">Power</button>
+      <div class="remote-mode-toggle" role="tablist" aria-label="Remote mode">
+        <button class="mode-button active" type="button" data-mode="buttons" role="tab" aria-selected="true">Buttons</button>
+        <button class="mode-button" type="button" data-mode="touchpad" role="tab" aria-selected="false">Touchpad</button>
+      </div>
+      <button class="remote-icon-key" type="button" data-command="MUTE" title="Mute">Mute</button>
     </div>
-  </section>
-  <section class="remote-pad" aria-label="TV remote">
-    <button class="button remote-key" type="button" data-command="HOME">Home</button>
-    <button class="button remote-key" type="button" data-command="DPAD_UP">Up</button>
-    <button class="button remote-key" type="button" data-command="BACK">Back</button>
-    <button class="button remote-key" type="button" data-command="DPAD_LEFT">Left</button>
-    <button class="button remote-key select" type="button" data-command="DPAD_CENTER">Select</button>
-    <button class="button remote-key" type="button" data-command="DPAD_RIGHT">Right</button>
-    <span></span>
-    <button class="button remote-key" type="button" data-command="DPAD_DOWN">Down</button>
-    <span></span>
-    <button class="button remote-key" type="button" data-command="VOLUME_DOWN">Vol -</button>
-    <span></span>
-    <button class="button remote-key" type="button" data-command="VOLUME_UP">Vol +</button>
+
+    <section class="remote-mode-panel active" data-panel="buttons" aria-label="Button remote">
+      <div class="remote-dpad" aria-label="Directional pad">
+        <span></span>
+        <button class="remote-dpad-key up" type="button" data-command="DPAD_UP" title="Up">Up</button>
+        <span></span>
+        <button class="remote-dpad-key left" type="button" data-command="DPAD_LEFT" title="Left">Left</button>
+        <button class="remote-dpad-key select" type="button" data-command="DPAD_CENTER" title="Select">OK</button>
+        <button class="remote-dpad-key right" type="button" data-command="DPAD_RIGHT" title="Right">Right</button>
+        <span></span>
+        <button class="remote-dpad-key down" type="button" data-command="DPAD_DOWN" title="Down">Down</button>
+        <span></span>
+      </div>
+    </section>
+
+    <section class="remote-mode-panel" data-panel="touchpad" aria-label="Touchpad remote">
+      <div class="remote-touchpad" id="touchpad" role="button" tabindex="0" aria-label="Swipe to navigate and tap to select">
+        <span class="touchpad-label">Swipe or tap</span>
+      </div>
+    </section>
+
+    <div class="remote-action-row">
+      <button class="remote-pill-key" type="button" data-command="BACK">Back</button>
+      <button class="remote-pill-key" type="button" data-command="HOME">Home</button>
+    </div>
+
+    <div class="remote-volume-row" aria-label="Volume">
+      <button class="remote-side-key" type="button" data-command="VOLUME_DOWN">Vol -</button>
+      <div class="remote-volume-rail" aria-hidden="true"></div>
+      <button class="remote-side-key" type="button" data-command="VOLUME_UP">Vol +</button>
+    </div>
+
+    <div class="remote-media-row" aria-label="Media controls">
+      <button class="remote-icon-key" type="button" data-command="REWIND">Rev</button>
+      <button class="remote-icon-key" type="button" data-command="PLAY_PAUSE">Play</button>
+      <button class="remote-icon-key" type="button" data-command="FAST_FORWARD">Fwd</button>
+    </div>
   </section>
 {% endblock %}
 

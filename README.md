@@ -10,6 +10,7 @@ Supported TV adapters:
 - Samsung TV through `samsungtvws`
 - LG webOS TV through `aiowebostv`
 - Roku through `rokuecp`
+- Apple TV through `pyatv`
 
 ## Quick Start
 

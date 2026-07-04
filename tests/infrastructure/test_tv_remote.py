@@ -15,7 +15,14 @@ from src.domain.constants import (
     TV_COMMAND_DPAD_LEFT,
     TV_COMMAND_DPAD_RIGHT,
     TV_COMMAND_DPAD_UP,
+    TV_COMMAND_FAST_FORWARD,
     TV_COMMAND_HOME,
+    TV_COMMAND_MUTE,
+    TV_COMMAND_PLAY_PAUSE,
+    TV_COMMAND_POWER_OFF,
+    TV_COMMAND_POWER_ON,
+    TV_COMMAND_POWER_TOGGLE,
+    TV_COMMAND_REWIND,
     TV_COMMAND_VOLUME_DOWN,
     TV_COMMAND_VOLUME_UP,
 )
@@ -24,12 +31,14 @@ from src.infrastructure.tv.androidtv_remote import (
     _AndroidAppVoiceSessionBroker,
     _AppVoiceSession,
 )
+from src.infrastructure.tv.appletv_remote import AppleTvRemoteClient
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.roku_remote import RokuRemoteClient
 from src.infrastructure.tv.samsung_remote import SamsungTvRemoteClient
 from src.infrastructure.tv.tv_command_translation import translate_tv_command
 from src.infrastructure.tv.tv_remote import (
     TV_ADAPTER_ANDROIDTV,
+    TV_ADAPTER_APPLETV,
     TV_ADAPTER_ROKU,
     TV_ADAPTER_SAMSUNG,
     TV_ADAPTER_WEBOS,
@@ -39,6 +48,56 @@ from src.infrastructure.tv.tv_remote_factory import create_tv_remote_client
 from src.infrastructure.tv.webos_remote import WebOsRemoteClient
 from tests.helpers.config_helpers import app_config
 
+BASE_REMOTE_COMMANDS = (
+    TV_COMMAND_HOME,
+    TV_COMMAND_BACK,
+    TV_COMMAND_DPAD_CENTER,
+    TV_COMMAND_DPAD_LEFT,
+    TV_COMMAND_DPAD_RIGHT,
+    TV_COMMAND_DPAD_UP,
+    TV_COMMAND_DPAD_DOWN,
+    TV_COMMAND_VOLUME_UP,
+    TV_COMMAND_VOLUME_DOWN,
+)
+
+
+def _expected_commands_by_adapter() -> dict[str, tuple[str, ...]]:
+    return {
+        TV_ADAPTER_ANDROIDTV: (
+            *BASE_REMOTE_COMMANDS,
+            TV_COMMAND_POWER_TOGGLE,
+            TV_COMMAND_MUTE,
+            TV_COMMAND_PLAY_PAUSE,
+            TV_COMMAND_REWIND,
+            TV_COMMAND_FAST_FORWARD,
+        ),
+        TV_ADAPTER_SAMSUNG: (
+            *BASE_REMOTE_COMMANDS,
+            TV_COMMAND_POWER_TOGGLE,
+            TV_COMMAND_MUTE,
+            TV_COMMAND_PLAY_PAUSE,
+            TV_COMMAND_REWIND,
+            TV_COMMAND_FAST_FORWARD,
+        ),
+        TV_ADAPTER_WEBOS: BASE_REMOTE_COMMANDS,
+        TV_ADAPTER_ROKU: (
+            *BASE_REMOTE_COMMANDS,
+            TV_COMMAND_POWER_OFF,
+            TV_COMMAND_MUTE,
+            TV_COMMAND_PLAY_PAUSE,
+            TV_COMMAND_REWIND,
+            TV_COMMAND_FAST_FORWARD,
+        ),
+        TV_ADAPTER_APPLETV: (
+            *BASE_REMOTE_COMMANDS,
+            TV_COMMAND_POWER_ON,
+            TV_COMMAND_POWER_OFF,
+            TV_COMMAND_PLAY_PAUSE,
+            TV_COMMAND_REWIND,
+            TV_COMMAND_FAST_FORWARD,
+        ),
+    }
+
 
 class TvRemoteTests(unittest.TestCase):
     def test_factory_creates_selected_adapter(self) -> None:
@@ -47,6 +106,7 @@ class TvRemoteTests(unittest.TestCase):
             (TV_ADAPTER_SAMSUNG, SamsungTvRemoteClient),
             (TV_ADAPTER_WEBOS, WebOsRemoteClient),
             (TV_ADAPTER_ROKU, RokuRemoteClient),
+            (TV_ADAPTER_APPLETV, AppleTvRemoteClient),
         ]
 
         for adapter, expected_type in cases:
@@ -60,6 +120,7 @@ class TvRemoteTests(unittest.TestCase):
             TV_ADAPTER_SAMSUNG,
             TV_ADAPTER_WEBOS,
             TV_ADAPTER_ROKU,
+            TV_ADAPTER_APPLETV,
         ]:
             with self.subTest(adapter=adapter):
                 capabilities = create_tv_remote_client(
@@ -104,7 +165,7 @@ class TvRemoteTests(unittest.TestCase):
             roku_capabilities.voice_input.native_voice_search,
             CapabilityStatus.IMPLEMENTED,
         )
-        self.assertEqual(roku_capabilities.power, CapabilityStatus.NOT_IMPLEMENTED)
+        self.assertEqual(roku_capabilities.power, CapabilityStatus.IMPLEMENTED)
         self.assertEqual(roku_capabilities.pairing, CapabilityStatus.UNSUPPORTED)
 
     def test_factory_rejects_unknown_adapter(self) -> None:
@@ -112,24 +173,9 @@ class TvRemoteTests(unittest.TestCase):
             create_tv_remote_client(app_config(tv_adapter="unknown"))
 
     def test_translation_covers_all_commands_for_each_adapter(self) -> None:
-        commands = [
-            TV_COMMAND_HOME,
-            TV_COMMAND_BACK,
-            TV_COMMAND_DPAD_CENTER,
-            TV_COMMAND_DPAD_LEFT,
-            TV_COMMAND_DPAD_RIGHT,
-            TV_COMMAND_DPAD_UP,
-            TV_COMMAND_DPAD_DOWN,
-            TV_COMMAND_VOLUME_UP,
-            TV_COMMAND_VOLUME_DOWN,
-        ]
+        commands_by_adapter = _expected_commands_by_adapter()
 
-        for adapter in [
-            TV_ADAPTER_ANDROIDTV,
-            TV_ADAPTER_SAMSUNG,
-            TV_ADAPTER_WEBOS,
-            TV_ADAPTER_ROKU,
-        ]:
+        for adapter, commands in commands_by_adapter.items():
             with self.subTest(adapter=adapter):
                 translated = [
                     translate_tv_command(adapter, command) for command in commands
@@ -137,32 +183,13 @@ class TvRemoteTests(unittest.TestCase):
                 self.assertTrue(all(translated))
 
     def test_capabilities_advertise_all_translated_commands(self) -> None:
-        commands = frozenset(
-            {
-                TV_COMMAND_HOME,
-                TV_COMMAND_BACK,
-                TV_COMMAND_DPAD_CENTER,
-                TV_COMMAND_DPAD_LEFT,
-                TV_COMMAND_DPAD_RIGHT,
-                TV_COMMAND_DPAD_UP,
-                TV_COMMAND_DPAD_DOWN,
-                TV_COMMAND_VOLUME_UP,
-                TV_COMMAND_VOLUME_DOWN,
-            }
-        )
-
-        for adapter in [
-            TV_ADAPTER_ANDROIDTV,
-            TV_ADAPTER_SAMSUNG,
-            TV_ADAPTER_WEBOS,
-            TV_ADAPTER_ROKU,
-        ]:
+        for adapter, commands in _expected_commands_by_adapter().items():
             with self.subTest(adapter=adapter):
                 capabilities = create_tv_remote_client(
                     app_config(tv_adapter=adapter)
                 ).capabilities()
 
-                self.assertEqual(capabilities.supported_commands, commands)
+                self.assertEqual(capabilities.supported_commands, frozenset(commands))
 
     def test_translation_rejects_unknown_command(self) -> None:
         with self.assertRaises(TvRemoteCommandError):
@@ -456,6 +483,37 @@ class RokuRemoteTests(unittest.IsolatedAsyncioTestCase):
         )
 
 
+class AppleTvRemoteTests(unittest.IsolatedAsyncioTestCase):
+    async def test_remote_command_uses_remote_control_interface(self) -> None:
+        client = AppleTvRemoteClient(app_config(tv_host="appletv.local"))
+        remote = FakeAppleTvRemote()
+        client._remote = remote
+
+        await client.send_command(TV_COMMAND_DPAD_UP)
+
+        self.assertEqual(remote.remote_control.operations, ["up"])
+        self.assertEqual(remote.power.operations, [])
+
+    async def test_power_command_uses_power_interface(self) -> None:
+        client = AppleTvRemoteClient(app_config(tv_host="appletv.local"))
+        remote = FakeAppleTvRemote()
+        client._remote = remote
+
+        await client.send_command(TV_COMMAND_POWER_OFF)
+
+        self.assertEqual(remote.power.operations, ["turn_off"])
+        self.assertEqual(remote.remote_control.operations, [])
+
+    async def test_disconnect_awaits_close_tasks(self) -> None:
+        client = AppleTvRemoteClient(app_config(tv_host="appletv.local"))
+        remote = FakeAppleTvRemote()
+        client._remote = remote
+
+        await client.disconnect()
+
+        self.assertTrue(remote.closed)
+
+
 def _install_fake_samsung(fail_first_send: bool = False):
     class FakeSamsungTVWS:
         instances = []
@@ -499,6 +557,30 @@ class FakeAndroidRemote:
     async def start_voice(self):
         self.operations.append("start_voice")
         return self.voice_stream
+
+
+class FakeAppleTvRemote:
+    def __init__(self) -> None:
+        self.remote_control = FakeAppleTvRemoteInterface()
+        self.power = FakeAppleTvRemoteInterface()
+        self.closed = False
+
+    def close(self):
+        async def mark_closed() -> None:
+            self.closed = True
+
+        return [asyncio.create_task(mark_closed())]
+
+
+class FakeAppleTvRemoteInterface:
+    def __init__(self) -> None:
+        self.operations = []
+
+    def __getattr__(self, name: str):
+        async def call() -> None:
+            self.operations.append(name)
+
+        return call
 
 
 class FakeAndroidProtocol:

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from src.shared.config import CONFIG_FIELDS, RELOADABLE_CONFIG_FIELDS
 
 READONLY_FIELDS = {"config_db_file"}
-TV_ADAPTERS = ("androidtv", "samsung", "webos", "roku")
+TV_ADAPTERS = ("androidtv", "samsung", "webos", "roku", "appletv")
 
 
 @dataclass(frozen=True)
@@ -106,6 +106,7 @@ SECTIONS: tuple[ConfigSection, ...] = (
             "android_key_file",
             "samsung_token_file",
             "webos_client_key_file",
+            "appletv_storage_file",
         ),
     ),
 )
@@ -117,6 +118,9 @@ FIELD_HELP: dict[str, str] = {
         "Voice target for the MIC gesture: auto, remote_search, or native_search."
     ),
     "voice_capture_seconds": "Microphone capture duration in seconds.",
+    "appletv_storage_file": (
+        "pyatv credential storage file for paired Apple TV devices."
+    ),
     "webcam_index": "Usually 0 for the default webcam.",
     "camera_zoom": "Digital tracking crop. Start near 1.5 if hands appear small.",
     "auto_zoom_enabled": (

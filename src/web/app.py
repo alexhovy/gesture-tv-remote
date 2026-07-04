@@ -38,6 +38,8 @@ class BrowserDisplayMetricsSink(Protocol):
 
 
 class DirectRemote(Protocol):
+    def capabilities(self) -> Any: ...
+
     def supported_commands(self) -> tuple[str, ...]: ...
 
     def dispatch(self, command: str) -> Any: ...
@@ -121,8 +123,15 @@ def create_web_app(
 
     async def remote_capabilities(request: web.Request) -> web.Response:
         del request
+        capabilities = direct_remote.capabilities()
         return web.json_response(
-            {"supportedCommands": list(direct_remote.supported_commands())}
+            {
+                "supportedCommands": list(capabilities.supported_commands),
+                "commandGroups": {
+                    group: list(commands)
+                    for group, commands in capabilities.command_groups.items()
+                },
+            }
         )
 
     async def remote_command(request: web.Request) -> web.Response:

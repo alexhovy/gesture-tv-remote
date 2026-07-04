@@ -27,10 +27,10 @@ class RokuRemoteClient:
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
             supported_commands=frozenset(ROKU_COMMANDS),
-            power=CapabilityStatus.NOT_IMPLEMENTED,
+            power=CapabilityStatus.IMPLEMENTED,
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,
-            media_controls=CapabilityStatus.NOT_IMPLEMENTED,
+            media_controls=CapabilityStatus.IMPLEMENTED,
             text_input=CapabilityStatus.NOT_IMPLEMENTED,
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
             wake_on_lan=CapabilityStatus.UNSUPPORTED,
@@ -48,8 +48,8 @@ class RokuRemoteClient:
             ),
             connection_type="Roku ECP HTTP",
             known_limitations=(
-                "Only ECP keypress commands and native voice UI launch are "
-                "implemented.",
+                "PowerOff is available on Roku TV devices; standalone Roku "
+                "streaming players may not support TV power control.",
                 "Remote microphone streaming, pairing, text input, source "
                 "selection, and Wake-on-LAN are not implemented.",
             ),

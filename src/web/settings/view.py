@@ -13,7 +13,10 @@ READONLY_FIELDS = {
     "android_key_file",
     "appletv_storage_file",
     "config_db_file",
+    "config_web_tls_cert_file",
+    "config_web_tls_key_file",
     "model_file",
+    "model_url",
     "samsung_token_file",
     "webos_client_key_file",
 }

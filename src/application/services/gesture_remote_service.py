@@ -18,7 +18,7 @@ from src.application.services.coordinators.display_debug import DisplayDebugCoor
 from src.application.services.coordinators.runtime_loop import RuntimeLoopCoordinator
 from src.application.services.pipeline_metrics import PipelineMetrics
 from src.domain.session import GestureSession
-from src.shared.config import AppConfig
+from src.shared.config import AppConfig, replace_config_value
 
 
 class GestureRemoteService:
@@ -85,11 +85,12 @@ class GestureRemoteService:
         )
 
     async def run(self) -> None:
-        if not await self._connect_remote():
-            self._logger.info("TV connection failed. Exiting.")
-            await self._cleanup.cleanup(None)
-            return
-        await self._store_discovered_mac_address()
+        if await self._connect_remote():
+            await self._store_discovered_wake_settings()
+        else:
+            self._logger.info(
+                "TV connection failed. Continuing without an initial TV connection."
+            )
 
         if not await asyncio.to_thread(self._frame_source.is_open):
             self._logger.error("Could not open webcam.")
@@ -141,38 +142,57 @@ class GestureRemoteService:
                 )
             )
 
-    async def _store_discovered_mac_address(self) -> None:
+    async def _store_discovered_wake_settings(self) -> None:
         if self._config_store is None or self._mac_address_resolver is None:
-            return
-        if self._config.tv.mac_address.strip():
             return
 
         mac_address = await self._remote.discover_mac_address()
         if mac_address is None:
             mac_address = self._mac_address_resolver.resolve(self._config.tv.host)
-        if mac_address is None:
+        broadcast_address = self._mac_address_resolver.resolve_broadcast_address(
+            self._config.tv.host
+        )
+        if mac_address is None and broadcast_address is None:
             self._logger.info(
-                "Could not discover TV MAC address for Wake-on-LAN. "
-                "Set tv_mac_address manually if wake is needed."
+                "Could not discover TV wake settings. Wake-on-LAN may need manual "
+                "network configuration."
             )
             return
 
-        from src.shared.config import replace_config_value
-
         saved_config = self._config_store.get_config() or self._config
-        if saved_config.tv.mac_address.strip():
+        updated_config = saved_config
+        message_parts: list[str] = []
+        if mac_address is not None:
+            if saved_config.tv.mac_address.lower() != mac_address.lower():
+                updated_config = replace_config_value(
+                    updated_config,
+                    "tv_mac_address",
+                    mac_address,
+                )
+                message_parts.append("TV MAC address")
+            if not saved_config.tv.wake_enabled:
+                updated_config = replace_config_value(
+                    updated_config,
+                    "tv_wake_enabled",
+                    True,
+                )
+                message_parts.append("Wake-on-LAN enabled")
+        if (
+            broadcast_address is not None
+            and saved_config.tv.wake_broadcast_address != broadcast_address
+        ):
+            updated_config = replace_config_value(
+                updated_config,
+                "tv_wake_broadcast_address",
+                broadcast_address,
+            )
+            message_parts.append("wake broadcast address")
+
+        if updated_config == saved_config:
             return
-        updated_config = replace_config_value(
-            saved_config,
-            "tv_mac_address",
-            mac_address,
-        )
-        updated_config = replace_config_value(
-            updated_config,
-            "tv_wake_enabled",
-            True,
-        )
+
         self._config_store.save_config(updated_config)
-        self._config = replace_config_value(self._config, "tv_mac_address", mac_address)
-        self._config = replace_config_value(self._config, "tv_wake_enabled", True)
-        self._logger.info("Stored discovered TV MAC address and enabled Wake-on-LAN.")
+        self._config = updated_config
+        self._logger.info(
+            "Updated discovered TV wake settings: " + ", ".join(message_parts) + "."
+        )

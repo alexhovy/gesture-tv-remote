@@ -81,6 +81,45 @@ class ApplicationPortsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(remote.wake_calls, 1)
         self.assertEqual(remote.connect_calls, 1)
 
+    async def test_gesture_remote_service_continues_when_tv_connection_fails(
+        self,
+    ) -> None:
+        config = app_config()
+        remote = FakeTVRemote(connected=False)
+        frame_source = FakeFrameSource(frames=[object()])
+        dispatcher = FakeCommandDispatcher()
+        display = FakeDisplay()
+        hand_tracker = FakeHandTracker()
+        logger = FakeLogger()
+
+        service = GestureRemoteService(
+            config,
+            remote=remote,
+            frame_source=frame_source,
+            hand_tracker=hand_tracker,
+            camera=FakeCamera(),
+            frame_processor=FakeFrameProcessor(),
+            display=display,
+            voice_capture=FakeVoiceCapture(),
+            command_dispatcher=dispatcher,
+            logger=logger,
+            metrics=PipelineMetrics(config.tv.adapter),
+        )
+
+        await service.run()
+
+        self.assertEqual(remote.connect_calls, 1)
+        self.assertTrue(frame_source.started)
+        self.assertTrue(dispatcher.started)
+        self.assertEqual(display.rendered, 1)
+        self.assertIn(
+            (
+                "info",
+                "TV connection failed. Continuing without an initial TV connection.",
+            ),
+            logger.messages,
+        )
+
     async def test_gesture_remote_service_stores_discovered_mac_and_enables_wake(
         self,
     ) -> None:
@@ -100,7 +139,10 @@ class ApplicationPortsTests(unittest.IsolatedAsyncioTestCase):
             logger=FakeLogger(),
             metrics=PipelineMetrics(config.tv.adapter),
             config_store=store,
-            mac_address_resolver=FakeMacAddressResolver("aa:bb:cc:dd:ee:ff"),
+            mac_address_resolver=FakeMacAddressResolver(
+                "aa:bb:cc:dd:ee:ff",
+                "10.0.0.255",
+            ),
         )
 
         await service.run()
@@ -108,6 +150,7 @@ class ApplicationPortsTests(unittest.IsolatedAsyncioTestCase):
         self.assertIsNotNone(store.saved_config)
         assert store.saved_config is not None
         self.assertEqual(store.saved_config.tv.mac_address, "aa:bb:cc:dd:ee:ff")
+        self.assertEqual(store.saved_config.tv.wake_broadcast_address, "10.0.0.255")
         self.assertTrue(store.saved_config.tv.wake_enabled)
 
     async def test_gesture_remote_service_prefers_adapter_discovered_mac(
@@ -140,6 +183,39 @@ class ApplicationPortsTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(store.saved_config.tv.mac_address, "00:11:22:33:44:55")
         self.assertEqual(resolver.hosts, [])
 
+    async def test_gesture_remote_service_refreshes_stale_wake_settings(
+        self,
+    ) -> None:
+        config = app_config(
+            tv_wake_enabled=True,
+            tv_mac_address="00:11:22:33:44:55",
+            tv_wake_broadcast_address="10.0.0.255",
+        )
+        store = FakeConfigStore(config)
+
+        service = GestureRemoteService(
+            config,
+            remote=FakeTVRemote(discovered_mac_address="aa:bb:cc:dd:ee:ff"),
+            frame_source=FakeFrameSource(frames=[object()]),
+            hand_tracker=FakeHandTracker(),
+            camera=FakeCamera(),
+            frame_processor=FakeFrameProcessor(),
+            display=FakeDisplay(),
+            voice_capture=FakeVoiceCapture(),
+            command_dispatcher=FakeCommandDispatcher(),
+            logger=FakeLogger(),
+            metrics=PipelineMetrics(config.tv.adapter),
+            config_store=store,
+            mac_address_resolver=FakeMacAddressResolver(None, "10.0.1.255"),
+        )
+
+        await service.run()
+
+        self.assertIsNotNone(store.saved_config)
+        assert store.saved_config is not None
+        self.assertEqual(store.saved_config.tv.mac_address, "aa:bb:cc:dd:ee:ff")
+        self.assertEqual(store.saved_config.tv.wake_broadcast_address, "10.0.1.255")
+
 
 class FakeConfigStore:
     def __init__(self, config):
@@ -158,13 +234,23 @@ class FakeConfigStore:
 
 
 class FakeMacAddressResolver:
-    def __init__(self, mac_address: str | None) -> None:
+    def __init__(
+        self,
+        mac_address: str | None,
+        broadcast_address: str | None = None,
+    ) -> None:
         self.mac_address = mac_address
+        self.broadcast_address = broadcast_address
         self.hosts: list[str] = []
+        self.broadcast_hosts: list[str] = []
 
     def resolve(self, host: str) -> str | None:
         self.hosts.append(host)
         return self.mac_address
+
+    def resolve_broadcast_address(self, host: str) -> str | None:
+        self.broadcast_hosts.append(host)
+        return self.broadcast_address
 
 
 if __name__ == "__main__":

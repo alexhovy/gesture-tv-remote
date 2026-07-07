@@ -60,8 +60,8 @@ non-default location.
 
 The app can send Wake-on-LAN packets before connecting to adapters that support
 network wake. Wake starts disabled by default because it requires the TV network
-MAC address. After a successful normal connection, the app attempts to read the
-local neighbor/ARP table for the configured `tv_host`. When it finds a valid MAC
+MAC address. After each successful normal connection, the app attempts to
+discover wake settings for the configured `tv_host`. When it finds a valid MAC
 address, it saves `tv_mac_address` and enables `tv_wake_enabled` for future
 launches.
 
@@ -77,16 +77,22 @@ use Wake-on-LAN when a MAC is known; the app tries webOS connection-manager and
 system payloads after pairing, but LG does not expose a reliable public
 MAC-address API across all webOS TV models.
 
+Learned wake settings are refreshed after successful connections. If the TV
+starts reporting a different MAC address, the saved `tv_mac_address` is
+replaced. The app also updates `tv_wake_broadcast_address` when it can derive a
+directed IPv4 broadcast address from the local route to the TV. If the TV
+appears to be on another routed network, the saved broadcast address is left
+unchanged.
+
 Local neighbor/ARP discovery only works when the TV is on the same layer-2
 network as the machine running Python. If the TV is reached through a router,
 mesh segment, VPN, container bridge, or WSL NAT, the local neighbor table usually
 contains the router or virtual gateway MAC instead of the TV MAC.
 
-If automatic discovery cannot find the MAC address, set `tv_mac_address`
-manually in settings or with `GESTURE_TV_MAC_ADDRESS`. Once the MAC is known,
-`tv_wake_enabled` can remain enabled so startup sends wake packets, retries
-connection for `tv_wake_connect_timeout_seconds`, and then continues only after
-the TV accepts the adapter connection.
+If automatic discovery cannot find the MAC address, set `tv_mac_address` with
+`GESTURE_TV_MAC_ADDRESS`. Once the MAC is known, `tv_wake_enabled` can remain
+enabled so startup sends wake packets and retries connection for
+`tv_wake_connect_timeout_seconds`.
 
 Holding the active hand in a two-finger pose for about one second starts the
 configured TV/global voice target. The default `voice_input_target=auto` uses
@@ -157,6 +163,10 @@ controls in an Advanced disclosure section. Fields are marked when they apply
 live or require restarting the active runtime. Environment variables still
 override saved values shown in the UI.
 
+Runtime-owned resource fields are read-only in settings. This includes the
+model file and URL, web TLS certificate and key paths, config database path, and
+TV pairing credential paths.
+
 When a saved change affects restart-required fields, the unified app runtime
 shows a restart prompt. Pressing Restart runtime requests a graceful stop of the
 active app process. The process exits with code `75`; use a service manager,
@@ -187,6 +197,11 @@ gesture capture at `/gesture`, and the direct remote at `/remote`, so the
 configured `.local` name can host the app from one backend server. When the web
 port is left at its default `80`, HTTPS web runtimes serve on port `443`; if you
 configure another web port, use that port in the URL.
+
+The web app remains available when the configured TV is offline or refuses the
+initial adapter connection. In that degraded state, settings and browser capture
+stay running. Remote commands are still accepted into the dispatch queue, and
+the TV adapter attempts to wake or reconnect when a command needs to be sent.
 
 Browsers require a secure context for camera and microphone APIs. `localhost`
 counts as secure for local testing. For `.local` access, the web runtimes create

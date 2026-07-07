@@ -74,6 +74,39 @@ class ConfigWebTests(unittest.TestCase):
 
         self.assertEqual(config.model.file, base_config.model.file)
 
+    def test_model_url_and_web_tls_files_are_not_editable_from_settings_form(
+        self,
+    ) -> None:
+        base_config = AppConfig()
+        html = render_config_page(base_config, active_tab="system")
+
+        self.assertIn('name="model_url"', html)
+        self.assertIn('name="config_web_tls_cert_file"', html)
+        self.assertIn('name="config_web_tls_key_file"', html)
+        self.assertIn(
+            (
+                'value="https://storage.googleapis.com/mediapipe-models/'
+                "hand_landmarker/hand_landmarker/float16/latest/"
+                'hand_landmarker.task" readonly'
+            ),
+            html,
+        )
+        self.assertIn('value="certs/web/server.crt" readonly', html)
+        self.assertIn('value="certs/web/server.key" readonly', html)
+
+        config = config_from_form(
+            {
+                "model_url": ["https://example.test/custom.task"],
+                "config_web_tls_cert_file": ["custom/server.crt"],
+                "config_web_tls_key_file": ["custom/server.key"],
+            },
+            base_config,
+        )
+
+        self.assertEqual(config.model.url, base_config.model.url)
+        self.assertEqual(config.web.tls_cert_file, base_config.web.tls_cert_file)
+        self.assertEqual(config.web.tls_key_file, base_config.web.tls_key_file)
+
     def test_tv_credential_file_settings_are_not_editable_from_settings_form(
         self,
     ) -> None:

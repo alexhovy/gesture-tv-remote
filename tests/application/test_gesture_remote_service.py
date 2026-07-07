@@ -68,6 +68,7 @@ from src.application.services.coordinators.display_debug import (  # noqa: E402
     DisplayDebugCoordinator,
 )
 from src.application.services.direct_remote_service import (  # noqa: E402
+    MAX_DIRECT_REMOTE_PENDING_COMMANDS,
     DirectRemoteService,
 )
 from src.application.services.gesture_remote_service import (  # noqa: E402
@@ -739,6 +740,44 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         )
         await dispatcher.close()
 
+    async def test_repeated_pending_commands_can_skip_coalescing(self) -> None:
+        remote = BlockingRemote()
+        dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
+        dispatcher.start()
+
+        dispatcher.enqueue("remote:DPAD_DOWN", TV_COMMAND_DPAD_DOWN)
+        await asyncio.wait_for(remote.first_started.wait(), timeout=1.0)
+
+        dispatcher.enqueue(
+            "remote:DPAD_DOWN",
+            TV_COMMAND_DPAD_DOWN,
+            coalesce_repeats=False,
+        )
+        dispatcher.enqueue(
+            "remote:DPAD_DOWN",
+            TV_COMMAND_DPAD_DOWN,
+            coalesce_repeats=False,
+        )
+        dispatcher.enqueue(
+            "remote:DPAD_DOWN",
+            TV_COMMAND_DPAD_DOWN,
+            coalesce_repeats=False,
+        )
+
+        remote.release_first.set()
+        await self._wait_for_commands(remote, 4)
+
+        self.assertEqual(
+            remote.commands,
+            [
+                TV_COMMAND_DPAD_DOWN,
+                TV_COMMAND_DPAD_DOWN,
+                TV_COMMAND_DPAD_DOWN,
+                TV_COMMAND_DPAD_DOWN,
+            ],
+        )
+        await dispatcher.close()
+
     async def test_queue_overflow_drops_oldest_pending_command(self) -> None:
         remote = BlockingRemote()
         dispatcher = RemoteCommandDispatcher(remote, FakeLogger())
@@ -798,6 +837,13 @@ class RemoteCommandDispatcherTests(unittest.IsolatedAsyncioTestCase):
         )
         await dispatcher.close()
 
+    async def _wait_for_commands(self, remote: "BlockingRemote", count: int) -> None:
+        for _ in range(100):
+            if len(remote.commands) >= count:
+                return
+            await asyncio.sleep(0.01)
+        self.fail(f"Timed out waiting for {count} commands")
+
 
 class DirectRemoteServiceTests(unittest.TestCase):
     def test_dispatch_enqueues_supported_direct_remote_command(self) -> None:
@@ -811,6 +857,15 @@ class DirectRemoteServiceTests(unittest.TestCase):
         self.assertEqual(
             dispatcher.enqueued,
             [(f"remote:{TV_COMMAND_HOME}", TV_COMMAND_HOME)],
+        )
+        self.assertEqual(
+            dispatcher.enqueue_options,
+            [
+                {
+                    "coalesce_repeats": False,
+                    "max_pending": MAX_DIRECT_REMOTE_PENDING_COMMANDS,
+                }
+            ],
         )
 
     def test_dispatch_rejects_unknown_direct_remote_command(self) -> None:
@@ -1020,9 +1075,23 @@ class FakeCommandDispatcher:
 
     def __init__(self) -> None:
         self.enqueued = []
+        self.enqueue_options = []
 
-    def enqueue(self, source, command) -> None:
+    def enqueue(
+        self,
+        source,
+        command,
+        *,
+        coalesce_repeats=True,
+        max_pending=None,
+    ) -> None:
         self.enqueued.append((source, command))
+        self.enqueue_options.append(
+            {
+                "coalesce_repeats": coalesce_repeats,
+                "max_pending": max_pending,
+            }
+        )
 
 
 class FakeDebugDisplay:
@@ -1136,7 +1205,15 @@ class FakeCleanupCommandDispatcher:
     def start(self) -> None:
         pass
 
-    def enqueue(self, gesture: str, command: str) -> None:
+    def enqueue(
+        self,
+        gesture: str,
+        command: str,
+        *,
+        coalesce_repeats: bool = True,
+        max_pending: int | None = None,
+    ) -> None:
+        del coalesce_repeats, max_pending
         del gesture, command
 
     @property

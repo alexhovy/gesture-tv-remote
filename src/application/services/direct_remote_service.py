@@ -64,6 +64,7 @@ REMOTE_COMMAND_GROUPS = {
         TV_COMMAND_DPAD_CENTER,
     ),
 }
+MAX_DIRECT_REMOTE_PENDING_COMMANDS = 64
 
 
 @dataclass(frozen=True)
@@ -119,5 +120,10 @@ class DirectRemoteService:
                 reason="unsupported_command",
             )
 
-        self._command_dispatcher.enqueue(f"remote:{normalized}", normalized)
+        self._command_dispatcher.enqueue(
+            f"remote:{normalized}",
+            normalized,
+            coalesce_repeats=False,
+            max_pending=MAX_DIRECT_REMOTE_PENDING_COMMANDS,
+        )
         return DirectRemoteCommandResult(accepted=True, command=normalized)

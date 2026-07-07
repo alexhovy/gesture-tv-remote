@@ -51,6 +51,9 @@ selected adapter advertises them:
 - `PLAY_PAUSE`, `REWIND`, `FAST_FORWARD`: Android TV / Google TV, Samsung,
   Roku, and Apple TV.
 
+Direct remote button presses preserve repeated commands, such as rapid DPAD or
+volume taps, instead of using the gesture queue's repeat coalescing.
+
 ## Platform Gaps
 
 Power and media controls are available to the direct remote when the selected

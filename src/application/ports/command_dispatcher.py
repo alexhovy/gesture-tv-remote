@@ -4,7 +4,14 @@ from typing import Protocol
 class CommandDispatcherPort(Protocol):
     def start(self) -> None: ...
 
-    def enqueue(self, source: str, command: str) -> None: ...
+    def enqueue(
+        self,
+        source: str,
+        command: str,
+        *,
+        coalesce_repeats: bool = True,
+        max_pending: int | None = None,
+    ) -> None: ...
 
     @property
     def queue_depth(self) -> int: ...

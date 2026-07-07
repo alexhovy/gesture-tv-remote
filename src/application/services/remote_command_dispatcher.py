@@ -35,7 +35,14 @@ class RemoteCommandDispatcher:
         self._has_work = asyncio.Event()
         self._worker_task = asyncio.create_task(self._run())
 
-    def enqueue(self, source: str, command: str) -> None:
+    def enqueue(
+        self,
+        source: str,
+        command: str,
+        *,
+        coalesce_repeats: bool = True,
+        max_pending: int | None = MAX_PENDING_COMMANDS,
+    ) -> None:
         if self._closed:
             return
         if not self._supports_command(command):
@@ -57,12 +64,16 @@ class RemoteCommandDispatcher:
             enqueued_at=time.monotonic(),
         )
         # TV adapters can be slow or reconnecting; keep gesture detection independent
-        # by bounding pending remote work and coalescing repeated pending commands.
-        if self._commands and self._commands[-1].command == command:
+        # by allowing callers to bound pending work and coalesce noisy repeats.
+        if (
+            coalesce_repeats
+            and self._commands
+            and self._commands[-1].command == command
+        ):
             self._commands[-1] = request
             has_work.set()
             return
-        if len(self._commands) >= MAX_PENDING_COMMANDS:
+        if max_pending is not None and len(self._commands) >= max_pending:
             self._commands.popleft()
             self._dropped_commands += 1
             self._commands.append(request)

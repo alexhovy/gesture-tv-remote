@@ -109,7 +109,15 @@ class FakeCommandDispatcher:
     def start(self) -> None:
         self.started = True
 
-    def enqueue(self, gesture: str, command: str) -> None:
+    def enqueue(
+        self,
+        gesture: str,
+        command: str,
+        *,
+        coalesce_repeats: bool = True,
+        max_pending: int | None = None,
+    ) -> None:
+        del coalesce_repeats, max_pending
         self.enqueued.append((gesture, command))
 
     async def close(self) -> None:

@@ -57,7 +57,9 @@ remote is available at `/remote`. The browser provides camera and microphone
 access over WebRTC while the Python backend still performs MediaPipe hand
 tracking, gesture decisions, voice handling, and TV command dispatch. The direct
 remote sends adapter-neutral TV commands through the same backend dispatcher
-without gesture recognition.
+without gesture recognition and includes browser keyboard input for TV text
+fields when the selected adapter supports it. Browser keyboard capture is also
+available while using `/gesture`.
 Web runtimes generate a local HTTPS certificate and use HTTPS by default.
 The generated certificate must be trusted by the web or capture device.
 

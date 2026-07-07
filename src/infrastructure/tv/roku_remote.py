@@ -3,9 +3,20 @@ from typing import Any
 from src.application.ports.tv_remote import (
     AppVoiceInputHandler,
     CapabilityStatus,
+    TextInputCapabilities,
+    TextInputHandler,
+    TextInputMode,
+    TextInputStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
     VoiceInputMode,
+)
+from src.domain.constants import (
+    TV_COMMAND_BACK,
+    TV_COMMAND_HOME,
+    TV_COMMAND_POWER_OFF,
+    TV_COMMAND_POWER_ON,
+    TV_COMMAND_POWER_TOGGLE,
 )
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
 from src.infrastructure.tv.tv_command_translation import (
@@ -16,6 +27,16 @@ from src.infrastructure.tv.tv_remote import TV_ADAPTER_ROKU
 from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
+
+_TEXT_DISMISS_COMMANDS = frozenset(
+    {
+        TV_COMMAND_BACK,
+        TV_COMMAND_HOME,
+        TV_COMMAND_POWER_OFF,
+        TV_COMMAND_POWER_ON,
+        TV_COMMAND_POWER_TOGGLE,
+    }
+)
 
 
 class RokuRemoteClient:
@@ -29,6 +50,10 @@ class RokuRemoteClient:
         self._logger = AppLogger()
         self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
         self._executor = ThreadBoundRemoteExecutor("roku-tv")
+        self._text_input_status = TextInputStatus(
+            active=False,
+            mode=TextInputMode.MANUAL,
+        )
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
@@ -37,7 +62,18 @@ class RokuRemoteClient:
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,
             media_controls=CapabilityStatus.IMPLEMENTED,
-            text_input=CapabilityStatus.NOT_IMPLEMENTED,
+            text_input=TextInputCapabilities(
+                focus_detection=CapabilityStatus.UNSUPPORTED,
+                send_text=CapabilityStatus.IMPLEMENTED,
+                replace_text=CapabilityStatus.UNSUPPORTED,
+                delete_text=CapabilityStatus.IMPLEMENTED,
+                submit_text=CapabilityStatus.IMPLEMENTED,
+                notes=(
+                    "Roku ECP accepts literal keyboard characters when the "
+                    "foreground screen has an active on-screen keyboard, but "
+                    "does not expose a general text-focus event.",
+                ),
+            ),
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
             wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.UNSUPPORTED,
@@ -45,7 +81,6 @@ class RokuRemoteClient:
                 remote_mic_stream=CapabilityStatus.UNSUPPORTED,
                 native_voice_search=CapabilityStatus.IMPLEMENTED,
                 app_voice_input=CapabilityStatus.UNSUPPORTED,
-                app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
                 notes=(
                     "Roku ECP exposes a Search key that opens the Roku voice "
                     "heads-up display.",
@@ -58,8 +93,8 @@ class RokuRemoteClient:
                 "streaming players may not support TV power control.",
                 "Wake-on-LAN uses Roku device-info MAC data when available; "
                 "model and Fast TV Start support vary.",
-                "Remote microphone streaming, pairing, text input, and source "
-                "selection are not implemented.",
+                "Remote microphone streaming, pairing, and source selection are "
+                "not implemented.",
             ),
         )
 
@@ -68,6 +103,12 @@ class RokuRemoteClient:
         handler: AppVoiceInputHandler | None,
     ) -> None:
         del handler
+
+    def set_text_input_handler(self, handler: TextInputHandler | None) -> None:
+        del handler
+
+    def text_input_status(self) -> TextInputStatus:
+        return self._text_input_status
 
     async def connect(self) -> bool:
         try:
@@ -111,6 +152,7 @@ class RokuRemoteClient:
         adapter_command = translate_tv_command(TV_ADAPTER_ROKU, command)
         try:
             await self._executor.call(self._send_key_sync, adapter_command)
+            self._dismiss_text_input_for_command(command)
         except Exception as error:
             self._logger.debug(
                 f"Roku command {adapter_command} failed, reconnecting: {error}"
@@ -118,10 +160,31 @@ class RokuRemoteClient:
             try:
                 await self._executor.call(self._reconnect_sync)
                 await self._executor.call(self._send_key_sync, adapter_command)
+                self._dismiss_text_input_for_command(command)
             except Exception as retry_error:
                 self._logger.error(
                     f"Roku command {adapter_command} failed: {retry_error}"
                 )
+
+    async def send_text(self, text: str) -> None:
+        if self._remote is None:
+            self._logger.info("TV not connected. Skipping Roku text input.")
+            return
+        try:
+            await self._executor.call(self._send_text_sync, text)
+        except Exception as error:
+            self._logger.error(f"Roku text input failed: {error}")
+
+    async def replace_text(self, text: str) -> None:
+        del text
+        self._logger.info("Roku text replacement is not supported.")
+
+    async def delete_text(self, count: int = 1) -> None:
+        for _ in range(count):
+            await self._executor.call(self._send_key_sync, "Backspace")
+
+    async def submit_text(self) -> None:
+        await self._executor.call(self._send_key_sync, "Enter")
 
     async def start_voice(self, mode: VoiceInputMode):
         if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
@@ -159,6 +222,23 @@ class RokuRemoteClient:
             keypress(adapter_command)
         else:
             self._remote.remote(adapter_command)
+
+    def _send_text_sync(self, text: str) -> None:
+        if self._remote is None:
+            raise RuntimeError("Roku is not connected")
+
+        literal = getattr(self._remote, "literal", None)
+        if literal is not None:
+            return literal(text)
+        for char in text:
+            self._send_key_sync(f"Lit_{char}")
+
+    def _dismiss_text_input_for_command(self, command: str) -> None:
+        if command in _TEXT_DISMISS_COMMANDS:
+            self._text_input_status = TextInputStatus(
+                active=False,
+                mode=self._text_input_status.mode,
+            )
 
     def _reconnect_sync(self) -> None:
         self._close_sync(ignore_errors=True)

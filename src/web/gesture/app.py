@@ -23,6 +23,8 @@ class BrowserAudioSink(Protocol):
 class BrowserDebugSource(Protocol):
     def subscribe(self) -> Any: ...
 
+    def close(self) -> None: ...
+
 
 class BrowserDisplayMetricsSink(Protocol):
     def update_size(self, width: float, height: float) -> None: ...
@@ -149,6 +151,7 @@ def register_gesture_routes(
         )
 
     async def cleanup(app: web.Application) -> None:
+        debug_source.close()
         track_tasks = app[TRACK_TASKS_KEY].copy()
         for task in track_tasks:
             task.cancel()

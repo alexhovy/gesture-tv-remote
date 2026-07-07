@@ -19,6 +19,7 @@ class WebAppRouteTests(unittest.TestCase):
             browser_audio_sink=FakeBrowserAudioSink(),
             debug_source=FakeDebugSource(),
             direct_remote=FakeDirectRemote(),
+            text_input=FakeTextInput(),
             logger=FakeLogger(),
         )
 
@@ -34,6 +35,7 @@ class WebAppRouteTests(unittest.TestCase):
             browser_audio_sink=FakeBrowserAudioSink(),
             debug_source=FakeDebugSource(),
             direct_remote=FakeDirectRemote(),
+            text_input=FakeTextInput(),
             logger=FakeLogger(),
         )
         request = make_mocked_request("GET", "/", app=app)
@@ -56,6 +58,7 @@ class WebAppRouteTests(unittest.TestCase):
             browser_audio_sink=FakeBrowserAudioSink(),
             debug_source=FakeDebugSource(),
             direct_remote=FakeDirectRemote(),
+            text_input=FakeTextInput(),
             logger=FakeLogger(),
             runtime_control=runtime_control,
         )
@@ -75,6 +78,7 @@ class WebAppRouteTests(unittest.TestCase):
             browser_audio_sink=FakeBrowserAudioSink(),
             debug_source=FakeDebugSource(),
             direct_remote=FakeDirectRemote(),
+            text_input=FakeTextInput(),
             logger=FakeLogger(),
         )
         request = make_mocked_request("GET", "/api/remote/capabilities", app=app)
@@ -85,6 +89,99 @@ class WebAppRouteTests(unittest.TestCase):
         self.assertEqual(response.status, HTTPStatus.OK)
         self.assertIn('"supportedCommands": ["HOME"]', response.text)
         self.assertIn('"navigation": ["HOME"]', response.text)
+        self.assertIn('"sendText": "implemented"', response.text)
+        self.assertIn('"browserCapture": "auto_focus"', response.text)
+
+    def test_remote_text_route_sends_text(self) -> None:
+        text_input = FakeTextInput()
+        app = create_web_app(
+            repository=FakeRepository(),
+            config_provider=lambda: AppConfig(),
+            browser_video_sink=FakeBrowserVideoSink(),
+            browser_audio_sink=FakeBrowserAudioSink(),
+            debug_source=FakeDebugSource(),
+            direct_remote=FakeDirectRemote(),
+            text_input=text_input,
+            logger=FakeLogger(),
+        )
+        request = make_mocked_request("POST", "/api/remote/text", app=app)
+        request._read_bytes = b'{"text": "hello"}'
+
+        handler = _handler_for(app, "/api/remote/text")
+        response = asyncio.run(handler(request))
+
+        self.assertEqual(response.status, HTTPStatus.OK)
+        self.assertEqual(text_input.sent, ["hello"])
+
+    def test_remote_text_sync_route_syncs_full_text(self) -> None:
+        text_input = FakeTextInput()
+        app = create_web_app(
+            repository=FakeRepository(),
+            config_provider=lambda: AppConfig(),
+            browser_video_sink=FakeBrowserVideoSink(),
+            browser_audio_sink=FakeBrowserAudioSink(),
+            debug_source=FakeDebugSource(),
+            direct_remote=FakeDirectRemote(),
+            text_input=text_input,
+            logger=FakeLogger(),
+        )
+        request = make_mocked_request("POST", "/api/remote/text/sync", app=app)
+        request._read_bytes = b'{"text": "hello"}'
+
+        handler = _handler_for(app, "/api/remote/text/sync")
+        response = asyncio.run(handler(request))
+
+        self.assertEqual(response.status, HTTPStatus.OK)
+        self.assertEqual(text_input.synced, ["hello"])
+
+    def test_remote_page_has_keyboard_overlay_without_keyboard_controls(
+        self,
+    ) -> None:
+        app = create_web_app(
+            repository=FakeRepository(),
+            config_provider=lambda: AppConfig(),
+            browser_video_sink=FakeBrowserVideoSink(),
+            browser_audio_sink=FakeBrowserAudioSink(),
+            debug_source=FakeDebugSource(),
+            direct_remote=FakeDirectRemote(),
+            text_input=FakeTextInput(),
+            logger=FakeLogger(),
+        )
+        request = make_mocked_request("GET", "/remote", app=app)
+
+        handler = _handler_for(app, "/remote")
+        response = asyncio.run(handler(request))
+
+        self.assertEqual(response.status, HTTPStatus.OK)
+        self.assertIn('id="tv-keyboard-overlay"', response.text)
+        self.assertIn('id="tv-keyboard-capture"', response.text)
+        self.assertIn('placeholder="TV text"', response.text)
+        self.assertIn("/static/text-input.js", response.text)
+        self.assertNotIn("keyboard-open", response.text)
+        self.assertNotIn("keyboard-submit", response.text)
+        self.assertNotIn("keyboard-delete", response.text)
+
+    def test_gesture_page_has_keyboard_overlay(self) -> None:
+        app = create_web_app(
+            repository=FakeRepository(),
+            config_provider=lambda: AppConfig(),
+            browser_video_sink=FakeBrowserVideoSink(),
+            browser_audio_sink=FakeBrowserAudioSink(),
+            debug_source=FakeDebugSource(),
+            direct_remote=FakeDirectRemote(),
+            text_input=FakeTextInput(),
+            logger=FakeLogger(),
+        )
+        request = make_mocked_request("GET", "/gesture", app=app)
+
+        handler = _handler_for(app, "/gesture")
+        response = asyncio.run(handler(request))
+
+        self.assertEqual(response.status, HTTPStatus.OK)
+        self.assertIn('id="tv-keyboard-overlay"', response.text)
+        self.assertIn('id="tv-keyboard-capture"', response.text)
+        self.assertIn('placeholder="TV text"', response.text)
+        self.assertIn("/static/text-input.js", response.text)
 
 
 class FakeRepository:
@@ -112,6 +209,9 @@ class FakeDebugSource:
     def subscribe(self) -> Any:
         raise NotImplementedError
 
+    def close(self) -> None:
+        pass
+
 
 class FakeDirectRemote:
     def capabilities(self) -> Any:
@@ -126,6 +226,58 @@ class FakeDirectRemote:
     def dispatch(self, command: str) -> Any:
         del command
         raise NotImplementedError
+
+
+class FakeTextInput:
+    def __init__(self) -> None:
+        self.sent: list[str] = []
+        self.synced: list[str] = []
+
+    def capabilities(self) -> Any:
+        return SimpleNamespace(
+            focus_detection=SimpleNamespace(value="unsupported"),
+            send_text=SimpleNamespace(value="implemented"),
+            replace_text=SimpleNamespace(value="unsupported"),
+            delete_text=SimpleNamespace(value="implemented"),
+            submit_text=SimpleNamespace(value="implemented"),
+            browser_capture=SimpleNamespace(value="auto_focus"),
+            notes=(),
+        )
+
+    def status(self) -> Any:
+        return SimpleNamespace(
+            active=False,
+            mode=SimpleNamespace(value="manual"),
+            value="",
+            label="",
+            app_id="",
+        )
+
+    def subscribe(self, subscriber) -> Any:
+        subscriber(self.status())
+        return lambda: None
+
+    def dismiss_for_command(self, command: str) -> None:
+        del command
+
+    async def send(self, text: str) -> Any:
+        self.sent.append(text)
+        return SimpleNamespace(accepted=True, reason=None)
+
+    async def replace(self, text: str) -> Any:
+        del text
+        return SimpleNamespace(accepted=False, reason="unsupported")
+
+    async def delete(self, count: int = 1) -> Any:
+        del count
+        return SimpleNamespace(accepted=True, reason=None)
+
+    async def sync(self, text: str) -> Any:
+        self.synced.append(text)
+        return SimpleNamespace(accepted=True, reason=None)
+
+    async def submit(self) -> Any:
+        return SimpleNamespace(accepted=True, reason=None)
 
 
 class FakeRuntimeControl:

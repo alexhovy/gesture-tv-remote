@@ -5,6 +5,10 @@ import unittest
 
 from src.application.ports.tv_remote import (
     CapabilityStatus,
+    TextInputCapabilities,
+    TextInputHandler,
+    TextInputMode,
+    TextInputStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
     VoiceInputMode,
@@ -13,7 +17,27 @@ from src.infrastructure.audio.local_voice_capture import LocalMicrophoneVoiceCap
 from tests.helpers.config_helpers import app_config
 
 
-class UnsupportedVoiceRemote:
+class TextInputRemoteMixin:
+    def set_text_input_handler(self, handler: TextInputHandler | None) -> None:
+        del handler
+
+    def text_input_status(self) -> TextInputStatus:
+        return TextInputStatus(active=False, mode=TextInputMode.MANUAL)
+
+    async def send_text(self, text: str) -> None:
+        del text
+
+    async def replace_text(self, text: str) -> None:
+        del text
+
+    async def delete_text(self, count: int = 1) -> None:
+        del count
+
+    async def submit_text(self) -> None:
+        pass
+
+
+class UnsupportedVoiceRemote(TextInputRemoteMixin):
     def __init__(self) -> None:
         self.started_voice = False
 
@@ -173,7 +197,7 @@ class FakeLogger:
         self.messages.append(message)
 
 
-class SupportedVoiceRemote:
+class SupportedVoiceRemote(TextInputRemoteMixin):
     def __init__(self) -> None:
         self.voice_stream = FakeVoiceStream()
 
@@ -188,7 +212,7 @@ class SupportedVoiceRemote:
         )
 
 
-class NativeVoiceRemote:
+class NativeVoiceRemote(TextInputRemoteMixin):
     def __init__(self) -> None:
         self.voice_mode = None
 
@@ -203,7 +227,7 @@ class NativeVoiceRemote:
         )
 
 
-class AppVoiceRemote:
+class AppVoiceRemote(TextInputRemoteMixin):
     def __init__(self) -> None:
         self.voice_stream = FakeVoiceStream()
         self.voice_mode = None
@@ -257,7 +281,13 @@ def _capabilities(
         volume=CapabilityStatus.UNSUPPORTED,
         directional_navigation=CapabilityStatus.UNSUPPORTED,
         media_controls=CapabilityStatus.UNSUPPORTED,
-        text_input=CapabilityStatus.UNSUPPORTED,
+        text_input=TextInputCapabilities(
+            focus_detection=CapabilityStatus.UNSUPPORTED,
+            send_text=CapabilityStatus.UNSUPPORTED,
+            replace_text=CapabilityStatus.UNSUPPORTED,
+            delete_text=CapabilityStatus.UNSUPPORTED,
+            submit_text=CapabilityStatus.UNSUPPORTED,
+        ),
         source_selection=CapabilityStatus.UNSUPPORTED,
         wake_on_lan=CapabilityStatus.UNSUPPORTED,
         pairing=CapabilityStatus.UNSUPPORTED,
@@ -265,7 +295,6 @@ def _capabilities(
             remote_mic_stream=remote_mic_stream,
             native_voice_search=native_voice_search,
             app_voice_input=app_voice_input,
-            app_text_input=CapabilityStatus.UNSUPPORTED,
         ),
         connection_type="fake",
     )

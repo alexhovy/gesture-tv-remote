@@ -23,6 +23,12 @@
       {% block content %}{% endblock %}
     </main>
   </div>
+  {% if keyboard_capture %}
+    <div class="tv-keyboard-overlay" id="tv-keyboard-overlay">
+      <input class="tv-keyboard-capture" id="tv-keyboard-capture" type="text" autocomplete="off" autocorrect="off" autocapitalize="none" spellcheck="false" placeholder="TV text" aria-label="TV text input" tabindex="-1">
+    </div>
+    <script src="/static/text-input.js?v={{ cache_buster }}"></script>
+  {% endif %}
   {% block scripts %}{% endblock %}
 </body>
 </html>

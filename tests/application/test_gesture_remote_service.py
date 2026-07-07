@@ -54,6 +54,9 @@ from src.application.ports.display_metrics import DisplaySize  # noqa: E402
 from src.application.ports.tv_remote import (  # noqa: E402
     AppVoiceInputRequest,
     CapabilityStatus,
+    TextInputCapabilities,
+    TextInputMode,
+    TextInputStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
 )
@@ -951,7 +954,13 @@ class BlockingRemote:
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,
             media_controls=CapabilityStatus.UNSUPPORTED,
-            text_input=CapabilityStatus.UNSUPPORTED,
+            text_input=TextInputCapabilities(
+                focus_detection=CapabilityStatus.UNSUPPORTED,
+                send_text=CapabilityStatus.UNSUPPORTED,
+                replace_text=CapabilityStatus.UNSUPPORTED,
+                delete_text=CapabilityStatus.UNSUPPORTED,
+                submit_text=CapabilityStatus.UNSUPPORTED,
+            ),
             source_selection=CapabilityStatus.UNSUPPORTED,
             wake_on_lan=CapabilityStatus.UNSUPPORTED,
             pairing=CapabilityStatus.UNSUPPORTED,
@@ -959,7 +968,6 @@ class BlockingRemote:
                 remote_mic_stream=CapabilityStatus.UNSUPPORTED,
                 native_voice_search=CapabilityStatus.UNSUPPORTED,
                 app_voice_input=CapabilityStatus.UNSUPPORTED,
-                app_text_input=CapabilityStatus.UNSUPPORTED,
             ),
             connection_type="fake",
         )
@@ -971,6 +979,24 @@ class BlockingRemote:
             await self.release_first.wait()
         elif len(self.commands) == 2:
             self.second_started.set()
+
+    def set_text_input_handler(self, handler) -> None:
+        self.text_input_handler = handler
+
+    def text_input_status(self) -> TextInputStatus:
+        return TextInputStatus(active=False, mode=TextInputMode.MANUAL)
+
+    async def send_text(self, text: str) -> None:
+        del text
+
+    async def replace_text(self, text: str) -> None:
+        del text
+
+    async def delete_text(self, count: int = 1) -> None:
+        del count
+
+    async def submit_text(self) -> None:
+        pass
 
 
 class FakeLogger:

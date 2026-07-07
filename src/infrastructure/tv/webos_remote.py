@@ -4,9 +4,20 @@ from typing import Any
 from src.application.ports.tv_remote import (
     AppVoiceInputHandler,
     CapabilityStatus,
+    TextInputCapabilities,
+    TextInputHandler,
+    TextInputMode,
+    TextInputStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
     VoiceInputMode,
+)
+from src.domain.constants import (
+    TV_COMMAND_BACK,
+    TV_COMMAND_HOME,
+    TV_COMMAND_POWER_OFF,
+    TV_COMMAND_POWER_ON,
+    TV_COMMAND_POWER_TOGGLE,
 )
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import (
@@ -17,6 +28,16 @@ from src.infrastructure.tv.tv_remote import TV_ADAPTER_WEBOS
 from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
+
+_TEXT_DISMISS_COMMANDS = frozenset(
+    {
+        TV_COMMAND_BACK,
+        TV_COMMAND_HOME,
+        TV_COMMAND_POWER_OFF,
+        TV_COMMAND_POWER_ON,
+        TV_COMMAND_POWER_TOGGLE,
+    }
+)
 
 
 class WebOsRemoteClient:
@@ -31,6 +52,11 @@ class WebOsRemoteClient:
         self._media: Any | None = None
         self._logger = AppLogger()
         self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
+        self._text_input_handler: TextInputHandler | None = None
+        self._text_input_status = TextInputStatus(
+            active=False,
+            mode=TextInputMode.MANUAL,
+        )
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
@@ -39,7 +65,18 @@ class WebOsRemoteClient:
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,
             media_controls=CapabilityStatus.NOT_IMPLEMENTED,
-            text_input=CapabilityStatus.NOT_IMPLEMENTED,
+            text_input=TextInputCapabilities(
+                focus_detection=CapabilityStatus.NOT_IMPLEMENTED,
+                send_text=CapabilityStatus.IMPLEMENTED,
+                replace_text=CapabilityStatus.IMPLEMENTED,
+                delete_text=CapabilityStatus.IMPLEMENTED,
+                submit_text=CapabilityStatus.IMPLEMENTED,
+                notes=(
+                    "webOS IME text operations are sent directly through SSAP. "
+                    "Focus subscription support varies by TV firmware and is "
+                    "not exposed by aiowebostv as a stable high-level API.",
+                ),
+            ),
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
             wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
@@ -47,7 +84,6 @@ class WebOsRemoteClient:
                 remote_mic_stream=CapabilityStatus.UNSUPPORTED,
                 native_voice_search=CapabilityStatus.UNSUPPORTED,
                 app_voice_input=CapabilityStatus.UNSUPPORTED,
-                app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
                 notes=(
                     "webOS SSAP/input-control does not expose raw microphone "
                     "streaming.",
@@ -58,7 +94,7 @@ class WebOsRemoteClient:
             connection_type="aiowebostv websocket",
             known_limitations=(
                 "Only input-control navigation and volume commands are implemented.",
-                "Voice input, text input, and source selection are not implemented.",
+                "Voice input and source selection are not implemented.",
             ),
         )
 
@@ -67,6 +103,12 @@ class WebOsRemoteClient:
         handler: AppVoiceInputHandler | None,
     ) -> None:
         del handler
+
+    def set_text_input_handler(self, handler: TextInputHandler | None) -> None:
+        self._text_input_handler = handler
+
+    def text_input_status(self) -> TextInputStatus:
+        return self._text_input_status
 
     async def connect(self) -> bool:
         try:
@@ -90,6 +132,7 @@ class WebOsRemoteClient:
             self._client = client
             self._input = await InputControl(client).connect_input()
             self._media = MediaControl(client)
+            await self._try_register_remote_keyboard()
         except Exception as error:
             self._logger.error(
                 f"Could not connect to webOS TV at {self._config.tv.host}: {error}"
@@ -140,10 +183,31 @@ class WebOsRemoteClient:
             if await self.connect():
                 try:
                     await self._send(adapter_command)
+                    self._dismiss_text_input_for_command(command)
                     return
                 except Exception as retry_error:
                     error = retry_error
             self._logger.error(f"webOS TV command {adapter_command} failed: {error}")
+            return
+        self._dismiss_text_input_for_command(command)
+
+    async def send_text(self, text: str) -> None:
+        await self._send_ime("com.webos.service.ime/insertText", {"text": text})
+
+    async def replace_text(self, text: str) -> None:
+        await self._send_ime(
+            "com.webos.service.ime/insertText",
+            {"text": text, "replace": True},
+        )
+
+    async def delete_text(self, count: int = 1) -> None:
+        await self._send_ime(
+            "com.webos.service.ime/deleteCharacters",
+            {"count": count},
+        )
+
+    async def submit_text(self) -> None:
+        await self._send_ime("com.webos.service.ime/sendEnterKey", {})
 
     async def start_voice(self, mode: VoiceInputMode):
         self._logger.info(f"webOS voice input mode is not supported: {mode.value}")
@@ -152,6 +216,47 @@ class WebOsRemoteClient:
     async def disconnect(self) -> None:
         if self._client is not None and hasattr(self._client, "close"):
             await call_remote_method(self._client.close)
+
+    async def _send_ime(self, endpoint: str, payload: dict[str, Any]) -> None:
+        if self._client is None:
+            await self.wake()
+            if not await self.connect():
+                self._logger.info(f"TV not connected. Skipping webOS IME: {endpoint}")
+                return
+        if self._client is None:
+            return
+        try:
+            await call_remote_method(self._client.request, endpoint, payload)
+        except Exception as error:
+            self._logger.error(f"webOS IME request {endpoint} failed: {error}")
+
+    async def _try_register_remote_keyboard(self) -> None:
+        if self._client is None:
+            return
+        try:
+            await call_remote_method(
+                self._client.request,
+                "com.webos.service.ime/registerRemoteKeyboard",
+                {"subscribe": True},
+            )
+            self._text_input_status = TextInputStatus(
+                active=False,
+                mode=TextInputMode.AUTO_DETECTED,
+            )
+            if self._text_input_handler is not None:
+                self._text_input_handler(self._text_input_status)
+        except Exception as error:
+            self._logger.debug(f"webOS remote keyboard subscription failed: {error}")
+
+    def _dismiss_text_input_for_command(self, command: str) -> None:
+        if command not in _TEXT_DISMISS_COMMANDS:
+            return
+        self._text_input_status = TextInputStatus(
+            active=False,
+            mode=self._text_input_status.mode,
+        )
+        if self._text_input_handler is not None:
+            self._text_input_handler(self._text_input_status)
 
     def _read_client_key(self) -> str | None:
         if not self._config.tv.webos_client_key_file.exists():

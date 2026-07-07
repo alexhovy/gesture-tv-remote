@@ -2,7 +2,12 @@ import unittest
 from unittest.mock import patch
 
 from src.shared.config import AppConfig
-from src.web.assets import read_app_css, read_gesture_js, read_remote_js
+from src.web.assets import (
+    read_app_css,
+    read_gesture_js,
+    read_remote_js,
+    read_text_input_js,
+)
 from src.web.gesture.templates import render_gesture_page
 from src.web.remote.templates import render_remote_page
 
@@ -71,9 +76,69 @@ class GestureWebTests(unittest.TestCase):
         self.assertIn("[data-mode]", read_remote_js())
         self.assertIn("commandFromTouch", read_remote_js())
         self.assertIn("commandForButton", read_remote_js())
+        self.assertIn("restoreKeyboardCaptureFocus", read_remote_js())
+        self.assertIn("window.focusTvKeyboardCapture", read_remote_js())
+        self.assertIn("dismissKeyboardCapture", read_remote_js())
+        self.assertIn("window.dismissTvKeyboardCapture", read_remote_js())
+        self.assertIn("keyboardDismissCommands", read_remote_js())
         self.assertIn(".remote-shell", read_app_css())
         self.assertIn(".remote-touchpad", read_app_css())
         self.assertIn(".remote-dpad", read_app_css())
+
+    def test_text_input_asset_syncs_visible_overlay_value(self) -> None:
+        script = read_text_input_js()
+
+        css = read_app_css()
+        self.assertIn('"input"', script)
+        self.assertIn("tvKeyboardOverlay", script)
+        self.assertIn("TV_SYNC_DELAY_MS = 650", script)
+        self.assertIn("showTvKeyboardOverlay", script)
+        self.assertIn("hideTvKeyboardOverlay", script)
+        self.assertIn("resetTvTextSession", script)
+        self.assertIn("handleTvCaptureValueChanged", script)
+        self.assertIn("commitTvCaptureValue", script)
+        self.assertIn("scheduleTvSync", script)
+        self.assertIn("flushTvSyncNow", script)
+        self.assertIn("/api/remote/text/sync", script)
+        self.assertIn("queueTvSubmit()", script)
+        self.assertIn("tvManualTextEnabled", script)
+        self.assertIn("shouldEnableManualTextCapture()", script)
+        self.assertIn('focusDetection !== "implemented"', script)
+        self.assertIn('browserCapture === "hardware_keys"', script)
+        self.assertIn('browserCapture === "auto_focus"', script)
+        self.assertIn('browserCapture !== "auto_focus"', script)
+        self.assertIn('"pointerup"', script)
+        self.assertIn('"click"', script)
+        self.assertIn('"blur"', script)
+        self.assertIn('"focusout"', script)
+        self.assertIn('"visibilitychange"', script)
+        self.assertIn("force: true", script)
+        self.assertIn("isTvTextCaptureEnabled()", script)
+        self.assertIn("window.focusTvKeyboardCapture", script)
+        self.assertIn("window.isTvTextCaptureEnabled", script)
+        self.assertIn("window.dismissTvKeyboardCapture", script)
+        self.assertIn("isTvKeyboardDismissTarget", script)
+        self.assertIn("keyboard overlay shown", script)
+        self.assertIn("keyboard overlay hidden", script)
+        self.assertIn("POWER_TOGGLE", script)
+        self.assertIn("keyboard capture focus requested", script)
+        self.assertIn("keyboard capture capabilities loaded", script)
+        self.assertIn("keyboard capture blurred", script)
+        self.assertIn("keyboard capture focused", script)
+        self.assertIn("keyboard capture focusout", script)
+        self.assertIn("keyboard capture visibility changed", script)
+        self.assertIn("/api/log/client", script)
+        self.assertIn(".tv-keyboard-overlay", css)
+        self.assertIn(".tv-keyboard-overlay.active", css)
+        self.assertIn("top: max(12px, env(safe-area-inset-top))", css)
+        self.assertIn("z-index: 1000", css)
+        self.assertNotIn("queueTvCaptureDiff", script)
+        self.assertNotIn("visualViewport", script)
+        self.assertNotIn("keyboard text held for commit", script)
+        self.assertNotIn("canLiveReplaceTvText", script)
+        self.assertNotIn("startsWith(previousValue)", script)
+        self.assertNotIn("keyboard text substitution ignored", script)
+        self.assertNotIn("beforeinput", script)
 
     def test_shared_app_css_is_dark_and_contains_navigation(self) -> None:
         css = read_app_css()

@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Any
 from unittest.mock import patch
 
-from src.application.ports.tv_remote import CapabilityStatus, VoiceInputMode
+from src.application.ports.tv_remote import (
+    CapabilityStatus,
+    TextInputBrowserCapture,
+    TextInputMode,
+    VoiceInputMode,
+)
 from src.domain.constants import (
     TV_COMMAND_BACK,
     TV_COMMAND_DPAD_CENTER,
@@ -162,6 +167,18 @@ class TvRemoteTests(unittest.TestCase):
             CapabilityStatus.IMPLEMENTED,
         )
         self.assertEqual(
+            android_capabilities.text_input.replace_text,
+            CapabilityStatus.UNSUPPORTED,
+        )
+        self.assertEqual(
+            android_capabilities.text_input.focus_detection,
+            CapabilityStatus.UNSUPPORTED,
+        )
+        self.assertEqual(
+            android_capabilities.text_input.browser_capture,
+            TextInputBrowserCapture.HARDWARE_KEYS,
+        )
+        self.assertEqual(
             roku_capabilities.voice_input.remote_mic_stream,
             CapabilityStatus.UNSUPPORTED,
         )
@@ -194,6 +211,28 @@ class TvRemoteTests(unittest.TestCase):
                 ).capabilities()
 
                 self.assertEqual(capabilities.supported_commands, frozenset(commands))
+
+    def test_text_capabilities_support_full_value_sync_for_each_adapter(self) -> None:
+        for adapter in [
+            TV_ADAPTER_ANDROIDTV,
+            TV_ADAPTER_SAMSUNG,
+            TV_ADAPTER_WEBOS,
+            TV_ADAPTER_ROKU,
+            TV_ADAPTER_APPLETV,
+        ]:
+            with self.subTest(adapter=adapter):
+                text_input = (
+                    create_tv_remote_client(app_config(tv_adapter=adapter))
+                    .capabilities()
+                    .text_input
+                )
+
+                self.assertEqual(text_input.send_text, CapabilityStatus.IMPLEMENTED)
+                self.assertEqual(text_input.submit_text, CapabilityStatus.IMPLEMENTED)
+                self.assertTrue(
+                    text_input.replace_text == CapabilityStatus.IMPLEMENTED
+                    or text_input.delete_text == CapabilityStatus.IMPLEMENTED
+                )
 
     def test_translation_rejects_unknown_command(self) -> None:
         with self.assertRaises(TvRemoteCommandError):
@@ -262,6 +301,15 @@ class AsyncRemoteCallTests(unittest.IsolatedAsyncioTestCase):
 
 
 class AndroidTvRemoteTests(unittest.IsolatedAsyncioTestCase):
+    async def asyncSetUp(self) -> None:
+        self._previous_androidtvremote2 = sys.modules.get("androidtvremote2")
+
+    async def asyncTearDown(self) -> None:
+        if self._previous_androidtvremote2 is None:
+            sys.modules.pop("androidtvremote2", None)
+        else:
+            sys.modules["androidtvremote2"] = self._previous_androidtvremote2
+
     async def test_auto_voice_uses_global_search_when_app_voice_is_pending(
         self,
     ) -> None:
@@ -295,6 +343,80 @@ class AndroidTvRemoteTests(unittest.IsolatedAsyncioTestCase):
 
         self.assertIsNone(stream)
         self.assertEqual(remote.operations, ["send:SEARCH"])
+
+    async def test_connect_disables_android_ime_prompt(self) -> None:
+        fake_module = _install_fake_androidtvremote2()
+        client = AndroidTvRemoteClient(app_config(tv_host="android.local"))
+
+        self.assertTrue(await client.connect())
+
+        self.assertEqual(len(fake_module.instances), 1)
+        self.assertFalse(fake_module.instances[0].kwargs["enable_ime"])
+        self.assertTrue(fake_module.instances[0].kwargs["enable_voice"])
+
+    async def test_text_input_uses_android_remote_text_api(self) -> None:
+        client = AndroidTvRemoteClient(app_config())
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        await client.send_text("ab 1.")
+
+        self.assertEqual(remote.operations, ["text:ab 1."])
+
+    async def test_android_text_input_appends_without_replacement(self) -> None:
+        client = AndroidTvRemoteClient(app_config())
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        await client.send_text("a")
+        await client.send_text("b")
+
+        self.assertEqual(remote.operations, ["text:a", "text:b"])
+
+    async def test_android_text_state_resets_after_submit(self) -> None:
+        client = AndroidTvRemoteClient(app_config())
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        await client.send_text("a")
+        await client.submit_text()
+        await client.send_text("b")
+
+        self.assertEqual(
+            remote.operations,
+            ["text:a", "send:ENTER", "text:b"],
+        )
+
+    async def test_android_text_state_resets_after_dismiss_command(self) -> None:
+        client = AndroidTvRemoteClient(app_config())
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        await client.send_text("a")
+        await client.send_command(TV_COMMAND_HOME)
+        await client.send_text("b")
+
+        self.assertEqual(
+            remote.operations,
+            ["text:a", "send:HOME", "text:b"],
+        )
+
+    async def test_text_replacement_is_unsupported_for_android(self) -> None:
+        client = AndroidTvRemoteClient(app_config())
+        remote = FakeAndroidRemote()
+        client._remote = remote
+
+        await client.replace_text("ab")
+
+        self.assertEqual(remote.operations, [])
+
+    def test_android_text_input_status_is_manual_without_ime(self) -> None:
+        client = AndroidTvRemoteClient(app_config())
+
+        status = client.text_input_status()
+
+        self.assertFalse(status.active)
+        self.assertEqual(status.mode, TextInputMode.MANUAL)
 
     async def test_discovers_android_tv_mac_from_certificate_identity(self) -> None:
         client = AndroidTvRemoteClient(app_config())
@@ -754,6 +876,9 @@ class FakeAndroidRemote:
     def send_key_command(self, command: str) -> None:
         self.operations.append(f"send:{command}")
 
+    def send_text(self, text: str) -> None:
+        self.operations.append(f"text:{text}")
+
     async def start_voice(self):
         self.operations.append("start_voice")
         return self.voice_stream
@@ -809,6 +934,27 @@ class FakeAndroidProtocol:
     ) -> None:
         self._remote = remote
         self._has_pending_app_voice = has_pending_app_voice
+        self.ime_counter = 0
+        self.ime_field_counter = 0
+        self._loop = asyncio.get_running_loop()
+
+    def _handle_message(self, raw_msg: bytes) -> None:
+        del raw_msg
+
+    def _reset_idle_disconnect_task(self) -> None:
+        pass
+
+    def _send_message(self, message) -> None:
+        edit_info = message.remote_ime_batch_edit.edit_info[0]
+        text_field_status = edit_info.text_field_status
+        self._remote.operations.append(
+            "ime:"
+            f"{text_field_status.value}:"
+            f"{message.remote_ime_batch_edit.ime_counter}:"
+            f"{message.remote_ime_batch_edit.field_counter}:"
+            f"{text_field_status.start}:"
+            f"{text_field_status.end}"
+        )
 
     async def start_app_voice(self, timeout: float):
         self._remote.operations.append("start_app_voice")
@@ -834,12 +980,15 @@ class FakeAndroidRawProtocol:
         self._remote = remote
         self._loop = asyncio.get_running_loop()
         self._handle_message_calls = []
+        self.sent_messages = []
+        self.ime_counter = 0
+        self.ime_field_counter = 0
 
     def _handle_message(self, raw_msg: bytes) -> None:
         self._handle_message_calls.append(raw_msg)
 
     def _send_message(self, message) -> None:
-        del message
+        self.sent_messages.append(message.SerializeToString())
 
     def send_voice_chunk(self, chunk: bytes, session_id: int) -> None:
         self._remote.voice_chunks.append((session_id, chunk))
@@ -889,6 +1038,59 @@ def _install_fake_roku(fail_first_send: bool = False, device=None):
     module = types.SimpleNamespace(Roku=FakeRoku)
     sys.modules["rokuecp"] = module
     return FakeRoku
+
+
+def _install_fake_androidtvremote2():
+    class CannotConnect(Exception):
+        pass
+
+    class ConnectionClosed(Exception):
+        pass
+
+    class InvalidAuth(Exception):
+        pass
+
+    class FakeAndroidTVRemote:
+        instances = []
+
+        def __init__(
+            self,
+            client_name,
+            certfile,
+            keyfile,
+            host,
+            *,
+            enable_ime=True,
+            enable_voice=False,
+        ):
+            self.kwargs = {
+                "client_name": client_name,
+                "certfile": certfile,
+                "keyfile": keyfile,
+                "host": host,
+                "enable_ime": enable_ime,
+                "enable_voice": enable_voice,
+            }
+            self._remote_message_protocol = FakeAndroidRawProtocol(
+                FakeAndroidProtocolRemote()
+            )
+            FakeAndroidTVRemote.instances.append(self)
+
+        async def async_generate_cert_if_missing(self):
+            return False
+
+        async def async_connect(self):
+            return None
+
+    module = types.SimpleNamespace(
+        AndroidTVRemote=FakeAndroidTVRemote,
+        CannotConnect=CannotConnect,
+        ConnectionClosed=ConnectionClosed,
+        InvalidAuth=InvalidAuth,
+        instances=FakeAndroidTVRemote.instances,
+    )
+    sys.modules["androidtvremote2"] = module
+    return module
 
 
 if __name__ == "__main__":

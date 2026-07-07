@@ -4,6 +4,7 @@ _STATIC_DIR = Path(__file__).with_name("static")
 _APP_CSS_FILE = _STATIC_DIR / "app.css"
 _GESTURE_JS_FILE = _STATIC_DIR / "gesture.js"
 _REMOTE_JS_FILE = _STATIC_DIR / "remote.js"
+_TEXT_INPUT_JS_FILE = _STATIC_DIR / "text-input.js"
 
 
 def static_dir() -> Path:
@@ -20,3 +21,7 @@ def read_gesture_js() -> str:
 
 def read_remote_js() -> str:
     return _REMOTE_JS_FILE.read_text(encoding="utf-8")
+
+
+def read_text_input_js() -> str:
+    return _TEXT_INPUT_JS_FILE.read_text(encoding="utf-8")

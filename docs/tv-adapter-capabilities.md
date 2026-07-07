@@ -14,13 +14,13 @@ Capability status is explicit:
 - `unsupported`: not supported by the current protocol path or intentionally not
   available through this adapter.
 
-| Adapter | Connection | Power | Volume | Navigation | Media Controls | Text Input | Source Selection | Wake-on-LAN | Pairing | Remote Mic Stream | Native Voice UI | App Voice Input |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` |
-| Samsung TV | `samsungtvws` websocket | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
-| LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `not_implemented` | `implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
-| Roku | Roku ECP HTTP | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `not_implemented` | `implemented` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
-| Apple TV | `pyatv` Media Remote Protocol | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `unsupported` | `implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
+| Adapter | Connection | Power | Volume | Navigation | Media Controls | Text Input | Text Focus Detection | Source Selection | Wake-on-LAN | Pairing | Remote Mic Stream | Native Voice UI | App Voice Input |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Android TV / Google TV | `androidtvremote2` TLS remote protocol | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` | `unsupported` | `unsupported` | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` |
+| Samsung TV | `samsungtvws` websocket | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` | `not_implemented` | `implemented` | `implemented` | `unsupported` | `implemented` | `unsupported` |
+| LG webOS | `aiowebostv` websocket | `not_implemented` | `implemented` | `implemented` | `not_implemented` | `implemented` | `not_implemented` | `not_implemented` | `implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
+| Roku | Roku ECP HTTP | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` | `unsupported` | `not_implemented` | `implemented` | `unsupported` | `unsupported` | `implemented` | `unsupported` |
+| Apple TV | `pyatv` Media Remote Protocol | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` | `implemented` | `unsupported` | `implemented` | `implemented` | `unsupported` | `unsupported` | `unsupported` |
 
 ## Common Commands
 
@@ -54,12 +54,45 @@ selected adapter advertises them:
 Direct remote button presses preserve repeated commands, such as rapid DPAD or
 volume taps, instead of using the gesture queue's repeat coalescing.
 
+## Text Input
+
+The browser remote and gesture pages use a visible overlay input when the
+selected adapter can send text. Some adapters can also report when a TV text
+field is focused; when that happens the browser attempts to focus the overlay
+input so the device keyboard can open and the typed value stays visible on the
+browser. Adapters without reliable focus detection use the same overlay in
+manual mode after a browser tap. Browser edits are synced as a full value:
+adapters with replacement APIs receive the full current value, and append-only
+adapters delete the last value mirrored by the overlay before sending the new
+full value. Append-only adapters can only clear text that was previously
+mirrored by this browser session.
+
+- Android TV sends literal inserts through `androidtvremote2` text input and
+  connects with Android IME feature negotiation disabled so focus is captured
+  manually in the browser instead of relying on protocol focus detection.
+- Apple TV uses pyatv's Companion keyboard interface for focus state and text
+  append/set/clear operations when the connected device advertises those
+  features.
+- Samsung uses `samsungtvws` IME start/end websocket events when the TV emits
+  them and sends text with the websocket text-input command. Model and firmware
+  behavior varies, so manual keyboard mode remains useful.
+- LG webOS sends text through `com.webos.service.ime` operations. Focus
+  subscription exists in the webOS IME service, but the current aiowebostv path
+  does not expose it as a stable high-level API.
+- Roku sends literal keyboard characters through ECP `Lit_` keypresses. ECP
+  does not expose a general "text field focused" event, so this is manual mode.
+
+For adapters that do not reliably emit a keyboard-hide event, `Back`, `Home`,
+power commands, and text submit clear the app's cached keyboard-active state so
+the browser can dismiss its local keyboard capture.
+
 ## Platform Gaps
 
-Power and media controls are available to the direct remote when the selected
-adapter advertises those commands. They remain outside the current gesture
-command surface. Text input and source selection are tracked as
-`not_implemented` when an adapter extension could reasonably add them without
+Power, media controls, and text input are available to the direct remote when
+the selected adapter advertises those capabilities. Text input capture is also
+loaded on the gesture page, while gesture commands remain limited to the mapped
+TV command set. Source selection is tracked as
+`not_implemented` when an adapter extension could reasonably add it without
 changing the gesture pipeline.
 
 Power behavior varies by protocol:

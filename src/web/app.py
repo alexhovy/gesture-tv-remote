@@ -16,7 +16,7 @@ from src.web.gesture.app import (
     register_gesture_routes,
 )
 from src.web.home.templates import render_home_page
-from src.web.remote.app import DirectRemote, register_remote_routes
+from src.web.remote.app import DirectRemote, TextInputRemote, register_remote_routes
 from src.web.settings.handlers import (
     active_tab,
     form_tab,
@@ -38,6 +38,7 @@ def create_web_app(
     browser_audio_sink: BrowserAudioSink,
     debug_source: BrowserDebugSource,
     direct_remote: DirectRemote,
+    text_input: TextInputRemote,
     logger: LoggerPort,
     display_metrics_sink: BrowserDisplayMetricsSink | None = None,
     runtime_control: RuntimeControl | None = None,
@@ -146,6 +147,7 @@ def create_web_app(
         app,
         config_provider=config_provider,
         direct_remote=direct_remote,
+        text_input=text_input,
         logger=logger,
     )
     return app

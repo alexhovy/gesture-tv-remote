@@ -11,5 +11,6 @@ def render_remote_page(config: AppConfig) -> str:
         app_name=config.app_name,
         body_class="remote-page",
         cache_buster=str(time.time_ns()),
+        keyboard_capture=True,
         page_title=f"{config.app_name} Remote",
     )

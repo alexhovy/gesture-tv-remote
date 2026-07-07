@@ -377,6 +377,7 @@ select:focus,
 .mode-button:focus,
 .remote-dpad-key:focus,
 .remote-icon-key:focus,
+.remote-mini-key:focus,
 .remote-pill-key:focus,
 .remote-side-key:focus,
 .remote-touchpad:focus {
@@ -621,6 +622,7 @@ canvas {
 
 .remote-dpad-key,
 .remote-icon-key,
+.remote-mini-key,
 .remote-pill-key,
 .remote-side-key {
   background: #0d100f;
@@ -711,12 +713,72 @@ canvas {
 
 .remote-dpad-key:disabled,
 .remote-icon-key:disabled,
+.remote-mini-key:disabled,
 .remote-pill-key:disabled,
 .remote-side-key:disabled {
   background: #151917;
   border-color: #242c27;
   color: #536158;
   cursor: not-allowed;
+}
+
+.tv-keyboard-overlay {
+  display: grid;
+  left: 50%;
+  max-width: min(620px, calc(100vw - 28px));
+  opacity: 0;
+  pointer-events: none;
+  position: fixed;
+  top: max(12px, env(safe-area-inset-top));
+  transform: translateX(-50%) translateY(-8px);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease,
+    visibility 120ms ease;
+  visibility: hidden;
+  width: 100%;
+  z-index: 1000;
+}
+
+.tv-keyboard-overlay.active {
+  opacity: 1;
+  pointer-events: auto;
+  transform: translateX(-50%);
+  visibility: visible;
+}
+
+.tv-keyboard-capture {
+  background: #f8fbf9;
+  border: 2px solid #1e7c4f;
+  border-radius: 8px;
+  box-shadow: 0 18px 48px rgb(0 0 0 / 55%);
+  color: #111714;
+  font: inherit;
+  font-size: 18px;
+  font-weight: 700;
+  min-height: 50px;
+  outline: none;
+  padding: 12px 14px;
+  width: 100%;
+}
+
+.tv-keyboard-capture::placeholder {
+  color: #66766d;
+  font-weight: 600;
+}
+
+.tv-keyboard-capture:focus {
+  border-color: #24a366;
+  box-shadow:
+    0 0 0 4px rgb(36 163 102 / 28%),
+    0 18px 48px rgb(0 0 0 / 55%);
+}
+
+.remote-mini-key {
+  border-radius: 6px;
+  font-size: 12px;
+  min-height: 34px;
+  padding: 7px;
 }
 
 @media (max-width: 720px) {

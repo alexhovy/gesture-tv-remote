@@ -202,6 +202,19 @@ The web app remains available when the configured TV is offline or refuses the
 initial adapter connection. In that degraded state, settings and browser capture
 stay running. Remote commands are still accepted into the dispatch queue, and
 the TV adapter attempts to wake or reconnect when a command needs to be sent.
+The browser remote and gesture pages include a keyboard overlay for TV text
+fields. Apple TV and supported Samsung models can report active keyboard state
+automatically; the browser then focuses the overlay input so the device keyboard
+can open and the typed value stays visible on the browser. Android TV, Roku, and
+webOS use the same overlay in manual mode: on mobile, tap the page after a TV
+text field is active to let the browser open its software keyboard. The overlay
+input owns the current typed value. After edits, the backend syncs the full
+value to the TV: adapters with replacement APIs receive the full value directly,
+while append-only adapters delete the last mirrored value and send the new full
+value. Android receives literal inserts through the `androidtvremote2` text path
+with IME feature negotiation disabled so the app can keep browser-side manual
+capture. When a TV protocol does not report keyboard dismissal, `Back`, `Home`,
+power commands, and text submit clear the browser capture state.
 
 Browsers require a secure context for camera and microphone APIs. `localhost`
 counts as secure for local testing. For `.local` access, the web runtimes create

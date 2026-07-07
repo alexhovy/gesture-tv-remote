@@ -5,9 +5,20 @@ from typing import Any
 from src.application.ports.tv_remote import (
     AppVoiceInputHandler,
     CapabilityStatus,
+    TextInputCapabilities,
+    TextInputHandler,
+    TextInputMode,
+    TextInputStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
     VoiceInputMode,
+)
+from src.domain.constants import (
+    TV_COMMAND_BACK,
+    TV_COMMAND_HOME,
+    TV_COMMAND_POWER_OFF,
+    TV_COMMAND_POWER_ON,
+    TV_COMMAND_POWER_TOGGLE,
 )
 from src.infrastructure.tv.thread_bound_remote import ThreadBoundRemoteExecutor
 from src.infrastructure.tv.tv_command_translation import (
@@ -18,6 +29,16 @@ from src.infrastructure.tv.tv_remote import TV_ADAPTER_SAMSUNG
 from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
+
+_TEXT_DISMISS_COMMANDS = frozenset(
+    {
+        TV_COMMAND_BACK,
+        TV_COMMAND_HOME,
+        TV_COMMAND_POWER_OFF,
+        TV_COMMAND_POWER_ON,
+        TV_COMMAND_POWER_TOGGLE,
+    }
+)
 
 
 class SamsungTvRemoteClient:
@@ -31,6 +52,11 @@ class SamsungTvRemoteClient:
         self._logger = AppLogger()
         self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
         self._executor = ThreadBoundRemoteExecutor("samsung-tv")
+        self._text_input_handler: TextInputHandler | None = None
+        self._text_input_status = TextInputStatus(
+            active=False,
+            mode=TextInputMode.AUTO_DETECTED,
+        )
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
@@ -39,7 +65,17 @@ class SamsungTvRemoteClient:
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,
             media_controls=CapabilityStatus.IMPLEMENTED,
-            text_input=CapabilityStatus.NOT_IMPLEMENTED,
+            text_input=TextInputCapabilities(
+                focus_detection=CapabilityStatus.IMPLEMENTED,
+                send_text=CapabilityStatus.IMPLEMENTED,
+                replace_text=CapabilityStatus.UNSUPPORTED,
+                delete_text=CapabilityStatus.IMPLEMENTED,
+                submit_text=CapabilityStatus.IMPLEMENTED,
+                notes=(
+                    "Samsung websocket IME events are model and firmware "
+                    "dependent; manual keyboard mode remains useful as a fallback.",
+                ),
+            ),
             source_selection=CapabilityStatus.NOT_IMPLEMENTED,
             wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
@@ -47,7 +83,6 @@ class SamsungTvRemoteClient:
                 remote_mic_stream=CapabilityStatus.UNSUPPORTED,
                 native_voice_search=CapabilityStatus.IMPLEMENTED,
                 app_voice_input=CapabilityStatus.UNSUPPORTED,
-                app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
                 notes=(
                     "Samsung websocket control does not expose raw microphone "
                     "audio streaming.",
@@ -59,8 +94,8 @@ class SamsungTvRemoteClient:
             known_limitations=(
                 "Power uses Samsung KEY_POWER toggle; wake-from-off support "
                 "depends on the TV accepting websocket commands while asleep.",
-                "Remote microphone streaming, text input, and source selection "
-                "are not implemented.",
+                "Remote microphone streaming and source selection are not "
+                "implemented.",
             ),
         )
 
@@ -69,6 +104,12 @@ class SamsungTvRemoteClient:
         handler: AppVoiceInputHandler | None,
     ) -> None:
         del handler
+
+    def set_text_input_handler(self, handler: TextInputHandler | None) -> None:
+        self._text_input_handler = handler
+
+    def text_input_status(self) -> TextInputStatus:
+        return self._text_input_status
 
     async def connect(self) -> bool:
         try:
@@ -109,6 +150,7 @@ class SamsungTvRemoteClient:
         adapter_command = translate_tv_command(TV_ADAPTER_SAMSUNG, command)
         try:
             await self._executor.call(self._send_key_sync, adapter_command)
+            self._dismiss_text_input_for_command(command)
         except Exception as error:
             self._logger.debug(
                 f"Samsung TV command {adapter_command} failed, reconnecting: {error}"
@@ -119,10 +161,36 @@ class SamsungTvRemoteClient:
                     self._logger.info(f"TV not connected. Skipping command: {command}")
                     return
                 await self._executor.call(self._send_key_sync, adapter_command)
+                self._dismiss_text_input_for_command(command)
             except Exception as retry_error:
                 self._logger.error(
                     f"Samsung TV command {adapter_command} failed: {retry_error}"
                 )
+
+    async def send_text(self, text: str) -> None:
+        if self._remote is None and not await self._wake_and_connect():
+            self._logger.info("TV not connected. Skipping Samsung text input.")
+            return
+        try:
+            await self._executor.call(self._send_text_sync, text)
+        except Exception as error:
+            self._logger.error(f"Samsung text input failed: {error}")
+
+    async def replace_text(self, text: str) -> None:
+        del text
+        self._logger.info("Samsung text replacement is not supported.")
+
+    async def delete_text(self, count: int = 1) -> None:
+        for _ in range(count):
+            await self._executor.call(self._send_key_sync, "KEY_BACKSPACE")
+
+    async def submit_text(self) -> None:
+        if self._remote is None:
+            return
+        try:
+            await self._executor.call(self._submit_text_sync)
+        except Exception as error:
+            self._logger.error(f"Samsung text submit failed: {error}")
 
     async def start_voice(self, mode: VoiceInputMode):
         if mode == VoiceInputMode.NATIVE_VOICE_SEARCH:
@@ -154,12 +222,53 @@ class SamsungTvRemoteClient:
             name=self._config.app_name,
         )
         remote.open()
+        self._attach_text_input_events(remote)
         self._remote = remote
 
     def _send_key_sync(self, adapter_command: str) -> None:
         if self._remote is None:
             raise RuntimeError("Samsung TV is not connected")
         self._remote.send_key(adapter_command)
+
+    def _send_text_sync(self, text: str) -> None:
+        if self._remote is None:
+            raise RuntimeError("Samsung TV is not connected")
+        self._remote.send_text(text)
+
+    def _submit_text_sync(self) -> None:
+        if self._remote is None:
+            raise RuntimeError("Samsung TV is not connected")
+        end_text = getattr(self._remote, "end_text", None)
+        if end_text is not None:
+            end_text()
+            return
+        self._remote.send_key("KEY_ENTER")
+
+    def _attach_text_input_events(self, remote: Any) -> None:
+        original = getattr(remote, "_websocket_event", None)
+        if original is None:
+            return
+
+        def handle_event(event: str, response: dict[str, Any]) -> None:
+            original(event, response)
+            if event == "ms.remote.imeStart":
+                self._record_text_input_status(True)
+            elif event == "ms.remote.imeEnd":
+                self._record_text_input_status(False)
+
+        remote._websocket_event = handle_event
+
+    def _record_text_input_status(self, active: bool) -> None:
+        self._text_input_status = TextInputStatus(
+            active=active,
+            mode=TextInputMode.AUTO_DETECTED,
+        )
+        if self._text_input_handler is not None:
+            self._text_input_handler(self._text_input_status)
+
+    def _dismiss_text_input_for_command(self, command: str) -> None:
+        if command in _TEXT_DISMISS_COMMANDS:
+            self._record_text_input_status(False)
 
     def _discover_mac_address_sync(self) -> str | None:
         if self._remote is None:

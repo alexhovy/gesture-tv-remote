@@ -11,8 +11,11 @@ class BrowserDebugStream:
     def __init__(self) -> None:
         self._subscribers: set[asyncio.Queue[str]] = set()
         self._latest = "{}"
+        self._closed = False
 
     def publish(self, snapshot: dict[str, Any]) -> None:
+        if self._closed:
+            return
         payload = json.dumps(snapshot, separators=(",", ":"))
         self._latest = payload
         stale_subscribers = []
@@ -29,11 +32,22 @@ class BrowserDebugStream:
 
     async def subscribe(self) -> AsyncIterator[str]:
         queue: asyncio.Queue[str] = asyncio.Queue(maxsize=2)
+        if self._closed:
+            return
         self._subscribers.add(queue)
         try:
             if self._latest != "{}":
                 yield self._latest
-            while True:
-                yield await queue.get()
+            while not self._closed:
+                payload = await queue.get()
+                if payload == "":
+                    break
+                yield payload
         finally:
             self._subscribers.discard(queue)
+
+    def close(self) -> None:
+        self._closed = True
+        for subscriber in tuple(self._subscribers):
+            with contextlib.suppress(asyncio.QueueFull):
+                subscriber.put_nowait("")

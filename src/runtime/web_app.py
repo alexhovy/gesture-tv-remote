@@ -8,6 +8,7 @@ from aiohttp import web
 from src.application.ports.config_provider import ConfigProviderPort, ConfigStorePort
 from src.application.services.direct_remote_service import DirectRemoteService
 from src.application.services.gesture_remote_service import GestureRemoteService
+from src.application.services.text_input_service import TextInputService
 from src.infrastructure.audio.browser_voice_capture import (
     BrowserAudioSource,
     BrowserVoiceCapture,
@@ -75,7 +76,7 @@ class WebAppServer:
         self._site: web.TCPSite | None = None
 
     async def start(self) -> None:
-        self._runner = web.AppRunner(self._app)
+        self._runner = web.AppRunner(self._app, shutdown_timeout=1.0)
         await self._runner.setup()
         self._site = web.TCPSite(
             self._runner,
@@ -169,6 +170,7 @@ def build_web_app_runtime(
         browser_audio_sink=browser_audio_source,
         debug_source=debug_stream,
         direct_remote=DirectRemoteService(tv_deps.remote, tv_deps.command_dispatcher),
+        text_input=TextInputService(tv_deps.remote, logger),
         display_metrics_sink=display_metrics,
         logger=logger,
         runtime_control=restart_control,

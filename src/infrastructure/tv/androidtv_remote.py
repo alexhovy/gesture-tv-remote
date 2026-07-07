@@ -7,9 +7,21 @@ from src.application.ports.tv_remote import (
     AppVoiceInputHandler,
     AppVoiceInputRequest,
     CapabilityStatus,
+    TextInputBrowserCapture,
+    TextInputCapabilities,
+    TextInputHandler,
+    TextInputMode,
+    TextInputStatus,
     TvAdapterCapabilities,
     VoiceInputCapabilities,
     VoiceInputMode,
+)
+from src.domain.constants import (
+    TV_COMMAND_BACK,
+    TV_COMMAND_HOME,
+    TV_COMMAND_POWER_OFF,
+    TV_COMMAND_POWER_ON,
+    TV_COMMAND_POWER_TOGGLE,
 )
 from src.infrastructure.tv.async_call import call_remote_method
 from src.infrastructure.tv.tv_command_translation import (
@@ -20,6 +32,16 @@ from src.infrastructure.tv.tv_remote import TV_ADAPTER_ANDROIDTV
 from src.infrastructure.tv.wake_on_lan import WakeOnLanSender, normalize_mac_address
 from src.shared.config import AppConfig
 from src.shared.logging import AppLogger
+
+_TEXT_DISMISS_COMMANDS = frozenset(
+    {
+        TV_COMMAND_BACK,
+        TV_COMMAND_HOME,
+        TV_COMMAND_POWER_OFF,
+        TV_COMMAND_POWER_ON,
+        TV_COMMAND_POWER_TOGGLE,
+    }
+)
 
 
 class AndroidTvRemoteClient:
@@ -33,6 +55,11 @@ class AndroidTvRemoteClient:
         self._logger = AppLogger()
         self._wake_on_lan = wake_on_lan or WakeOnLanSender(config, self._logger)
         self._app_voice_input_handler: AppVoiceInputHandler | None = None
+        self._text_input_handler: TextInputHandler | None = None
+        self._text_input_status = TextInputStatus(
+            active=False,
+            mode=TextInputMode.MANUAL,
+        )
 
     def capabilities(self) -> TvAdapterCapabilities:
         return TvAdapterCapabilities(
@@ -41,7 +68,21 @@ class AndroidTvRemoteClient:
             volume=CapabilityStatus.IMPLEMENTED,
             directional_navigation=CapabilityStatus.IMPLEMENTED,
             media_controls=CapabilityStatus.IMPLEMENTED,
-            text_input=CapabilityStatus.NOT_IMPLEMENTED,
+            text_input=TextInputCapabilities(
+                focus_detection=CapabilityStatus.UNSUPPORTED,
+                send_text=CapabilityStatus.IMPLEMENTED,
+                replace_text=CapabilityStatus.UNSUPPORTED,
+                delete_text=CapabilityStatus.IMPLEMENTED,
+                submit_text=CapabilityStatus.IMPLEMENTED,
+                browser_capture=TextInputBrowserCapture.HARDWARE_KEYS,
+                notes=(
+                    "Android TV IME negotiation is disabled so the TV does not "
+                    "show the remote keyboard handoff prompt.",
+                    "Text inserts are sent through the androidtvremote2 text "
+                    "API as append-only edits, so text field focus is captured "
+                    "manually from the browser.",
+                ),
+            ),
             source_selection=CapabilityStatus.UNSUPPORTED,
             wake_on_lan=CapabilityStatus.IMPLEMENTED,
             pairing=CapabilityStatus.IMPLEMENTED,
@@ -49,7 +90,6 @@ class AndroidTvRemoteClient:
                 remote_mic_stream=CapabilityStatus.IMPLEMENTED,
                 native_voice_search=CapabilityStatus.IMPLEMENTED,
                 app_voice_input=CapabilityStatus.IMPLEMENTED,
-                app_text_input=CapabilityStatus.NOT_IMPLEMENTED,
                 notes=(
                     "Remote microphone streaming uses Android TV Remote Protocol "
                     "voice sessions.",
@@ -63,7 +103,7 @@ class AndroidTvRemoteClient:
                 "streaming device or attached TV depending on device settings.",
                 "Wake-on-LAN sends a generic magic packet when a MAC address is "
                 "configured; Android TV model support varies.",
-                "Text input and source selection are not mapped.",
+                "Source selection is not mapped.",
             ),
         )
 
@@ -76,6 +116,12 @@ class AndroidTvRemoteClient:
             return
         broker = _AndroidAppVoiceSessionBroker.for_remote(self._remote, self._logger)
         broker.set_app_voice_input_handler(handler)
+
+    def set_text_input_handler(self, handler: TextInputHandler | None) -> None:
+        self._text_input_handler = handler
+
+    def text_input_status(self) -> TextInputStatus:
+        return self._text_input_status
 
     async def connect(self) -> bool:
         from androidtvremote2 import (
@@ -91,6 +137,7 @@ class AndroidTvRemoteClient:
             str(self._config.tv.android_cert_file),
             str(self._config.tv.android_key_file),
             self._config.tv.host,
+            enable_ime=False,
             enable_voice=True,
         )
 
@@ -124,6 +171,10 @@ class AndroidTvRemoteClient:
         self._remote = remote
         broker = _AndroidAppVoiceSessionBroker.for_remote(remote, self._logger)
         broker.set_app_voice_input_handler(self._app_voice_input_handler)
+        self._logger.info(
+            "Android TV text input mode: androidtvremote2_send_text "
+            "enable_ime=False focus_detection=manual"
+        )
         self._logger.info(f"Connected to Android TV at {self._config.tv.host}")
         return True
 
@@ -161,10 +212,55 @@ class AndroidTvRemoteClient:
                 adapter_command,
                 offload_sync=False,
             )
+            self._dismiss_text_input_for_command(command)
         except ConnectionClosed:
             self._logger.error("Android TV connection closed. Command not sent.")
         except ValueError as error:
             self._logger.error(f"Invalid Android TV command {adapter_command}: {error}")
+
+    async def send_text(self, text: str) -> None:
+        if self._remote is None:
+            self._logger.info("TV not connected. Skipping Android TV text input.")
+            return
+
+        from androidtvremote2 import ConnectionClosed
+
+        try:
+            await call_remote_method(
+                self._remote.send_text,
+                text,
+                offload_sync=False,
+            )
+        except ConnectionClosed:
+            self._logger.error("Android TV connection closed. Text not sent.")
+        except ValueError as error:
+            self._logger.error(f"Invalid Android TV text input: {error}")
+
+    async def replace_text(self, text: str) -> None:
+        del text
+        self._logger.info("Android TV text replacement is not supported.")
+
+    async def delete_text(self, count: int = 1) -> None:
+        for _ in range(count):
+            await self._send_android_key("DEL")
+
+    async def submit_text(self) -> None:
+        await self._send_android_key("ENTER")
+
+    async def _send_android_key(self, key: str) -> None:
+        if self._remote is None:
+            self._logger.info(f"TV not connected. Skipping Android TV key: {key}")
+            return
+        from androidtvremote2 import ConnectionClosed
+
+        try:
+            await call_remote_method(
+                self._remote.send_key_command,
+                key,
+                offload_sync=False,
+            )
+        except ConnectionClosed:
+            self._logger.error(f"Android TV connection closed. Key not sent: {key}")
 
     async def _remote_name_and_mac(self) -> tuple[str, str]:
         from androidtvremote2 import AndroidTVRemote
@@ -200,6 +296,30 @@ class AndroidTvRemoteClient:
     async def disconnect(self) -> None:
         if self._remote is not None:
             await call_remote_method(self._remote.disconnect, offload_sync=False)
+
+    def _handle_text_input_status(self, status: TextInputStatus) -> None:
+        self._text_input_status = status
+        if self._text_input_handler is not None:
+            self._text_input_handler(status)
+
+    def _dismiss_text_input_for_command(self, command: str) -> None:
+        if command not in _TEXT_DISMISS_COMMANDS:
+            return
+        status = TextInputStatus(
+            active=False,
+            mode=self._text_input_status.mode,
+            label=self._text_input_status.label,
+            app_id=self._text_input_status.app_id,
+        )
+        self._text_input_status = status
+        if self._remote is not None:
+            broker = _AndroidAppVoiceSessionBroker.for_remote(
+                self._remote,
+                self._logger,
+            )
+            broker.record_text_input_dismissed(status)
+        elif self._text_input_handler is not None:
+            self._text_input_handler(status)
 
 
 @dataclass(frozen=True)
@@ -240,6 +360,11 @@ class _AndroidAppVoiceSessionBroker:
             _AndroidAppVoiceSessionBroker._handle_message,
             self,
         )
+        self._text_input_handler: TextInputHandler | None = None
+        self._text_input_status = TextInputStatus(
+            active=False,
+            mode=TextInputMode.AUTO_DETECTED,
+        )
 
     @classmethod
     def for_remote(
@@ -259,11 +384,87 @@ class _AndroidAppVoiceSessionBroker:
     ) -> None:
         self._app_voice_input_handler = handler
 
+    def set_text_input_handler(self, handler: TextInputHandler | None) -> None:
+        self._text_input_handler = handler
+
+    def text_input_status(self) -> TextInputStatus:
+        return self._text_input_status
+
+    def text_input_counters(self) -> tuple[int, int]:
+        return (
+            int(getattr(self._protocol, "ime_counter", 0)),
+            int(getattr(self._protocol, "ime_field_counter", 0)),
+        )
+
+    def record_text_input_dismissed(self, status: TextInputStatus) -> None:
+        self._text_input_status = status
+        handler = self._text_input_handler
+        if handler is not None:
+            self._loop.call_soon_threadsafe(handler, status)
+
     def _handle_message(self, raw_msg: bytes) -> None:
+        text_input_status = self._parse_text_input_status(raw_msg)
+        if text_input_status is not None:
+            self._record_text_input_status(text_input_status)
         app_voice_session = self._parse_app_voice_begin(raw_msg)
         if app_voice_session is not None:
             self._record_app_voice_begin(app_voice_session)
         self._original_handle_message(raw_msg)
+
+    def _parse_text_input_status(self, raw_msg: bytes) -> TextInputStatus | None:
+        from androidtvremote2.remotemessage_pb2 import RemoteMessage
+        from google.protobuf.message import DecodeError
+
+        msg = RemoteMessage()
+        try:
+            msg.ParseFromString(raw_msg)
+        except DecodeError:
+            return None
+        if msg.HasField("remote_ime_show_request"):
+            self._logger.info("Android TV IME message: remote_ime_show_request")
+            field_status = msg.remote_ime_show_request.remote_text_field_status
+            return TextInputStatus(
+                active=True,
+                mode=TextInputMode.AUTO_DETECTED,
+                value=field_status.value,
+                label=field_status.label,
+            )
+        if msg.HasField("remote_ime_key_inject"):
+            self._logger.info("Android TV IME message: remote_ime_key_inject")
+            field_status = msg.remote_ime_key_inject.text_field_status
+            return TextInputStatus(
+                active=True,
+                mode=TextInputMode.AUTO_DETECTED,
+                value=field_status.value,
+                label=field_status.label,
+                app_id=msg.remote_ime_key_inject.app_info.app_package,
+            )
+        if msg.HasField("remote_ime_batch_edit"):
+            self._logger.info("Android TV IME message: remote_ime_batch_edit")
+            edit_info = msg.remote_ime_batch_edit.edit_info
+            if edit_info:
+                value = edit_info[-1].text_field_status.value
+            else:
+                value = self._text_input_status.value
+            return TextInputStatus(
+                active=True,
+                mode=TextInputMode.AUTO_DETECTED,
+                value=value,
+                label=self._text_input_status.label,
+                app_id=self._text_input_status.app_id,
+            )
+        return None
+
+    def _record_text_input_status(self, status: TextInputStatus) -> None:
+        self._text_input_status = status
+        self._logger.info(
+            "Android TV text input status "
+            f"active={status.active} label={status.label or 'unknown'} "
+            f"app={status.app_id or 'unknown'} value_length={len(status.value)}"
+        )
+        handler = self._text_input_handler
+        if handler is not None:
+            self._loop.call_soon_threadsafe(handler, status)
 
     def _parse_app_voice_begin(self, raw_msg: bytes) -> _AppVoiceSession | None:
         on_voice_begin = getattr(self._protocol, "_on_voice_begin", None)

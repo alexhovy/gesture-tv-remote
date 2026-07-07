@@ -5,6 +5,13 @@ const commandButtons = Array.from(
 const modeButtons = Array.from(document.querySelectorAll("[data-mode]"));
 const modePanels = Array.from(document.querySelectorAll("[data-panel]"));
 const touchpad = document.getElementById("touchpad");
+const keyboardDismissCommands = new Set([
+  "BACK",
+  "HOME",
+  "POWER_TOGGLE",
+  "POWER_OFF",
+  "POWER_ON",
+]);
 
 let supportedCommands = new Set();
 let pointerStart = null;
@@ -20,6 +27,7 @@ for (const button of commandButtons) {
 for (const button of modeButtons) {
   button.addEventListener("click", () => {
     activateMode(button.dataset.mode);
+    restoreKeyboardCaptureFocus();
   });
 }
 
@@ -94,6 +102,12 @@ async function sendCommand(command) {
     setStatus("Sent");
   } catch (error) {
     setStatus(error.message || "Command failed");
+  } finally {
+    if (keyboardDismissCommands.has(command)) {
+      dismissKeyboardCapture();
+    } else {
+      restoreKeyboardCaptureFocus();
+    }
   }
 }
 
@@ -130,4 +144,21 @@ function commandForButton(button) {
 
 function setStatus(value) {
   statusLabel.textContent = value;
+}
+
+function restoreKeyboardCaptureFocus() {
+  if (
+    typeof window.isTvTextCaptureEnabled !== "function" ||
+    typeof window.focusTvKeyboardCapture !== "function" ||
+    !window.isTvTextCaptureEnabled()
+  ) {
+    return;
+  }
+  window.focusTvKeyboardCapture({ force: true, source: "remote_restore" });
+}
+
+function dismissKeyboardCapture() {
+  if (typeof window.dismissTvKeyboardCapture === "function") {
+    window.dismissTvKeyboardCapture();
+  }
 }

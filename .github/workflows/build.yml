@@ -1,0 +1,23 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  packages: write
+
+jobs:
+  build:
+    uses: xdevhq/devops-templates/.github/workflows/build.yml@main
+    with:
+      image_name: ${{ github.event.repository.name }}
+      image_tag: ${{ github.sha }}
+      template: python
+      build_args: >-
+        --build-arg PYTHON_VERSION=3.12
+        --build-arg APP_PORT=8080
+    secrets:
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
